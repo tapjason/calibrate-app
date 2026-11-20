@@ -399,7 +399,7 @@ Work down this list, top to bottom; each line says where its details are. It inc
 1. **Audit logs off, and purged.** Supabase dashboard → Authentication → Configuration → Audit
    Logs: turn off "Write audit logs to the database". Then in the SQL Editor run
    `delete from auth.audit_log_entries;`, then `select count(*) from auth.audit_log_entries;`,
-   which must return `0` (`docs/PRIVACY_POLICY.md`, the list at its top, items 1 and 2).
+   which must return `0` (`docs/PRIVACY_POLICY.notes.md`, the numbered list, items 1 and 2).
    **The delete is permanent:** it removes the database's whole sign-in audit trail (every
    event it has recorded, sign-ups and sign-ins included, with the person's email, IP address
    and, for Google, their name), and nothing brings it back. Supabase's own Logs (dashboard →

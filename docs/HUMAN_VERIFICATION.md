@@ -1391,8 +1391,12 @@ under 13 makes the phone local-only; any other band, or none, locks nothing
 (`docs/design/research/under-13-2026-11.md`). Since the D70/D71 review (the same
 day, JS only) the app asks Apple at every launch, whatever band is stored, and
 on a launch with no band of 13 or over stored yet, sign-in and the Plus plans
-wait for Apple's answer. The checks marked "(review)" are for that; nothing in
-this section has been run on the iPhone.
+wait for Apple's answer. The checks marked "(review)" are for that.
+**2026-11-20, the owner: "D4 and D6 pass"**, on that day's builds from `master`
+(production 1.0.0 (7) from `590ab75`; development from `defdeb0`). He was asked for
+the sandbox "Under 13" check, which the privacy policy's publishing waited on, and
+gave no item-by-item results, so only that box is ticked; the others in this
+section have no reported result.
 - [ ] **iOS 26, first launch:** after the splash, Apple's age-range sheet may
       appear (the app has no sheet of its own). Share a range of 13 or over:
       the Warmup or Today is usable, and nothing is locked. Force-quit and
@@ -1434,7 +1438,7 @@ this section has been run on the iPhone.
       isn't ready yet. Try again in a moment." for a whole session, note what
       you did before it. Sign-in and the plans are off for that run by design;
       a force-quit and relaunch should clear it.
-- [ ] **Under 13, in the sandbox (D70; needs Developer Mode, a Sandbox Apple
+- [x] **Under 13, in the sandbox (D70; needs Developer Mode, a Sandbox Apple
       Account and iOS 26.2 or later):** iPhone Settings → Developer → Sandbox
       Apple Account → Manage → Age Assurance → "Under 13". In the app, signed
       out, You → Erase your data on this phone (so no band is stored), then
@@ -1543,7 +1547,12 @@ The support card's checks for D71 (b) and (c) were removed with the card (D73,
       scrolling. Send a screenshot of each.
 
 ### D6. D72's three items (2026-11-20; JS only, a reload of the development build)
-- [ ] **Usage stats start off in Canada (D72 (b)):** Erase in the app (or a fresh
+**2026-11-20, the owner: "D4 and D6 pass"**, on that day's builds. He was asked for the
+two Canada checks (the Region alone, then English (UK) with the Region on Canada),
+which the privacy policy's publishing waited on, and gave no item-by-item results, so
+those two boxes are ticked and the rest have no reported result. Taken as reported,
+it shows the app reads the Region setting on iOS 26.
+- [x] **Usage stats start off in Canada (D72 (b)):** Erase in the app (or a fresh
       install), then Settings → General → Language & Region → Region → Canada, and
       open the app. The Warm-up's first screen reads "Fairly Sure can send a few usage
       counts, with no account or device id, to see how the app is used. They’re off
@@ -1554,7 +1563,7 @@ The support card's checks for D71 (b) and (c) were removed with the card (D73,
       back to the United States and relaunch: the switch is still on (a choice
       holds). **This is the check that the app reads the Region setting at all:** if
       the switch is on at the first step, tell the agent.
-- [ ] **Canada by Region with another language (the review of 2026-11-20):** Erase,
+- [x] **Canada by Region with another language (the review of 2026-11-20):** Erase,
       then set iPhone Language to English (UK) and Region to Canada, and open the app.
       Pass: the Warm-up's first screen shows the "They’re off until you turn them on"
       line with the switch **off**. Then the other way round: Language Français (Canada)

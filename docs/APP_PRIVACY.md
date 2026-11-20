@@ -14,7 +14,7 @@ D70 and D71 change no answer below: the under-13 rule only stops collection on a
 applies to, and holds only in a build that carries it and the D70/D71 review's fixes
 (JavaScript only).
 The Name row is **Yes** either way (below; the audit-log steps still
-matter for the privacy policy). The privacy policy's header lists the same steps.
+matter for the privacy policy). The privacy policy's working notes (`PRIVACY_POLICY.notes.md`) list the same steps.
 
 **The owner's decisions of 2026-11-19** (he adopted the main session's recommendations;
 the IP address row and the storefront list were corrected by the D70/D71 review's policy
@@ -28,7 +28,7 @@ audit afterwards and await his nod):
 - **Launch storefronts:** the United States, Canada, Australia and New Zealand. The 27 EU
   storefronts and the UK are left out: the UK needs a UK representative under UK GDPR
   Art 27 and policy content under Art 13, and the EU the same under the GDPR. The privacy
-  policy's §8 is written for those four, and its header (step 11) says what has to be
+  policy's §8 is written for those four, and its working notes (`PRIVACY_POLICY.notes.md`, step 11) say what has to be
   added before the UK or the EU is. The form's answers don't depend on the storefront.
 - **Canada:** Usage stats start off until chosen on phones set to Canada (Quebec's
   s. 9.1), unless counsel says otherwise. Built 2026-11-20 (D72 (b)): until the person

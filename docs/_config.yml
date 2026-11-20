@@ -29,18 +29,15 @@ exclude:
   - CALIBRATION.md
   - HUMAN_VERIFICATION.md
 #
-# HOLD (2026-11-19, security review): PRIVACY_POLICY.md and SUPPORT.md are rewritten for
-# the state after the owner's server steps and the next build (the policy's header comment),
-# so they are NOT in `include` and "*.md" above keeps them off the site. The pages served
-# today are the two `.live.md` files: what `master` published on 2026-11-18, with the same
-# permalinks, less one paragraph of the privacy page (D73, 2026-11-20: the on-device check
-# before a Coach request, removed from the app; the page's date moved with it). To publish the rewrite, in one commit: resolve the policy's
-# header steps, delete both `.live.md` files, and put PRIVACY_POLICY.md and SUPPORT.md
-# back in `include` in their place.
+# Published 2026-11-20: PRIVACY_POLICY.md and SUPPORT.md, the rewrite held since the
+# security review of 2026-11-19, replaced the two `.live.md` files (deleted in the same
+# commit) at the same permalinks. To hold a later rewrite the same way: copy the published
+# file to a `.live.md` name, list that here instead, and switch back in one commit.
+# PRIVACY_POLICY.notes.md is the policy's working notes and stays off the site.
 include:
   - index.md
-  - PRIVACY_POLICY.live.md
-  - SUPPORT.live.md
+  - PRIVACY_POLICY.md
+  - SUPPORT.md
 
 defaults:
   - scope:

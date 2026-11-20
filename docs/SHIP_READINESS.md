@@ -202,13 +202,15 @@ this means before submission; see "What stands between here and the store")
    setting and purge, migrations 010, 011, 012 with their checks, `pg_cron`, the three
    redeploys. Nobody else can do it, and until it is done the limits and the 13-month purge
    exist only in the repo. *Recommendation: do it next, in one sitting, in the order
-   written; `coach` is deployed from `master`, never from `6830354`.* Then say "the server
-   steps are done" and the agent publishes the rewritten privacy and support pages (one
-   commit: `docs/_config.yml`) with that day as the effective date. Since D73 neither the held policy
-   nor the published page describes the Coach's on-device check: the published page's
-   paragraph was removed in the same change and goes live with the push to `master`, with
-   nothing to time against a build, since the check sent and collected nothing (the held
-   policy's header, step 13).
+   written; `coach` is deployed from `master`, never from `6830354`.* **Done, and the rewritten privacy
+   and support pages are published (2026-11-20, effective that day):** the server steps
+   were checked on the live database, builds from `master` are on his phone, and he
+   reported the under-13 and Canada checks pass ("D4 and D6 pass. Please continue with
+   the policy and commit, merge, push anything remaining."). One commit switched
+   `docs/_config.yml` and deleted the two `.live.md` pages. The policy's working notes,
+   until then its header comment, are `docs/PRIVACY_POLICY.notes.md`, off the site: what
+   each sentence rests on and what changes the text next. Still running: the day-after
+   check 7e and the weekly 7f.
 2. **A new development build and TestFlight build** (two native packages). The agent runs
    `eas build` once the owner confirms the command. The phone checks are in `HANDOFF.md`.
 3. **A review of D70 and D71** before that build goes to anyone else. *Recommendation:
@@ -425,10 +427,12 @@ this means before submission; see "What stands between here and the store")
     points). Usage stats start off by the phone's Region or language region, which misses
     a Quebec resident whose phone is set to neither. *Recommendation: ask counsel whether
     the region is an acceptable proxy before the Canadian release.*
-35. **Moot as worded since the owner dropped the beta stage (2026-11-20): there are no
-    outside testers. What stays true: the held privacy policy must be the published one
-    before the app is submitted**, after the new build's D4 and D6 checks (its header's
-    "Where this stands"). **No build to outside testers before the held privacy policy is published** (the
+35. **Closed 2026-11-20: the rewritten privacy policy is the published one** (the owner
+    reported D4 and D6 pass on that day's builds; `docs/PRIVACY_POLICY.notes.md`, "Where
+    this stands"). As it stood: moot as worded since the owner dropped the beta stage
+    (2026-11-20), there being no outside testers; what stayed true was that the held
+    privacy policy must be the published one before the app is submitted, after the new
+    build's D4 and D6 checks. **No build to outside testers before the held privacy policy is published** (the
     policy audit, three rounds). The published page isn't complete even for builds 2 to
     4: it lists crash reports among what is never collected, and TestFlight shares a
     tester's crash reports whatever their settings; and it leaves out the IP addresses

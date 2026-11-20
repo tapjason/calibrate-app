@@ -288,7 +288,7 @@ iPhone (`HUMAN_VERIFICATION.md` D4) before pasting, and leave the last sentence 
 doesn't hold. Erase clears the stored band, so the relaunch asks Apple again. The usage-count lines (2026-11-19) quote
 `WARMUP_USAGE_NOTE` (`src/components/warmup/UsageStatsNotice.tsx`) and hold only for a
 build that carries round 5 (commit `7b5b0ea`, which saves the "notice shown" stamp; the
-privacy policy's header, step 8); the words "to see how the app is used" only for one that
+privacy policy's working notes, `PRIVACY_POLICY.notes.md`, step 8); the words "to see how the app is used" only for one that
 carries round 7 (2026-11-19, the policy re-audit's L1); check the quote against that build. The sign-in and sign-out lines hold from the
 same build (`EMAIL_SIGN_UP_ENABLED = false`, D69 (a) and (c)); "with the same switch" only
 from the build that carries D71 (d) (`UsageStatsSwitch` on the sign-in screen).

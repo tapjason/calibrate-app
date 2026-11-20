@@ -9,12 +9,8 @@ Published at https://tapjason.github.io/calibrate-app/support/
 The App Store's Support URL (docs/APP_STORE_LISTING.md §1). Keep the paths in
 step with the app's screens.
 
-HOLD (2026-11-19): this page publishes with the privacy policy (docs/PRIVACY_POLICY.md)
-and carries the same "within 7 days" claim ("Delete my data"), and its sign-out and
-sign-up entries describe the build that carries rounds 5 and 6 (the policy's header,
-step 7). The entry on accounts being off and the Erase line describe the build that
-carries D70 and D71 (the same step). Push it only together with the policy, after
-the owner steps in the policy's header comment are done.
+Published 2026-11-20 with the privacy policy (docs/PRIVACY_POLICY.md), whose "within 7
+days" claim "Delete my data" repeats. It describes builds from 1.0.0 (7) on.
 
 The age-range entry uses the app's own words (src/components/age/localOnlyCopy.ts) and,
 like the app, never states an age.

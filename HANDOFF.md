@@ -12,20 +12,50 @@ parallel"), built 2026-11-20 as steps 202 to 205, then D73 (206) and the review 
 - **No beta stage.** The owner: "I dont want to add beta testers, the beta testing stage
   completely." No external TestFlight; stages 2 and 3 and their exit criteria don't run
   (`docs/TESTFLIGHT_PLAN.md`, `docs/SHIP_READINESS.md` "Open, in order" item 4). The path is
-  now: builds from `master` → his phone checks (D4, D6, D5, D7) → the held privacy policy
-  published → the store record → `/release-gate` → submit. Real newcomers' return and
+  now: builds from `master` (done) → his phone checks (D4 and D6 pass; D5 and D7 have no
+  reported result) → the privacy policy published (done) → the store record →
+  `/release-gate` → submit. Real newcomers' return and
   sharing are first read after launch.
-- **The held privacy policy is refined, still held** (his "Refine the held privacy policy,
-  then commit and push"; the main session read that as not yet publishing, since he kept
-  the word "held" and its two phone checks haven't run). Its header has "Where this
-  stands"; both OWNER comments are out of the text and resolved in the header (OpenAI's
-  addendum changes one sentence when he has executed it; no in-app notice is needed for
-  this version, since nobody is under the earlier one); three long sentences reflowed, no
-  wording changed. No reviewer has read those edits. **To publish:** D4 and D6 on a build
-  from `master`, then the date and the one-commit switch in `docs/_config.yml`.
+- **The rewritten privacy policy and support page are published** (2026-11-20, effective
+  that day; the owner: "D4 and D6 pass. Please continue with the policy and commit,
+  merge, push anything remaining."). One commit: `docs/_config.yml` lists
+  `PRIVACY_POLICY.md` and `SUPPORT.md`, and the two `.live.md` pages are deleted. Three
+  things changed on the way, all the main session's calls:
+  - *The policy's header comment moved* to `docs/PRIVACY_POLICY.notes.md`, off the site.
+    It was 370 lines of steps, evidence and open legal questions, and an HTML comment is
+    in a published page's source. The notes open with "Where this stands": what
+    publishing waited on and what still changes the text (counsel, OpenAI's addendum,
+    the UK or EU, `UTC_OFFSET_SYNC`, a larger Supabase plan, the in-app notice §11
+    promises for the next change that matters, which isn't built).
+  - *§3's sentence on OpenAI's logs* now carries the whole exception. The page was
+    re-read that day (the notes asked for it before publishing): 30 days "unless longer
+    retention is required by law, or is reasonably necessary to protect our services or
+    any third party from harm". The policy had stopped at "its services".
+  - *Docs that pointed at "the policy's header"* point at the notes (`APP_PRIVACY.md`,
+    `APP_STORE_LISTING.md`, `OWNER_MESSAGES.md`, `supabase/README.md`); SHIP_READINESS
+    item 35 is closed.
+  Earlier that day, on his "Refine the held privacy policy", both OWNER comments left
+  the text and three long sentences were reflowed. **No reviewer has read the text since
+  those edits or these;** `/release-gate`'s policy audit is the next read. He gave no
+  item-by-item results for D4 and D6: the sandbox "Under 13" box and the two Canada boxes
+  are ticked in `docs/HUMAN_VERIFICATION.md`, and nothing else in those sections.
 - **Guidance while logging** is recorded as a post-launch idea (the owner's list item 36),
   not designed, not built.
 - **The three redeploys are done** and checked (item 1 below).
+- **Builds, 2026-11-20** (the owner: "Start the two builds please"; pre-flight clean: tree
+  clean at `590ab75`, the release check passed on that code, EAS account `tapjason`, the
+  three variable names present in both environments; `/release-gate` not run, waived as an
+  internal build for his phone checks, not the one to submit).
+  - *Production:* **1.0.0 (7)**, commit `590ab75`, finished on EAS
+    (https://expo.dev/accounts/tapjason/projects/calibrate/builds/94079be5-a5bb-4d8a-a93e-63cfec4eb563).
+    The first try failed on a network error before EAS accepted it; the retry went
+    through. His to do: `npx eas submit --profile production --platform ios`, then install
+    from TestFlight. Build numbers 5 and 6 weren't made in this session.
+  - *Development:* not rebuilt. One from `defdeb0` (which has `expo-secure-store` and
+    `expo-crypto`; only docs changed since) finished that day at 1:07 PM, started by his
+    account
+    (https://expo.dev/accounts/tapjason/projects/calibrate/builds/59a4681e-f0d1-49c7-89db-2b4500026dee).
+  - SQLite migrations 018 to 023 run on the phone with either and can't be edited after.
 
 What the branch held:
 - **202, D72 (a):** deleting a "Can't tell" is counted like deleting an open prediction.
@@ -117,8 +147,12 @@ D70/D71 review is **finished**: three rounds, the most allowed.
    pt, both appearances; guest Erase; no support card).
 3. The next builds are his: a new development build and TestFlight build from `master`
    (`expo-secure-store` and `expo-crypto` are native), after `supabase/README.md`'s
-   checklist. The public pages stay as they are: the hold below still applies, and
-   nothing in this merge touched the `include` list in `docs/_config.yml`.
+   checklist. Done 2026-11-20 (the builds above), and the public pages were switched to
+   the rewrite that day (the top of this file); the hold described further down is over.
+4. **Next:** D5 and D7 on his phone (`docs/HUMAN_VERIFICATION.md`; `/device-check`
+   records them), 7e the day after the migrations (read-only), then the store record
+   (`docs/SHIP_READINESS.md` "Open, in order" item 5), the mail sender and password
+   reset, `/release-gate`, the last production build, and his submit.
 
 **What the merge holds**
 

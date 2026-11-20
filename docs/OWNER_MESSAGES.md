@@ -105,7 +105,8 @@ Not a message: a form. Sign in to the OpenAI platform account that holds the Coa
 and execute the DPA (openai.com/policies/data-processing-addendum; older versions were
 signed through a form linked there). Keep the signed copy. Then tell the agent, and the
 privacy policy's sentence about companies that process data "on our behalf" gains OpenAI
-(the OWNER comment in `docs/PRIVACY_POLICY.md` §4).
+(note (a) in `docs/PRIVACY_POLICY.notes.md`; the policy was published 2026-11-20 without
+waiting on it).
 
 **It may already apply** (the D70/D71 review's policy audit, 2026-11-19). OpenAI's current
 addendum is reported to be incorporated into its services agreement, so it may cover the
