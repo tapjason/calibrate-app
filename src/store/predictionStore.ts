@@ -413,10 +413,18 @@ const gone = async (): Promise<Prediction | null> => null;
  * Dropping a key only brings the card back. The settings store applies it in
  * memory at once and writes only when it drops something. Never throws: a
  * list reload never fails for this.
+ *
+ * With nothing set aside and the settings read, which is nearly always,
+ * there is nothing to drop: no word is hashed and nothing is asked of the
+ * settings store (review round three, 2026-11-19). While the settings record
+ * can't be read its keys are unknown, so the retain goes ahead all the same;
+ * the settings store holds one at a time.
  */
 async function forgetSupportAsideNotIn(userId: string, resolved: readonly Prediction[]): Promise<void> {
   try {
     if (useAuthStore.getState().userId !== userId) return;
+    const settings = useSettingsStore.getState();
+    if (!settings.loadFailed && settings.supportAsideKeys.length === 0) return;
     await useSettingsStore.getState().retainSupportAsideKeys(supportAsideKeysStandingWith(resolved));
   } catch (e) {
     // The message only: never the words.

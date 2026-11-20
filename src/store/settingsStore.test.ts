@@ -3,10 +3,17 @@
 
 import { AppState } from 'react-native';
 
-import { supportAsideKey } from '@/engine/supportAside';
+import {
+  supportAsideKey,
+  supportAsideKeysStandingAfter,
+  supportAsideKeysStandingWith,
+  withSupportAsideKeys,
+  type SupportAsideKeep,
+} from '@/engine/supportAside';
 import { SUPPORT_ASIDE_MAX_KEYS } from '@/types';
 
 import {
+  __heldChangesForTests,
   __setPersistenceForTests,
   useSettingsStore,
   type SettingsPersistence,
@@ -1297,6 +1304,157 @@ describe('settingsStore: what is stored while the record cannot be read', () => 
     await app.foreground();
     expect(store()).toMatchObject({ supportAsideKeys: [kept], notificationsEnabled: false, loadFailed: false });
     expect(rec.saved[rec.saved.length - 1]?.supportAsideKeys).toEqual([kept]);
+  });
+
+  // Review round three, 2026-11-19: every list reload and Coach request asks
+  // for a retain, each with a key for every answered prediction. One is held
+  // at a time, so a record that never reads doesn't grow memory per reload.
+  describe('one retain held at a time', () => {
+    const ps = Array.from({ length: 60 }, (_, i) => ({ id: `p${i}`, title: `Title ${i}`, reflection: null }));
+    const keyOf = (i: number) => supportAsideKey(ps[i]!);
+
+    it('many retains leave one held, and the record keeps exactly what the newest allows', async () => {
+      // Set aside long ago: p0, p10, p20, p30, p40 and p50.
+      const stored = [0, 10, 20, 30, 40, 50].map(keyOf);
+      const rec = flakyRecord({ notificationsEnabled: false, supportAsideKeys: stored });
+      const app = watchAppState();
+      __setPersistenceForTests(rec.persistence);
+      await store().hydrate();
+
+      // Fifty list reloads, each one prediction shorter (deleted elsewhere).
+      for (let n = 0; n < 50; n += 1) {
+        await store().retainSupportAsideKeys(supportAsideKeysStandingWith(ps.slice(n)));
+      }
+      expect(__heldChangesForTests()).toEqual({ total: 1, retains: 1 });
+      expect(rec.saved).toHaveLength(0);
+
+      rec.heal();
+      await app.foreground();
+      // The newest list is p49 to p59: of the stored keys, only p50's stands.
+      expect(store()).toMatchObject({ supportAsideKeys: [keyOf(50)], notificationsEnabled: false, loadFailed: false });
+      expect(rec.saved[rec.saved.length - 1]?.supportAsideKeys).toEqual([keyOf(50)]);
+      expect(__heldChangesForTests()).toEqual({ total: 0, retains: 0 });
+    });
+
+    /**
+     * What the queue left before round three, applying each held change in
+     * turn: the record's keys, a retain filtering them, an addition merging.
+     */
+    const inTurn = (record: string[], ops: Array<{ retain: SupportAsideKeep } | { add: string[] }>) =>
+      ops.reduce<string[]>(
+        (keys, op) => ('retain' in op ? keys.filter((k) => op.retain(k)) : withSupportAsideKeys(keys, op.add)),
+        record,
+      );
+
+    // r1 stands in both lists; r2 only in A; r3 only in B (A dropped it, and
+    // B can't bring it back); r4 only in B, set aside again between them; k1
+    // set aside between, in B but not A (it mustn't be dropped); k2 set aside
+    // between, in A but not B (it mustn't be kept).
+    const [r1, r2, r3, r4, k1, k2] = [1, 2, 3, 4, 5, 6].map(keyOf);
+    const record = [r1!, r2!, r3!, r4!];
+    const listA = [1, 2, 6].map((i) => ps[i]!);
+    const listB = [1, 3, 4, 5].map((i) => ps[i]!);
+
+    it.each<[string, () => SupportAsideKeep, () => SupportAsideKeep]>([
+      ['as list reloads ask', () => supportAsideKeysStandingWith(listA), () => supportAsideKeysStandingWith(listB)],
+      [
+        'with checks that carry no keys',
+        () => (k) => listA.some((p) => supportAsideKey(p) === k),
+        () => (k) => listB.some((p) => supportAsideKey(p) === k),
+      ],
+    ])('retain(A), add(k), retain(B) leaves the keys it left before: %s', async (_label, a, b) => {
+      const rec = flakyRecord({ supportAsideKeys: record });
+      const app = watchAppState();
+      __setPersistenceForTests(rec.persistence);
+      await store().hydrate();
+
+      await store().retainSupportAsideKeys(a());
+      await store().addSupportAsideKeys([k1!, r4!, k2!]);
+      await store().retainSupportAsideKeys(b());
+      expect(__heldChangesForTests()).toEqual({ total: 2, retains: 1 });
+
+      rec.heal();
+      await app.foreground();
+      const before = inTurn(record, [{ retain: a() }, { add: [k1!, r4!, k2!] }, { retain: b() }]);
+      expect(before).toEqual([r1, k1, r4]);
+      expect(store().supportAsideKeys).toEqual(before);
+      expect(rec.saved[rec.saved.length - 1]?.supportAsideKeys).toEqual(before);
+    });
+
+    // Why the newer retain doesn't simply replace the held one: an edit's
+    // check keeps every other prediction's keys, the old words' key of an
+    // earlier edit included.
+    it('an edit, then another: the first one’s old key stays dropped', async () => {
+      const x = supportAsideKey({ id: 'x', title: 'X', reflection: 'hurtful note' });
+      const y = supportAsideKey({ id: 'y', title: 'Y', reflection: 'another note' });
+      const z = supportAsideKey({ id: 'z', title: 'Z', reflection: null });
+      const rec = flakyRecord({ supportAsideKeys: [x, y, z] });
+      const app = watchAppState();
+      __setPersistenceForTests(rec.persistence);
+      await store().hydrate();
+
+      await store().retainSupportAsideKeys(supportAsideKeysStandingAfter('x', { title: 'X', reflection: null }));
+      await store().retainSupportAsideKeys(supportAsideKeysStandingAfter('y', null));
+      expect(__heldChangesForTests()).toEqual({ total: 1, retains: 1 });
+
+      rec.heal();
+      await app.foreground();
+      expect(store().supportAsideKeys).toEqual([z]);
+    });
+
+    it('a clear between two retains: only what is set aside after it, as the newer allows', async () => {
+      const rec = flakyRecord({ supportAsideKeys: record });
+      const app = watchAppState();
+      __setPersistenceForTests(rec.persistence);
+      await store().hydrate();
+
+      await store().retainSupportAsideKeys(supportAsideKeysStandingWith(listA));
+      await store().clearSupportAside();
+      await store().addSupportAsideKeys([k1!, k2!]);
+      await store().retainSupportAsideKeys(supportAsideKeysStandingWith(listB));
+      expect(__heldChangesForTests()).toEqual({ total: 3, retains: 1 });
+
+      rec.heal();
+      await app.foreground();
+      expect(store().supportAsideKeys).toEqual([k1]);
+    });
+
+    it('Erase after many held retains, on a record that reads: no key, its settings kept, nothing held', async () => {
+      const rec = flakyRecord({ notificationsEnabled: false, supportAsideKeys: record });
+      watchAppState();
+      __setPersistenceForTests(rec.persistence);
+      await store().hydrate();
+      for (let n = 0; n < 10; n += 1) {
+        await store().retainSupportAsideKeys(supportAsideKeysStandingWith(ps.slice(n)));
+      }
+      await store().addSupportAsideKeys([k1!]);
+
+      rec.heal();
+      await expect(store().eraseSupportAside()).resolves.toBe(true);
+
+      expect(store()).toMatchObject({ loadFailed: false, notificationsEnabled: false, supportAsideKeys: [] });
+      expect(rec.saved).toHaveLength(1);
+      expect(rec.saved[0]).not.toHaveProperty('supportAsideKeys');
+      expect(__heldChangesForTests()).toEqual({ total: 0, retains: 0 });
+    });
+
+    it('Erase after many held retains, on a record that still cannot be read: replaced, no key, nothing held', async () => {
+      const rec = flakyRecord({ notificationsEnabled: false, supportAsideKeys: record });
+      watchAppState();
+      __setPersistenceForTests(rec.persistence);
+      await store().hydrate();
+      for (let n = 0; n < 10; n += 1) {
+        await store().retainSupportAsideKeys(supportAsideKeysStandingWith(ps.slice(n)));
+      }
+
+      await expect(store().eraseSupportAside()).resolves.toBe(true);
+
+      expect(store()).toMatchObject({ loadFailed: false, supportAsideKeys: [] });
+      expect(rec.saved).toHaveLength(1);
+      expect(rec.saved[0]).toMatchObject(PRIVATE);
+      expect(rec.stored()).not.toHaveProperty('supportAsideKeys');
+      expect(__heldChangesForTests()).toEqual({ total: 0, retains: 0 });
+    });
   });
 
   // The launch order (D71 (a) review): a wipe retried before the settings are

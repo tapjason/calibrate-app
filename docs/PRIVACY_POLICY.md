@@ -8,10 +8,12 @@ permalink: /privacy/
 Published at https://tapjason.github.io/calibrate-app/privacy/
 If the app's name changes, update it here. Not legal advice.
 
-DO NOT PUSH THIS VERSION UNTIL THE OWNER HAS DONE ALL OF THESE (revised 2026-11-18
+DO NOT PUSH THIS VERSION UNTIL THE OWNER HAS DONE STEPS 1-9 AND THE SANDBOX CHECK IN
+STEP 10. The rest of step 10 (counsel), 11 and 12 are not preconditions for pushing: each
+changes the text below when it happens. (Revised 2026-11-18
 after the security and policy review, and 2026-11-19 after its rounds 5, 6 and 7, the
 policy re-audit's W1-W4, the under-13 rule and Erase, D70 and D71, and the D70/D71
-review of the same day). The text
+review of the same day, its third round included.) The text
 below is written for the state AFTER them; before them, §2.1, §2 (guest counts) and §6
 are not true, and §2 (the warm-up notice), §7 (signing out) and §10 (the Keychain) are true
 only of the build in step 7.
@@ -67,7 +69,7 @@ in step 3b below.
 7. Timing: the on-phone claims (sign-out without a connection still ending the session
    on the phone, Erase and deletion clearing the cached exports, card images and
    pictures, the database overwriting deleted text) are true of builds from commit
-   c7bf083 on; TestFlight 1.0.0 build 2 predates them. Round 5's (commit 7b5b0ea) and
+   c7bf083 on; TestFlight builds 2 to 4 predate them. Round 5's (commit 7b5b0ea) and
    round 6's (2026-11-19, uncommitted when this was written) are true only of a build that
    carries both: sign-out removing the account's data from the phone, asking first about
    categories kept only on the phone, and keeping the counts (§7); the session in the
@@ -78,13 +80,13 @@ in step 3b below.
    the data was removed, and §2's account of what the warm-up's line says; the same build
    carries it if it is built from the final commit. Publish with, or after, that build. Redeploying
    delete-account (the checklist's item 11) is not needed for any sentence here, but makes
-   the Apple revocation check live. D70 and D71 (2026-11-19, uncommitted on
-   builder/owner-decisions when this was written; JavaScript only, no new native package)
+   the Apple revocation check live. D70 and D71 (commits e77431e and b2557b0, plus
+   round three's fixes; JavaScript only, no new native package)
    are true only of a build that carries them: §1's and §2's lines on the age range,
    RevenueCat and usage counts, §2.3's switch on the sign-in screen, §3's "Back to Coach",
    §6's and §7's Erase, and §9. Publish with, or after, that build too. The D70/D71
-   review's fixes (2026-11-19, uncommitted on the same branch when this was written;
-   JavaScript only) are part of what those sections say: the age range asked at every
+   review's fixes (2026-11-19, in the same commits; JavaScript only) are part of what
+   those sections say: the age range asked at every
    launch, RevenueCat and sign-in waiting for Apple's answer with no "then goes on", the
    check again at the tap on "Back to Coach", and the wider meaning of "under 13" in §9.
    A build made before them doesn't match §2, §3 or §9.
@@ -124,7 +126,8 @@ in step 3b below.
    otherwise. Not built when this was written. When it is, §2's and §2.3's "with a switch
    to turn them off" need a sentence saying that on a phone set to Canada none are sent
    until you turn them on.
-Once 1-12 are done, delete this list; the evidence notes below can stay.
+Once 1-9 and step 10's sandbox check are done, push. Delete the rest of 10, and 11 and
+12, one by one as each is done; the evidence notes below can stay.
 
 Evidence for each claim (2026-11-18): src/analytics/events.ts (catalogue, props),
 src/analytics/flush.ts (guest rows carry no user id), supabase/migrations/007 and 010
@@ -379,8 +382,9 @@ count how many people start and finish the warm-up, log, answer, share and
 practise, are sent to us, but only after the warm-up's first screen has shown
 you a line saying so and what they're for (to see how the app is used), with a
 switch to turn them off (the same switch as You → Usage stats). Until then they
-wait on the phone. On a launch where the app doesn't yet hold an age range of
-13 or over from Apple (below), they also wait for Apple's answer, and if the
+wait on the phone. On an iPhone running iOS 26 or later, on a launch where the
+app doesn't yet hold an age range of 13 or over from Apple (below), they also
+wait for Apple's answer, and if the
 range is under 13 none are kept for sending and none are sent (§9). They carry the event's details (§2.3) and no account, device or install identifier. Our server replaces each
 event's own id with a one-way scrambled version of it and keeps only the day the
 event happened, not the time. Like any request over the internet, they reach our
@@ -393,7 +397,8 @@ You can turn usage stats off at any time, on that warm-up screen or in You →
 Usage stats: that deletes the ones still on the device and stops all of them.
 
 To know whether you have Fairly Sure Plus, the app asks RevenueCat, the
-service that manages subscriptions, each time it starts. On a launch where it
+service that manages subscriptions, each time it starts. On an iPhone running iOS 26
+or later, on a launch where it
 doesn't yet hold an age range of 13 or over from Apple (below), it waits for
 Apple's answer first, however long that takes: if you open the Plus screen
 sooner, the plans don't load until the answer is in. If that answer is under
@@ -719,8 +724,10 @@ until you sign in and out again there, use Erase there, or delete the app there.
 Without an account, **You → Erase your data on this phone** removes everything
 Fairly Sure keeps on the phone, whoever's account it was under, except four
 things that hold nothing you wrote: your settings (switches and reminder times),
-whether this phone has Fairly Sure Plus, the random install identifier
-RevenueCat's code keeps on the phone (§2), and the ids of accounts that signed
+whether this phone has Fairly Sure Plus, what RevenueCat's code keeps on the
+phone (§2: its identifier for this install, or for an account that signed out
+while RevenueCat wasn't running, until RevenueCat next starts, and the purchase
+status it last read), and the ids of accounts that signed
 out here, which stop an old sign-in from coming back. (If the saved settings
 can't be read when you erase, they are replaced with the ones the app is using
 then, with each privacy choice on its more private setting.) Before it starts,
@@ -795,11 +802,14 @@ until the account is deleted, and Sign out and Delete account still work; since
 nothing can be backed up, signing out says how many changes haven't reached our
 server and asks before removing them (§7). Apart from those two, one thing
 still reaches our server: each time the app starts and that account's sign-in
-has expired, the app renews it. That sends the sign-in's refresh token and,
+has expired or is about to, the app renews it. That sends the sign-in's refresh token and,
 like any request, the phone's IP address (which our sign-in service records,
 as in §2.1), and none of your predictions. The same renewal can happen for any
 signed-in account at a launch where the app is still waiting for Apple's
-answer.
+answer. On such a launch, if Apple hasn't answered within a minute, a signed-in
+account's backup goes ahead as usual, and signing out sends unsent changes
+after waiting up to 5 seconds; if the answer then says under 13, backup stops
+before its next request.
 
 If you believe a child has created an account, contact us and we'll delete it.
 

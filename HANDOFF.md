@@ -1,47 +1,30 @@
 # Handoff
 
-**Branch:** `builder/owner-decisions`, on top of `master` (`d1c23cf`). **Not merged.** Two
-commits: `e77431e` (D70 and D71 as first built) and the review commit after it (the
-D70/D71 review's fixes; `git log -2` names it). The owner's words on 2026-11-19: "Use all
-your recommendations for the open decisions, and review, push, and merge." Then, with the
-review two rounds in: "wrap up your current work towards the new session." So the review
-is **not finished**, and the merge waits for it.
+**Branch:** `master`. `builder/owner-decisions` is merged into it (fast-forward) and
+pushed, 2026-11-19, on the owner's words that day: "Use all your recommendations for the
+open decisions, and review, push, and merge.", then, with the review two rounds in,
+"continue with next steps". Four commits came with it: `e77431e` (D70 and D71 as first
+built), `b2557b0` (the review's rounds one and two), `b719ebd` (docs: the subagent's model
+is weighed per task) and the round-three commit after it (`git log -1` names it). The
+D70/D71 review is **finished**: three rounds, the most allowed.
 
 **What the next session does first, in order**
 
-1. **Round three of the review** (the last allowed), on the round-two fixes, which no
-   reviewer has read: one `code-reviewer` and one `policy-auditor` (Opus, `xhigh`), then
-   fix what they find.
-   - Code to read: `backToCoach` and `topicsOf` in `src/store/coachStore.ts` with
-     `crisisTopicsIn` in `src/ai/crisisFilter.ts` (one note matching two topics); the
-     one-second hold and focus move in `src/components/stats/SupportSurface.tsx`;
-     `configureBilling`, `dropCachedAccount` and the `identity` promise in
-     `src/billing/revenuecat.ts` (**read this hardest:** if the SDK can't say whether its
-     user is anonymous, plans, purchases, Restore and entitlement reads are held until a
-     sign-in or the next launch; right for privacy, but it would stop every guest buying
-     if `Purchases.isAnonymous()` ever fails after `configure` on the phone);
-     `readRowTwice`, `readStoredBand` and `storedForRun` in `src/age/ageRange.ts`;
-     `accept` and `forgetBand` in `src/store/ageStore.ts` (nothing is saved or lifted after
-     an Erase in the same run); the Erase action and `eraseStep` in
-     `src/store/authStore.ts` with `sweepCachedCopies` and the three sweeps
-     (`src/export/file.ts`, `src/share/export.ts`, `src/media/iconImage.ts`);
-     `eraseSupportAside` and the held erase in `src/store/settingsStore.ts`;
-     `forgetSupportAsideNotIn` in `src/store/predictionStore.ts`; `src/supabase/sync.ts`
-     about line 1248; `uploadsMayStart()` in `src/ai/coach.ts`, `refine.ts` and
-     `src/notifications/trialReminder.ts`; `eraseConfirmMessage` and the 3 s count read in
-     `src/components/account/DeleteAccountView.tsx`.
-   - Policy to read: the held `docs/PRIVACY_POLICY.md` (§2, §3, §7, §8, §9 and its header
-     steps 10 to 12), `docs/APP_PRIVACY.md`, `docs/APP_STORE_LISTING.md` (review notes at
-     3,903 of 4,000 bytes; "PRIVATE BY DESIGN"), and the sign-in usage line, against the
-     code. Round one's policy audit was FAIL on seven paperwork items, all since edited;
-     nobody has re-audited them.
-2. `bash scripts/check.sh` and `bash scripts/check-harness.sh`, commit, then **push and
-   merge into `master`** (fast-forward) on the owner's word above; ask him first if
-   anything about that has changed. The public pages stay as they are: the hold below
-   still applies, and the merge must not touch the `include` list in `docs/_config.yml`.
-3. Put `docs/SHIP_READINESS.md` "The owner's list" items 19 to 25 to the owner.
+1. Put `docs/SHIP_READINESS.md` "The owner's list" items 19 to 30 to the owner. The ones
+   that can't wait: **26** (Utah and Louisiana may already apply: Apple's own post gives
+   2026 dates where this repo said 2027; for counsel), **19** (his nod on the two
+   corrected recommendations), **21** (Usage stats starting off on phones set to Canada:
+   his decision, not built, and a submission blocker) and **20** (deleting a "Can't tell"
+   isn't counted).
+2. Build what he says yes to, each as a small step (`/step`): 20, 21, 23 and 27 (the
+   support card's referral lines, each number checked on the organisation's own page
+   first), 29, 30.
+3. The next builds are his: a new development build and TestFlight build from `master`
+   (`expo-secure-store` and `expo-crypto` are native), after `supabase/README.md`'s
+   checklist. The public pages stay as they are: the hold below still applies, and
+   nothing in this merge touched the `include` list in `docs/_config.yml`.
 
-**What the branch holds**
+**What the merge holds**
 
 - **D70, the under-13 rule,** confirmed by the owner 2026-11-19: when Apple's age range
   can include someone under 13 the app is local-only (no sign-in, sync, usage counts,
@@ -81,14 +64,44 @@ is **not finished**, and the merge waits for it.
   - *Copy.* How scoring works: "so a deleted miss is still counted" and "Only this phone
     keeps these counts; erasing your data here, deleting your account or deleting the app
     clears them." The sign-in usage line says what the counts are for.
-- **Known residuals, all in the research note's "Residuals":** supabase-js renews an
-  expired (or nearly expired) stored session when the client is made and at `getSession()`
-  whatever its settings, so a frozen account's sign-in is renewed at each start and a
-  signed-in account's can be renewed before Apple answers; with Google, Supabase has
-  created the user before the app can refuse the session; an email sign-in sent before a
-  background under-13 answer goes through; once RevenueCat's SDK is configured it keeps
-  refreshing on its own for that run; an adult whose Apple request never resolves gets no
-  plans, purchase, restore or sign-in for that run.
+- **Round three (2026-11-19, BUILT_LOG row 201):** one `code-reviewer` and one
+  `policy-auditor`, both Opus at `xhigh`. No blocker.
+  - *Code: one should-fix, fixed.* While the settings record can't be read, every list
+    reload held another copy of the support card's set-aside keys, so memory grew for the
+    whole run. Now at most one check is held: a newer one is folded into it, so a key
+    survives only if the newer check accepts it and the older one did or it was added in
+    between (plain "newest replaces" would have kept a key for words edited away). With
+    nothing set aside, a list load no longer hashes every answered prediction. Two stale
+    comments in `src/store/ageStore.ts` and `src/age/ageRange.ts` now say what the code
+    does and what Apple's pages confirm.
+  - *Code: read and found sound.* The billing hold can't lock out a guest: from
+    react-native-purchases 10.9.0's source, its anonymity check always answers once the
+    SDK is set up. From source only; `HUMAN_VERIFICATION.md` D5 shows it on the phone.
+  - *Policy: FAIL on seven paperwork items, all applied as worded.* The held policy says
+    a backup goes ahead if Apple hasn't answered within a minute, promises the waiting
+    only on iOS 26 or later, and lists what RevenueCat's code caches among what Erase
+    keeps; its header names steps 1 to 9 and the sandbox check as the preconditions for
+    publishing (counsel, the UK and EU, and Canada change the text when they happen).
+    `APP_PRIVACY.md` records the Coach summary as collected under Other User Content.
+    The review notes say "signed out" before Erase and "a launch with no band stored"
+    (3,929 of 4,000 bytes). Stale "uncommitted" labels are gone.
+  - *A date this repo had wrong.* Utah and Louisiana were given as 2027 from secondary
+    sources. Apple's post of 2026-02-24 says age categories are shared for new Apple
+    Accounts in Utah from 2026-05-06 and in Louisiana from 2026-07-01 (fetched twice).
+    The research note and `SHIP_READINESS.md` are corrected; item 26 puts it to counsel.
+  - *Left as found:* two small billing races (the research note's residual 11, item 30),
+    because no review round was left to read a billing change.
+- **Known residuals, all in the research note's "Residuals" (eleven since round three):**
+  supabase-js renews an expired (or nearly expired) stored session when the client is made
+  and at `getSession()` whatever its settings, so a frozen account's sign-in is renewed at
+  each start and a signed-in account's can be renewed before Apple answers; with Google,
+  Supabase has created the user before the app can refuse the session; an email sign-in
+  sent before a background under-13 answer goes through; once RevenueCat's SDK is
+  configured it keeps refreshing on its own for that run; an adult whose Apple request
+  never resolves gets no plans, purchase, restore or sign-in for that run; a signed-in
+  account's sync goes ahead after 60 s without Apple's answer; a sign-out RevenueCat never
+  saw stays in its cache on the phone; a stored age row that can't be read keeps an adult
+  local-only; the two billing races.
 - **The owner's decisions (2026-11-19):** every recommendation in
   `docs/SHIP_READINESS.md` "The owner's list" is adopted. **Two were wrong and are
   corrected there, awaiting his nod:** item 7 (the UK is left out with the EU, since it
@@ -97,13 +110,16 @@ is **not finished**, and the merge waits for it.
   Other Diagnostic Data). The agent's proposed rule after that mistake: a legal or
   store-form recommendation gets a `policy-auditor` check before it is put to the owner.
 - **For the owner:** `docs/SHIP_READINESS.md`, "The owner's list": items 1 to 18 as
-  adopted, 19 to 25 added by the review (the two corrections; deleting a "Can't tell"
-  isn't counted; Usage stats on Canadian phones; two App Store Connect checks; two
-  referral calls on the support card; the frozen account's server data, for counsel; a few
-  smaller ones). `docs/OWNER_MESSAGES.md` has the four messages only he can send. JS only:
-  no new native package beyond the earlier review's two.
+  adopted, 19 to 25 added by the review's first two rounds (the two corrections; deleting
+  a "Can't tell" isn't counted; Usage stats on Canadian phones; two App Store Connect
+  checks; two referral calls on the support card; the frozen account's server data, for
+  counsel; a few smaller ones), and 26 to 30 by its third (Utah and Louisiana; helplines
+  for Canada, Australia and New Zealand; the age-rating answer for the support card; a
+  Plus subscriber on a local-only phone; the two billing races).
+  `docs/OWNER_MESSAGES.md` has the four messages only he can send. JS only: no new native
+  package beyond the earlier review's two.
 
-**`master` = `origin/master` = `d1c23cf`:** the security and code review of 2026-11-18/19
+**Before that merge, `master` was `d1c23cf`:** the security and code review of 2026-11-18/19
 (eight fix rounds, commits `c7bf083`, `6830354`, `7b5b0ea`, `893d404`, `800cd2f`,
 `3d6439f`; D69), merged (fast-forward) and pushed 2026-11-19 on the owner's word.
 **The public pages did not change with that push:** the repo is public and Pages serves
@@ -280,11 +296,13 @@ cover the last stretch) and in git; it isn't repeated here.
 Reviews are the owner's call (2026-11-15). The 2026-11-18/19 review covered steps 180–196 and
 the whole security surface (server, client, Coach, record, policy), with three re-review
 rounds on the fixes; its last round verifies round 7's deletion fix. **D70 and D71
-(`builder/owner-decisions`, BUILT_LOG rows 198 to 200) have had two of three review
-rounds** (the owner called the review 2026-11-19): round one's findings and round two's
-are fixed, **round two's fixes are unread by any reviewer, and the documents edited after
-round one's policy audit have not been re-audited** (the top of this file says what to
-read). Nothing has run on a real database or on
+(BUILT_LOG rows 198 to 201) have had all three review rounds** (the owner called the
+review 2026-11-19): every finding is fixed or recorded as left. **Round three's own fixes
+are unread by any reviewer**, as a last round's always are: the folded set-aside check in
+`src/store/settingsStore.ts` and `src/engine/supportAside.ts` (tested, with three
+mutations that fail), two comments, and the seven wording changes to the held privacy
+policy, `APP_PRIVACY.md` and the review notes, applied as the auditor worded them.
+Nothing has run on a real database or on
 the iPhone: migrations 010–012 are proven only by the README's checks, the native changes
 by the next development build, and the under-13 rule by the sandbox "Under 13" check
 (`docs/HUMAN_VERIFICATION.md` D4). In the web build the local-only screens, both routes, the
@@ -305,7 +323,7 @@ development-only control that sets an under-13 band); the support card was not.
    checkpoint's confetti over the practice row; the Insights lead line at the largest text,
    and in dark beside "More about your record".
 6. Then `docs/SHIP_READINESS.md`, "The owner's list": the server checklist, the new builds
-   (after the D70/D71 review's last round and the merge), the mail sender, external
+   (the D70/D71 review is finished and merged), the mail sender, external
    TestFlight, the store record, the gate. On the next development build, the under-13
    and support-card checks in `docs/HUMAN_VERIFICATION.md` D4 and D5; the two that matter
    most: a guest can load plans, buy and restore on a fresh install, and a second launch
@@ -352,14 +370,14 @@ judgment work and for the reviews he calls, Sonnet for well-specified, low-stake
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. Last full run on this branch
-  (2026-11-19, after the D70/D71 review's round-two fixes): 247 suites, 5,776 tests, exit
-  0. `check.sh --release` last
+- `bash scripts/check.sh` must end in `CHECK PASSED`. Last full run
+  (2026-11-19, on the tree that was merged, after the D70/D71 review's round-three fixes):
+  247 suites, 5,796 tests, exit 0. `check.sh --release` last
   passed on the review's round 7 tree with the two new native packages: expo-doctor 20/20, iOS export
   7.58 MB (bundle 7.17 MB), both public pages 200. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
   failure. If `tsc` reports three typed-route errors, the generated route types are a stub;
   restart the web server after edits under `app/` (`docs/tooling-notes.md`).
-- `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED` (it does on this branch).
+- `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED` (it does, 2026-11-19).
 
 ## Read first
 

@@ -86,8 +86,11 @@ list" below.
    local-only (no sign-in, no uploads, no Coach). That gives the question a purpose and
    makes "age assurance: yes" true on the rating form. It is a legal call (COPPA, and the
    state app-store laws: Texas enforceable since 2026-06-04; Alabama and California's AB 1043
-   from 2027-01-01, Utah from 2027-05-06, Louisiana from 2027-07-01; dates from secondary
-   sources read 2026-11-19, `research/under-13-2026-11.md`).
+   from 2027-01-01; dates from secondary sources read 2026-11-19,
+   `research/under-13-2026-11.md`. **Utah and Louisiana, corrected 2026-11-19:** the
+   secondary sources gave 2027-05-06 and 2027-07-01, but Apple's post of 2026-02-24 says
+   age categories are shared for new Apple Accounts in Utah from 2026-05-06 and in
+   Louisiana from 2026-07-01, so on Apple's account both already apply; for counsel).
    **Recommendation:** adopt the local-only rule before a US launch; ask counsel about the
    state-law duties. **Built 2026-11-19 as D70** on `builder/owner-decisions`, the agent's
    call on the owner's delegation: `docs/design/research/under-13-2026-11.md` has the rule,
@@ -310,6 +313,40 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     directly (a layer nit); a note saved while a sync transaction is open joins it
     (`setPredictionReflection` writes outside the queue; older than this review); the
     lock-screen dismissal at Erase is not awaited (the 2026-11-15 review's rule).
+
+**Added by the review's third round (2026-11-19)**
+
+26. **Utah and Louisiana may already apply.** Decision 2 above first gave 2027 dates from
+    secondary sources. Apple's own post of 2026-02-24 says age categories are shared for
+    new Apple Accounts in Utah from 2026-05-06 and in Louisiana from 2026-07-01
+    (`research/under-13-2026-11.md`, Sources). *Recommendation: put this to counsel with
+    the nine points, and plan as if both apply to the US launch.* The same audit notes
+    that Apple's notice of revoked parental consent and its significant-change consent
+    aren't handled by the app; both are already inside counsel's points.
+27. **National helplines for Canada, Australia and New Zealand.** A phone set to any of
+    the three gets only the line that names no number. That was the right call while the
+    storefront list was open ("a wrong one costs more"); with four storefronts it is
+    weaker. The policy audit confirmed on the organisations' own sites Canada's 9-8-8
+    (call or text) and Lifeline Australia's 13 11 14; it did not confirm New Zealand's
+    1737. *Recommendation: add each country's line once it is confirmed against the
+    organisation's own page and its coverage and hours are known, with item 23; not
+    built.*
+28. **The age-rating form and the support card.** Whether the card counts as "Mature or
+    Suggestive Themes" (Apple lists "psychological trauma or abuse") or "Medical or
+    Treatment Information" is the owner's answer on the day, against the questionnaire's
+    own wording. *Recommendation: answer for the card as it is, helpline information shown
+    rarely, and note the answer in `APP_STORE_LISTING.md`.*
+29. **A Plus subscriber whose phone becomes local-only** keeps Trends and the themes but
+    loses the Coach and has no route in the app to restore or manage the subscription
+    (it is managed in Settings → Apple Account → Subscriptions, and comes back when the
+    rule lifts). Rare. *Recommendation: one line on the local-only Plus page saying where
+    subscriptions are managed; a small step, not built.*
+30. **Two small billing races, left as found** (the code review; no review round was left
+    to read a billing change): a customer-info read under way at sign-out can write the
+    old account's Plus into the guest's mirror until the next foreground refresh, and a
+    paywall opened right after a sign-out on a slow network waits for the SDK
+    (`research/under-13-2026-11.md`, residual 11). *Recommendation: fix the first with a
+    counter in `changeIdentity`, inside the next review the owner calls.*
 
 ## What stands between here and the store
 

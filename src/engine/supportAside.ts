@@ -73,18 +73,78 @@ export function supportAsideKeyId(key: unknown): string | null {
 }
 
 /**
+ * A check of which stored keys stand (`retainSupportAsideKeys`): true for a
+ * key that does. `only`, when it is there, holds every key the check can say
+ * true for, so a check held while the settings record can't be read can be
+ * folded into a newer one and kept as one list of keys
+ * (`foldSupportAsideKeeps`).
+ */
+export type SupportAsideKeep = ((key: string) => boolean) & {
+  readonly only?: ReadonlySet<string>;
+};
+
+/** A check that says true for exactly the keys in `only`. */
+function keepOnly(only: ReadonlySet<string>): SupportAsideKeep {
+  return Object.assign((key: string) => only.has(key), { only });
+}
+
+/**
+ * Whether `keep` says `key` stands. A check that throws on a key, or answers
+ * anything but true, says no: dropping a key only brings the card back.
+ */
+export function supportAsideKeyStands(keep: SupportAsideKeep, key: string): boolean {
+  try {
+    return keep(key) === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Which stored keys still stand beside `predictions`, the list as loaded
  * (2026-11-19): a key stands when it is the key of one of them, title and
  * note as they are now. One whose prediction is gone, or whose words have
  * changed since, doesn't: that it exists says the crisis filter matched words
  * that are no longer there, and its hash could be searched for a short note.
  * Dropping a key can only bring the card back, never keep a match quiet.
+ * Carries `only`, the keys of the list.
  */
 export function supportAsideKeysStandingWith(
   predictions: readonly SupportAsideSource[],
-): (key: string) => boolean {
-  const current = new Set(predictions.map((p) => supportAsideKey(p)));
-  return (key) => current.has(key);
+): SupportAsideKeep {
+  return keepOnly(new Set(predictions.map((p) => supportAsideKey(p))));
+}
+
+/**
+ * Two checks held one after the other as one, held at the newer one's place
+ * (review round three, 2026-11-19: the settings store holds one retain at a
+ * time while its record can't be read): `older`, then the keys in
+ * `addedBetween` added, then `newer`. A key stands when `newer` says so and
+ * either `older` did or it was added between the two, which is what applying
+ * them in turn leaves: a key `older` dropped and added again after it stands
+ * on `newer` alone, a key `older` dropped and not added again stays dropped
+ * whatever `newer` says, and a key added between them is never judged by
+ * `older`. A clear between them needs nothing more: every key left after it
+ * was added after it.
+ *
+ * Kept small: when either check carries `only`, the result is one list of
+ * keys (the newer check's `only`, else the older one's with the added keys,
+ * each judged), so neither check is held after. Only two checks that both
+ * lack `only` are held together.
+ */
+export function foldSupportAsideKeeps(
+  older: SupportAsideKeep,
+  addedBetween: readonly string[],
+  newer: SupportAsideKeep,
+): SupportAsideKeep {
+  const added = new Set(addedBetween);
+  const stands = (key: string): boolean =>
+    supportAsideKeyStands(newer, key) && (added.has(key) || supportAsideKeyStands(older, key));
+  const candidates = newer.only ?? (older.only ? [...older.only, ...added] : null);
+  if (!candidates) return stands;
+  const only = new Set<string>();
+  for (const key of candidates) if (stands(key)) only.add(key);
+  return keepOnly(only);
 }
 
 /**
@@ -98,7 +158,7 @@ export function supportAsideKeysStandingWith(
 export function supportAsideKeysStandingAfter(
   id: string,
   current: Pick<SupportAsideSource, 'title' | 'reflection'> | null,
-): (key: string) => boolean {
+): SupportAsideKeep {
   const now = current ? supportAsideKey({ id, title: current.title, reflection: current.reflection }) : null;
   return (key) => supportAsideKeyId(key) !== id || key === now;
 }

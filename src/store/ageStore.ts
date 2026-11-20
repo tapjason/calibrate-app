@@ -53,8 +53,10 @@ export const LOCAL_ONLY_SIGN_IN =
 
 /**
  * The longest a sign-in, a sign-up or a paywall open waits for Apple's answer
- * on a launch that asks, before it goes on as today (call 2): the sheet is
- * modal, so a child can't reach either while it is up.
+ * on a launch that asks (call 2). If it is still pending then, a sign-in or
+ * sign-up is refused for now ("Sign-in isn't ready yet") and the paywall
+ * starts nothing; sign-out's last push alone goes ahead (a sync has its own,
+ * longer cap, `AGE_SYNC_WAIT_MS`).
  */
 export const AGE_ANSWER_WAIT_MS = 5000;
 

@@ -38,9 +38,11 @@
 //                      On return to the foreground in a long run: while the
 //                      rule applies or a band of 13 or over is known, asks
 //                      again once 24 hours have passed since the last ask
-//                      (`AGE_RECHECK_MIN_MS`, in memory). Apple caches the
-//                      answer and prompts only on its anniversary, so the
-//                      repeat is silent.
+//                      (`AGE_RECHECK_MIN_MS`, in memory). Apple's API keeps
+//                      returning the previous range until the anniversary of
+//                      the declaration; whether iOS shows its sheet again on
+//                      a repeat ask is iOS's call, unconfirmed until seen on
+//                      the iPhone (docs/HUMAN_VERIFICATION.md D4).
 //
 // Everywhere the API cannot run (web, Android, iOS before 26, the native
 // module missing) nothing is asked, nothing waits and the app goes on as

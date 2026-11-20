@@ -1,5 +1,6 @@
 import { wipeLocalUserData } from '@/db/account';
 import { getDb, setDbForTests, withTransaction } from '@/db/client';
+import * as predictionsDb from '@/db/predictions';
 import {
   countRefiles,
   getPrediction,
@@ -32,7 +33,12 @@ import {
   rewordedLater,
   usePredictionStore,
 } from './predictionStore';
-import { __setPersistenceForTests, useSettingsStore } from './settingsStore';
+import {
+  __heldChangesForTests,
+  __setPersistenceForTests,
+  useSettingsStore,
+  type StoredSettings,
+} from './settingsStore';
 import { useStatsStore } from './statsStore';
 import { loggedEarlier } from '../../jest/loggedEarlier';
 
@@ -3260,6 +3266,96 @@ describe('support card set-asides follow the words', () => {
       }
       expect(keys()).toEqual([supportAsideKey(a), supportAsideKey(b)]);
       expect(saves).toEqual([]);
+    });
+
+    // Review round three, 2026-11-19: nearly always nothing is set aside, and
+    // a reload then has nothing to drop, so it hashes no words.
+    describe('with nothing set aside', () => {
+      /** `p` as the list read gives it, its title and note counting their reads. */
+      const watched = (p: Prediction) => {
+        let reads = 0;
+        const row = { ...p };
+        for (const field of ['title', 'reflection'] as const) {
+          const value = p[field];
+          Object.defineProperty(row, field, {
+            enumerable: true,
+            get: () => {
+              reads += 1;
+              return value;
+            },
+          });
+        }
+        return { row, reads: () => reads };
+      };
+
+      /** Count the retains asked of the settings store, which still run. */
+      const countRetains = () => {
+        const real = useSettingsStore.getState().retainSupportAsideKeys;
+        let retains = 0;
+        useSettingsStore.setState({
+          retainSupportAsideKeys: async (keep) => {
+            retains += 1;
+            return real(keep);
+          },
+        });
+        return { count: () => retains, restore: () => useSettingsStore.setState({ retainSupportAsideKeys: real }) };
+      };
+
+      it('and the settings read, a reload reads no word and asks nothing of the settings', async () => {
+        const a = await answered('Quiet weekend', 'he hits me when he drinks');
+        const b = await answered('Other', 'I cannot go on like this');
+        const w = watched(a);
+        const list = jest.spyOn(predictionsDb, 'listResolvedPredictions').mockResolvedValue([w.row]);
+        const retains = countRetains();
+        try {
+          await store().loadResolved();
+          expect(w.reads()).toBe(0);
+          expect(retains.count()).toBe(0);
+          expect(saves).toEqual([]);
+
+          // With a key stored (b's, not in the list), the same reload reads
+          // the words and drops it.
+          await setAside(b);
+          await store().loadResolved();
+          expect(w.reads()).toBeGreaterThan(0);
+          expect(retains.count()).toBe(1);
+          expect(keys()).toEqual([]);
+        } finally {
+          retains.restore();
+          list.mockRestore();
+        }
+      });
+
+      it('but the settings record unreadable, every reload still retains, one held, and a stale key goes once it reads', async () => {
+        const a = await answered('Quiet weekend', 'he hits me when he drinks');
+        const gone = supportAsideKey({ id: 'gone', title: 'Deleted elsewhere', reflection: 'I want to die' });
+        let readable = false;
+        let stored: Partial<StoredSettings> = { supportAsideKeys: [supportAsideKey(a), gone] };
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+        __setPersistenceForTests({
+          load: async () => {
+            if (!readable) throw new Error('read failed');
+            return stored;
+          },
+          save: async (s) => {
+            stored = { ...s };
+          },
+        });
+        try {
+          await useSettingsStore.getState().hydrate();
+          expect(useSettingsStore.getState()).toMatchObject({ loadFailed: true, supportAsideKeys: [] });
+
+          for (let n = 0; n < 5; n += 1) await store().loadResolved();
+          expect(__heldChangesForTests()).toEqual({ total: 1, retains: 1 });
+
+          readable = true;
+          await useSettingsStore.getState().retryLoad();
+        } finally {
+          warn.mockRestore();
+        }
+        expect(keys()).toEqual([supportAsideKey(a)]);
+        expect(stored.supportAsideKeys).toEqual([supportAsideKey(a)]);
+      });
     });
   });
 });

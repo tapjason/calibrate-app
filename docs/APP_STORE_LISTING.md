@@ -8,7 +8,7 @@ and the review notes' age-range lines again for the under-13 rule, D70, on 2026-
 once more that day after the D70/D71 review: asked at every launch, sign-in and plans
 waiting for the answer). Every
 feature claimed below exists in `master`, except the under-13 rule, which is on
-`builder/owner-decisions` (uncommitted on 2026-11-19) until it merges; ✨ Refine
+`builder/owner-decisions` (commits `e77431e`, `b2557b0` and the round-three commit, 2026-11-19) until it merges; ✨ Refine
 is cut and appears nowhere.
 The limits in brackets are Apple's, and every field was counted against them.
 
@@ -245,11 +245,11 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 > changes nothing. If the band includes ages under 13, the app keeps everything
 > on the phone: no sign-in, backup, usage counts or Coach, and Plus isn't
 > offered; You explains it under "Kept on this phone". Until Apple has answered
-> on a first launch, sign-in ("Sign-in isn't ready yet. Try again in a moment.")
-> and the Plus plans wait. To
+> at a launch with no band stored, sign-in ("Sign-in isn't ready yet. Try again
+> in a moment.") and the Plus plans wait. To
 > see it, set the device's Sandbox Apple Account to Under 13 (Settings →
-> Developer → Sandbox Apple Account → Manage → Age Assurance), then You → Erase
-> your data on this phone if a band was already shared, and relaunch.
+> Developer → Sandbox Apple Account → Manage → Age Assurance), then, signed out,
+> You → Erase your data on this phone if a band was already shared, and relaunch.
 >
 > Usage counts: before any is sent from a phone without an account, the Warm-up's
 > first screen says "Fairly Sure sends a few usage counts, with no account or

@@ -24,7 +24,12 @@ import { create } from 'zustand';
 
 import { clearEvents } from '@/db/analytics';
 import { DEFAULT_THEME } from '@/constants/cardThemes';
-import { withSupportAsideKeys } from '@/engine/supportAside';
+import {
+  foldSupportAsideKeeps,
+  supportAsideKeyStands,
+  withSupportAsideKeys,
+  type SupportAsideKeep,
+} from '@/engine/supportAside';
 import { CATEGORIES, isCategory, type Category } from '@/types';
 
 export interface StoredSettings {
@@ -313,10 +318,13 @@ interface SettingsState extends StoredSettings {
    * dropping one only brings the card back. With the record read, applied and
    * written only when it drops something. While the record can't be read it
    * is held, like any automatic change, and applied over the record's own
-   * keys once it reads. Before the record has been read, memory only (a
-   * write would store the defaults over it). Never throws.
+   * keys once it reads; one retain is held at a time (review round three,
+   * 2026-11-19), a newer one taking the held one's place, folded with it so
+   * the keys left are those the two would leave in turn
+   * (`foldSupportAsideKeeps`). Before the record has been read, memory only
+   * (a write would store the defaults over it). Never throws.
    */
-  retainSupportAsideKeys: (keep: (key: string) => boolean) => Promise<void>;
+  retainSupportAsideKeys: (keep: SupportAsideKeep) => Promise<void>;
   /**
    * Forget every set-aside, as an automatic change: the card shows again for
    * any match. While the record can't be read the clear is held in memory and
@@ -482,7 +490,8 @@ type SettingsChange = (current: StoredSettings) => Partial<StoredSettings>;
  *                its keys dropped when their words change or go; the app no
  *                longer calls clearSupportAside. Held, an addition is merged
  *                into the record's keys once it reads, a retain filters them
- *                and a clear empties them);
+ *                and a clear empties them; one retain is held at a time,
+ *                `holdChange`);
  *                dismissReminderPrompt, dismissBackupNudge,
  *                dismissWelcomeBack, dismissPracticeReminderOffer ("Not now"
  *                on Today's cards and the practice sheet's);
@@ -496,8 +505,21 @@ type SettingsChange = (current: StoredSettings) => Partial<StoredSettings>;
  */
 type ChangeKind = 'explicit' | 'automatic';
 
+/**
+ * A change held while the record can't be read: what it sets, and for the
+ * support card's set-asides what it is, so a newer retain can take an older
+ * one's place (`holdChange`).
+ */
+interface HeldChange {
+  update: SettingsChange;
+  /** A retain of the set-asides: its check. At most one held change has one. */
+  retain?: SupportAsideKeep;
+  /** An addition of set-asides: the keys it adds. */
+  added?: readonly string[];
+}
+
 /** The changes made since the record couldn't be read, in order. */
-let heldChanges: SettingsChange[] = [];
+let heldChanges: HeldChange[] = [];
 /**
  * A clear of the support card's set-asides asked for before the settings had
  * been read, and how it is to be stored: 'explicit' for `eraseSupportAside`
@@ -511,6 +533,44 @@ let supportAsideClearOnHydrate: ChangeKind | null = null;
 let changeCount = 0;
 /** The foreground listener while the record can't be read, or null. */
 let foregroundWatch: { remove?: () => void } | null = null;
+
+/** A retain of the set-asides as a change: the keys `keep` doesn't say stand go. */
+function retainUpdate(keep: SupportAsideKeep): SettingsChange {
+  return (s) => ({
+    supportAsideKeys: (s.supportAsideKeys ?? []).filter((key) => supportAsideKeyStands(keep, key)),
+  });
+}
+
+/**
+ * Hold a change while the record can't be read, after those held already.
+ * A retain of the set-asides is held once at most (review round three,
+ * 2026-11-19): each list reload, Coach request and edit asks for one, and
+ * each held its own check, a key for every answered prediction, until the
+ * record read, which in a run where it never does was never. A newer retain
+ * takes the held one's place: the held one leaves the queue and one retain,
+ * the two folded (`foldSupportAsideKeeps`), joins it at the end, where the
+ * newer one would have. Applied over the record, that leaves the keys the
+ * queue left before. Nothing else held reads the set-asides, so moving the
+ * retain past them changes nothing; an addition between the two is judged by
+ * the newer check only, as it was; and a clear or an erase between them
+ * empties the list either way, so what the two would drop before it is moved
+ * to after it, where every key was added after the clear. Kept small: a list
+ * reload's or the Coach's check carries its keys (`only`), so the fold is one
+ * list of keys. Only checks without them, an edit's (`supportAsideKeysStandingAfter`,
+ * an id and a key), are held together.
+ */
+function holdChange(held: HeldChange): void {
+  const at = held.retain ? heldChanges.findIndex((h) => h.retain !== undefined) : -1;
+  const older = at >= 0 ? heldChanges[at]?.retain : undefined;
+  if (!held.retain || !older) {
+    heldChanges.push(held);
+    return;
+  }
+  const addedBetween = heldChanges.slice(at + 1).flatMap((h) => h.added ?? []);
+  const folded = foldSupportAsideKeeps(older, addedBetween, held.retain);
+  heldChanges.splice(at, 1);
+  heldChanges.push({ update: retainUpdate(folded), retain: folded });
+}
 
 /**
  * Try the record again each time the app comes back to the foreground, until
@@ -561,6 +621,17 @@ export function __setPersistenceForTests(next: SettingsPersistence | null): void
     loadFailed: false,
     notificationPermission: null,
   });
+}
+
+/**
+ * Test-only: how many changes are held while the record can't be read, and
+ * how many of them are retains of the set-asides.
+ */
+export function __heldChangesForTests(): { total: number; retains: number } {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('__heldChangesForTests is only allowed when NODE_ENV=test');
+  }
+  return { total: heldChanges.length, retains: heldChanges.filter((h) => h.retain).length };
 }
 
 /**
@@ -669,11 +740,14 @@ function fromStored(stored: Partial<StoredSettings>): HeldSettings {
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => {
-  /** Apply a change in memory, and hold it while the record can't be read. */
-  const change = (update: SettingsChange): void => {
+  /**
+   * Apply a change in memory, and hold it while the record can't be read
+   * (`holdChange`); `about` says what a set-aside change is.
+   */
+  const change = (update: SettingsChange, about: Omit<HeldChange, 'update'> = {}): void => {
     changeCount += 1;
     set(update(snapshot(get())));
-    if (get().loadFailed) heldChanges.push(update);
+    if (get().loadFailed) holdChange({ ...about, update });
   };
 
   /** The record is readable, or replaced: nothing held, nothing to watch for. */
@@ -690,7 +764,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
    */
   const adopt = (stored: Partial<StoredSettings>): boolean => {
     let next = fromStored(stored);
-    for (const update of heldChanges) next = { ...next, ...update(next) };
+    for (const held of heldChanges) next = { ...next, ...held.update(next) };
     const applied = heldChanges.length > 0;
     set(next);
     endFailure();
@@ -993,19 +1067,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
       if (added.length === 0) return;
       // Merged into whatever it is applied to: memory now, the record later
       // if it couldn't be read.
-      change((s) => ({ supportAsideKeys: withSupportAsideKeys(s.supportAsideKeys ?? [], added) }));
+      change((s) => ({ supportAsideKeys: withSupportAsideKeys(s.supportAsideKeys ?? [], added) }), {
+        added,
+      });
       await save('automatic');
     },
 
     retainSupportAsideKeys: async (keep) => {
       // A key the check can't judge is dropped: the card comes back, the safe way.
-      const stands = (key: string): boolean => {
-        try {
-          return keep(key) === true;
-        } catch {
-          return false;
-        }
-      };
+      const stands = (key: string): boolean => supportAsideKeyStands(keep, key);
       const held = get().supportAsideKeys;
       if (!get().hydrated) {
         // Not read yet: a write now would store the defaults over the record.
@@ -1016,9 +1086,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
       }
       // With the record read, nothing to drop is nothing to write. While it
       // can't be read, memory holds none of its keys, so the change is held
-      // all the same and filters the record's own once it reads.
+      // all the same and filters the record's own once it reads, in the place
+      // of a retain held already (`holdChange`).
       if (!get().loadFailed && held.every(stands)) return;
-      change((s) => ({ supportAsideKeys: (s.supportAsideKeys ?? []).filter(stands) }));
+      change(retainUpdate(keep), { retain: keep });
       await save('automatic');
     },
 

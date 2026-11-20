@@ -1,12 +1,15 @@
 import { SUPPORT_ASIDE_MAX_KEYS } from '@/types';
 
 import {
+  foldSupportAsideKeeps,
   isSupportAsideKey,
   supportAsideKey,
   supportAsideKeyId,
+  supportAsideKeyStands,
   supportAsideKeysStandingAfter,
   supportAsideKeysStandingWith,
   withSupportAsideKeys,
+  type SupportAsideKeep,
 } from './supportAside';
 
 const p = (id: string, title: string, reflection: string | null = null) => ({ id, title, reflection });
@@ -129,6 +132,117 @@ describe('supportAsideKeysStandingWith', () => {
 
   it('keeps nothing beside an empty list', () => {
     expect(supportAsideKeysStandingWith([])(supportAsideKey(p('a', 'Title')))).toBe(false);
+  });
+
+  it('carries the keys of the list, and only those', () => {
+    const list = [p('a', 'Title', 'note'), p('b', 'Other')];
+    expect([...(supportAsideKeysStandingWith(list).only ?? [])].sort()).toEqual(
+      list.map((x) => supportAsideKey(x)).sort(),
+    );
+  });
+});
+
+describe('supportAsideKeyStands', () => {
+  const k = supportAsideKey(p('a', 'Title'));
+
+  it('is what the check says, when it says true or false', () => {
+    expect(supportAsideKeyStands(() => true, k)).toBe(true);
+    expect(supportAsideKeyStands(() => false, k)).toBe(false);
+  });
+
+  it('says no for a check that throws, or answers anything but true', () => {
+    expect(
+      supportAsideKeyStands(() => {
+        throw new Error('cannot tell');
+      }, k),
+    ).toBe(false);
+    expect(supportAsideKeyStands((() => 'yes') as unknown as SupportAsideKeep, k)).toBe(false);
+  });
+});
+
+// Review round three, 2026-11-19: the settings store holds one retain at a
+// time while its record can't be read, the held one folded into the newer.
+describe('foldSupportAsideKeeps', () => {
+  const key = (id: string, title = `Title ${id}`) => supportAsideKey(p(id, title));
+  /** What the two checks leave applied in turn, with `added` added between them. */
+  const inTurn = (start: string[], older: SupportAsideKeep, added: string[], newer: SupportAsideKeep) =>
+    withSupportAsideKeys(start.filter((x) => supportAsideKeyStands(older, x)), added).filter((x) =>
+      supportAsideKeyStands(newer, x),
+    );
+  const folded = (start: string[], older: SupportAsideKeep, added: string[], newer: SupportAsideKeep) => {
+    const fold = foldSupportAsideKeeps(older, added, newer);
+    return withSupportAsideKeys(start, added).filter((x) => supportAsideKeyStands(fold, x));
+  };
+
+  // r1 kept by both; r2 dropped by the newer; r3 dropped by the older, which
+  // the newer would keep; r4 dropped by the older and added again; k1 added
+  // between, not in the older; k2 added between, dropped by the newer.
+  const [r1, r2, r3, r4, k1, k2] = ['r1', 'r2', 'r3', 'r4', 'k1', 'k2'].map((id) => key(id));
+  const start = [r1!, r2!, r3!, r4!];
+  const added = [k1!, r4!, k2!];
+
+  it.each<[string, SupportAsideKeep, SupportAsideKeep]>([
+    [
+      'two list checks',
+      supportAsideKeysStandingWith([p('r1', 'Title r1'), p('r2', 'Title r2'), p('k2', 'Title k2')]),
+      supportAsideKeysStandingWith([p('r1', 'Title r1'), p('r3', 'Title r3'), p('r4', 'Title r4'), p('k1', 'Title k1')]),
+    ],
+    [
+      'two checks without their keys',
+      (x) => [r1, r2, k2].includes(x),
+      (x) => [r1, r3, r4, k1].includes(x),
+    ],
+    [
+      'a check without its keys, then a list',
+      (x) => [r1, r2, k2].includes(x),
+      supportAsideKeysStandingWith([p('r1', 'Title r1'), p('r3', 'Title r3'), p('r4', 'Title r4'), p('k1', 'Title k1')]),
+    ],
+    [
+      'a list, then a check without its keys',
+      supportAsideKeysStandingWith([p('r1', 'Title r1'), p('r2', 'Title r2'), p('k2', 'Title k2')]),
+      (x) => [r1, r3, r4, k1].includes(x),
+    ],
+  ])('leaves what applying them in turn leaves: %s', (_label, older, newer) => {
+    expect(folded(start, older, added, newer)).toEqual([r1, k1, r4]);
+    expect(folded(start, older, added, newer)).toEqual(inTurn(start, older, added, newer));
+  });
+
+  it('two list checks fold into one list, no longer than the newer one', () => {
+    const older = supportAsideKeysStandingWith([p('a', 'A'), p('b', 'B'), p('c', 'C')]);
+    const newer = supportAsideKeysStandingWith([p('a', 'A'), p('c', 'C changed'), p('d', 'D')]);
+    const fold = foldSupportAsideKeeps(older, [supportAsideKey(p('d', 'D'))], newer);
+    expect([...(fold.only ?? [])].sort()).toEqual([supportAsideKey(p('a', 'A')), supportAsideKey(p('d', 'D'))].sort());
+  });
+
+  it('a list, then an edit’s check, fold into one list', () => {
+    const older = supportAsideKeysStandingWith([p('a', 'A', 'note'), p('b', 'B')]);
+    const fold = foldSupportAsideKeeps(older, [], supportAsideKeysStandingAfter('a', { title: 'A', reflection: null }));
+    expect([...(fold.only ?? [])]).toEqual([supportAsideKey(p('b', 'B'))]);
+  });
+
+  it('an edit, then another: the first one’s old key stays dropped', () => {
+    const x = supportAsideKey(p('x', 'X', 'hurtful note'));
+    const y = supportAsideKey(p('y', 'Y', 'another note'));
+    const z = supportAsideKey(p('z', 'Z'));
+    const fold = foldSupportAsideKeeps(
+      supportAsideKeysStandingAfter('x', { title: 'X', reflection: null }),
+      [],
+      supportAsideKeysStandingAfter('y', null),
+    );
+    expect([x, y, z].filter((k) => supportAsideKeyStands(fold, k))).toEqual([z]);
+  });
+
+  it('a check that throws on a key drops it', () => {
+    const k = key('a');
+    const fold = foldSupportAsideKeeps(
+      () => {
+        throw new Error('cannot tell');
+      },
+      [],
+      supportAsideKeysStandingWith([p('a', 'Title a')]),
+    );
+    expect(supportAsideKeyStands(fold, k)).toBe(false);
+    expect(fold.only?.size).toBe(0);
   });
 });
 
