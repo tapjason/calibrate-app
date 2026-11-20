@@ -31,9 +31,17 @@ D70/D71 review is **finished**: three rounds, the most allowed.
 1. **The server checklist, with him** (`supabase/README.md`). The agent runs the read-only
    checks through `npx supabase db query --remote --read-only`; he applies the migrations
    and runs the test statements (they write and roll back), unless he tells the agent to.
-   Done 2026-11-20: 010 applied by him; its 2a to 2f all pass (72 guest rows, all hashed
-   and cut to the day); 011's "look first" 1a to 1d all clear. Open: 010's T1 to T3; apply
-   011 and its checks; pg_cron; 012 and its checks; the three redeploys.
+   **Done 2026-11-20: 010, 011 and 012 are applied (by him) and checked.** Every read-only
+   check passes (010 2a to 2f; 011 1a to 1d and 3a to 3f; pg_cron on, 1.6.4; 012 5a to 5c
+   and 7a to 7d, with 19 triggers and both jobs active as `postgres`). On his word ("Run
+   the SQL commands through CLI with write allowed") the agent ran the test statements,
+   each of which rolls itself back: T1 to T3, T5, T6, T8, T10, T11, T12 and T14 all PASS
+   (T2 answers with 011's wording, as the README says); row counts are unchanged and no
+   test row is left. 7c and 7d need the owner role: the read-only route runs as
+   `supabase_read_only_user`, which 012 bars from `usage_counts_cutoff`. Not run: the
+   optional T4, T7, T9 and T13. **Open:** 7e the day after (the purge's first run, 09:17
+   UTC; read-only), the weekly 7f, and his three redeploys (`delete-account`,
+   `revenuecat-webhook`, `coach`, from `master`). `UTC_OFFSET_SYNC` stays off for 1.0.
 2. **A review of this branch, when he calls it**, with item 30's billing fix inside it.
    Then merge, and the web build's look at step 204's line at 320 pt.
 3. The next builds are his: a new development build and TestFlight build from `master`
