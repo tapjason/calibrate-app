@@ -326,7 +326,11 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     starts while it is open (reopening works); `app/paywall.tsx` imports `@/billing/init`
     directly (a layer nit); a note saved while a sync transaction is open joins it
     (`setPredictionReflection` writes outside the queue; older than this review); the
-    lock-screen dismissal at Erase is not awaited (the 2026-11-15 review's rule).
+    lock-screen dismissal at Erase is not awaited (the 2026-11-15 review's rule); after a
+    guest Erase, Done lands on an empty Today and the Warm-up comes back only at the next
+    launch, since the first-run route is decided at launch (`app/_layout.tsx`; seen in the
+    web build 2026-11-20, older than step 206; usage counts still wait for the Warm-up's
+    line).
 
 **Added by the review's third round (2026-11-19); agreed with the rest**
 
