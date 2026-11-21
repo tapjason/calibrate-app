@@ -325,10 +325,25 @@ App Store Connect, **not** in the repo.
 
 ## 5. Screenshots
 
-**Spec:** at least one **6.9-inch** set, 1320 × 2868 px portrait (1290 × 2796
-and 1260 × 2736 are also accepted), sRGB PNG or JPEG, no transparency, 1–10
-images. Apple scales down to smaller iPhones. `supportsTablet: false`, so no
-iPad set is needed.
+**Spec, as App Store Connect showed it to the owner on 2026-11-20:** the iPhone slot is
+"iPhone with Dynamic Island (medium display)", 6.1" or 6.3": **1206 × 2622** or
+1179 × 2556 px portrait, 1–10 images; there was no 6.9-inch slot (the 1320 × 2868
+requirement this section carried until then was out of date). Other slots listed: iPhone
+Duo, iPad 13" and Apple Watch; `supportsTablet: false`, so no iPad set, and whether iPhone
+Duo is required wasn't shown. App previews (video) are optional. **Header and Search
+Results assets** (new 2026-10-05, iOS 27 and later; one 5244 × 2950 PNG can serve both,
+with safe areas) are optional by third-party guides, not confirmed on Apple's page; none
+made for launch.
+
+**The set made 2026-11-20** (git-ignored, `screenshots/store/`): six web captures with
+the demo data, each in a drawn iPhone with a status bar under a caption, on the app's
+background and typeface. `final-1206/` is the upload set (1206 × 2622), `final/` the same
+at 1320 × 2868; `frame/index.html` and `frame/shots.js` re-render them
+(`?shot=<name>`, `&size=1206`) from the `cap-*.png` captures. Order and captions:
+Today "Know when to trust your gut"; curve "See exactly where you’re overconfident";
+Log "Say how sure you are. Find out later."; badges "Badges you can’t luck into"; share
+card "Sharp in health. Tracker in finance."; year "Your year in predictions". They are
+web renders: no SF Symbols or glass. The table and "How" below are the earlier plan.
 
 The order matters. Most people see only the first three.
 

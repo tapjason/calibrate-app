@@ -12,8 +12,9 @@ parallel"), built 2026-11-20 as steps 202 to 205, then D73 (206) and the review 
 - **No beta stage.** The owner: "I dont want to add beta testers, the beta testing stage
   completely." No external TestFlight; stages 2 and 3 and their exit criteria don't run
   (`docs/TESTFLIGHT_PLAN.md`, `docs/SHIP_READINESS.md` "Open, in order" item 4). The path is
-  now: builds from `master` (done) → his phone checks (D4 and D6 pass; D5 and D7 have no
-  reported result) → the privacy policy published (done) → the store record →
+  now: builds from `master` (done) → his phone checks (done: "D4 and D6 pass", then "D5
+  through D7 check out", neither item by item) → the privacy policy published (done) →
+  the store record (next; he does the mail sender and the submission himself) →
   `/release-gate` → submit. Real newcomers' return and
   sharing are first read after launch.
 - **The rewritten privacy policy and support page are published** (2026-11-20, effective
@@ -149,8 +150,7 @@ D70/D71 review is **finished**: three rounds, the most allowed.
    (`expo-secure-store` and `expo-crypto` are native), after `supabase/README.md`'s
    checklist. Done 2026-11-20 (the builds above), and the public pages were switched to
    the rewrite that day (the top of this file); the hold described further down is over.
-4. **Next:** D5 and D7 on his phone (`docs/HUMAN_VERIFICATION.md`; `/device-check`
-   records them), 7e the day after the migrations (read-only), then the store record
+4. **Next:** 7e the day after the migrations (read-only), then the store record
    (`docs/SHIP_READINESS.md` "Open, in order" item 5), the mail sender and password
    reset, `/release-gate`, the last production build, and his submit.
 

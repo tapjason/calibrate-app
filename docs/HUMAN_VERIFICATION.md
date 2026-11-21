@@ -1473,6 +1473,8 @@ section have no reported result.
       and one Close button; no sign-in form. Send a screenshot.
 
 ### D5. D71's four calls (2026-11-19; JS only, a reload of the development build)
+**2026-11-20, the owner: "D5 through D7 check out"**, on that day's builds from `master`,
+with no item-by-item results, so the boxes below aren't ticked one by one.
 The support card's checks for D71 (b) and (c) were removed with the card (D73,
 2026-11-20); D7 has the one check that replaces them.
 - [ ] **Erase removes everything (D71 (a)):** on an account whose Insights →
@@ -1550,7 +1552,8 @@ The support card's checks for D71 (b) and (c) were removed with the card (D73,
 **2026-11-20, the owner: "D4 and D6 pass"**, on that day's builds. He was asked for the
 two Canada checks (the Region alone, then English (UK) with the Region on Canada),
 which the privacy policy's publishing waited on, and gave no item-by-item results, so
-those two boxes are ticked and the rest have no reported result. Taken as reported,
+those two boxes are ticked. Later that day: "D5 through D7 check out", again with no
+item-by-item results, so the rest of this section isn't ticked one by one. Taken as reported,
 it shows the app reads the Region setting on iOS 26.
 - [x] **Usage stats start off in Canada (D72 (b)):** Erase in the app (or a fresh
       install), then Settings → General → Language & Region → Region → Canada, and
@@ -1586,6 +1589,8 @@ it shows the app reads the Region setting on iOS 26.
       as deleted"). Insights → More about your record on A counts one deletion.
 
 ### D7. D73: no distress check (2026-11-20; JS only, a reload of the development build)
+**2026-11-20, the owner: "D5 through D7 check out"**, on that day's builds from `master`,
+with no item-by-item results, so the boxes below aren't ticked one by one.
 - [ ] **The Coach answers whatever the notes say (D73):** signed in with Plus and Coach
       on, open an answered prediction in History and Add a note: "The car keeps
       breaking down." Insights → Get feedback. Pass: ordinary feedback, or one of the
