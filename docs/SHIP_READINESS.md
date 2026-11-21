@@ -494,7 +494,7 @@ and the two function deploys); Google sign-in set up and on (step 192, migration
    answers checked against OpenAI's current retention), the three products submitted for
    review with version 1.0.0 (Apple reviews an app's first in-app purchases with an app
    version; not checked against Apple's page here, so confirm it in App Store Connect), the
-   demo account with Plus, the review notes, and the screenshots. **The screenshots need a plan:** the required set is 6.9-inch (1320 × 2868),
+   demo account with Plus, the review notes, and the screenshots. **Screenshots done 2026-11-20:** six at 1206 × 2622, the size App Store Connect now asks (`APP_STORE_LISTING.md` §5). As planned until then: the required set is 6.9-inch (1320 × 2868),
    the owner's iPhone 17 is not that size and there is no simulator; the web build renders
    that size as drafts (`APP_STORE_LISTING.md` §5).
 6. **Due before the public release:** "The owner's list" above, items 6 to 15, all decided

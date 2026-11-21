@@ -1,15 +1,13 @@
 # Fairly Sure — App Store Listing
 
-**As of:** 2026-11-18 · The source for the App Store Connect record's fields, drafted from
-`CLAUDE.md` and the shipped code (the 2026 age-rating answers and review notes from the policy
-audits of 2026-11-14 and 2026-11-15; the review notes, the Google sentence and the age-range
-lines revised after the security and policy review of 2026-11-18, and the age-assurance answer
-and the review notes' age-range lines again for the under-13 rule, D70, on 2026-11-19, and
-once more that day after the D70/D71 review: asked at every launch, sign-in and plans
-waiting for the answer). Every
-feature claimed below exists in `master`, except the under-13 rule, which is on
-`builder/owner-decisions` (commits `e77431e`, `b2557b0` and the round-three commit, 2026-11-19) until it merges; ✨ Refine
-is cut and appears nowhere.
+**As of:** 2026-11-20 · The source for the App Store Connect record's fields, drafted from
+`CLAUDE.md` and the shipped code, and read against production build 1.0.0 (7) (commit
+`590ab75`) by the release gate of 2026-11-20: its policy audit rewrote the review notes'
+opening (§4) and its release audit counted every field. Earlier revisions: the age-rating
+answers and review notes from the policy audits of 2026-11-14 and 2026-11-15, the security
+and policy review of 2026-11-18, and the under-13 rule (D70) and its review on 2026-11-19.
+Every feature claimed below is in `master` and in build 7, the under-13 rule included;
+✨ Refine is cut and appears nowhere.
 The limits in brackets are Apple's, and every field was counted against them.
 
 ---
@@ -215,55 +213,39 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 
 ## 4. App Review notes
 
-> Fairly Sure works fully without an account; no sign-in is needed to review
-> the core features (log with +, answer on Today, Insights, Share).
->
-> To review Fairly Sure Plus: You → Fairly Sure Plus → purchase any plan with
-> your sandbox account. The Coach requires signing in because it runs on our
-> server. Please sign in with this demo account: You → Sign in, enter the email
-> and password, [DEMO ACCOUNT: email / password, pre-seeded with 153 resolved
-> predictions and with Plus]. The app doesn't offer creating an account by email
-> yet (confirmation emails aren't being sent), so the email form signs in to
-> existing accounts only. Sign in with Apple and Continue with Google also work.
-> Signing out removes the account's predictions from the phone; signing back in
-> brings them back.
-> The Coach is off by default; enable it in You → Coach (AI), then Insights →
-> Get feedback. Coach feedback needs predictions resolved in the past, which the
-> demo account has.
->
-> Account deletion: You → Delete account (at the bottom, once signed in).
->
-> Notifications are local reminders only; no push server is involved.
->
-> The Coach sends only computed statistics (counts, scores and percentages),
-> never the user's text or account id, to OpenAI through our server, and only
-> after the user turns it on in You → Coach (AI), which says a third-party AI
-> service writes the feedback (the privacy policy names OpenAI). It needs an
-> account because our server checks the subscription per account; Sign in with
-> Apple asks for the email only. Continue with Google sits below Sign in with
-> Apple; it opens Google in the system sign-in sheet (no Google SDK is in the
-> app), and our database removes the name and picture Google sends as they
-> arrive.
->
-> After the first screen appears, the app asks Apple's Declared Age Range API
-> for an age band, once at each launch, in case the band has changed. Declining
-> changes nothing. If the band includes ages under 13, the app keeps everything
-> on the phone: no sign-in, backup, usage counts or Coach, and Plus isn't
-> offered; You explains it under "Kept on this phone". Until Apple has answered
-> at a launch with no band stored, sign-in ("Sign-in isn't ready yet. Try again
-> in a moment.") and the Plus plans wait. To
-> see it, set the device's Sandbox Apple Account to Under 13 (Settings →
-> Developer → Sandbox Apple Account → Manage → Age Assurance), then, signed out,
-> You → Erase your data on this phone if a band was already shared, and relaunch.
->
-> Usage counts: before any is sent from a phone without an account, the Warm-up's
-> first screen says "Fairly Sure sends a few usage counts, with no account or
-> device id, to see how the app is used. You can turn this off here or in You."
-> with a switch (also in You →
-> Usage stats). Without an account they carry no account, device or install id;
-> the sign-in screen says what goes with an account, with the same switch.
+Paste-ready for build 7 (3,833 of Apple's 4,000 characters). The opening was rewritten by
+the release gate's policy audit (2026-11-20, Guideline 2.1): the purchase flow is shown
+before signing in, since the demo account already has Plus and its Plus screen has no
+plans; the reviewer is asked to delete an account of their own, not the demo one; and the
+core loop is "Answer it now", since nothing is due on a fresh install. The demo account's
+email and password go in App Store Connect's **Sign-In Information** (tick "Sign-in
+required"), never in these notes and never in the repo.
 
-**Before pasting the Google sentence** (2026-11-18): "our database removes the name and
+```text
+Fairly Sure works fully without an account. To try the core loop on a fresh install: log a prediction with +, then tap it on Today and choose Answer it now. A new prediction is due tomorrow at the earliest, and an answer given the day it was logged is kept but not scored, by design. The demo account shows a scored record.
+
+Fairly Sure Plus: before signing in, open You → Fairly Sure Plus and buy any plan with your sandbox account (Annual offers new subscribers a free month; Restore purchases is on the same screen). The demo account already has Plus, so while signed in to it that screen says "You're on Fairly Sure Plus" instead of the plans.
+
+Coach: sign in with the demo account (You → Sign in; the email and password are under Sign-In Information). It holds 153 answered predictions and has Plus. Turn on You → Coach (AI), then Insights → Get feedback. The Coach needs an account because our server checks the subscription per account. The app doesn't offer creating an account by email yet (confirmation emails aren't being sent), so the email form signs in to existing accounts only. Sign in with Apple and Continue with Google also work. Signing out removes the account's predictions from the phone; signing back in brings them back.
+
+Account deletion: You → Delete account (at the bottom, once signed in). Please test it with an account you create with Sign in with Apple, so the demo account stays available.
+
+Notifications are local reminders only; no push server is involved.
+
+The Coach sends only computed statistics (counts, scores and percentages), never the user's text or account id, to OpenAI through our server, and only after the user turns it on in You → Coach (AI), which says a third-party AI service writes the feedback (the privacy policy names OpenAI). Sign in with Apple asks for the email only. Continue with Google sits below Sign in with Apple; it opens Google in the system sign-in sheet (no Google SDK is in the app), and our database removes the name and picture Google sends as they arrive.
+
+After the first screen appears, the app asks Apple's Declared Age Range API for an age band, once at each launch, in case the band has changed. Declining changes nothing. If the band includes ages under 13, the app keeps everything on the phone: no sign-in, backup, usage counts or Coach, and Plus isn't offered; You explains it under "Kept on this phone". Until Apple has answered at a launch with no band stored, sign-in ("Sign-in isn't ready yet. Try again in a moment.") and the Plus plans wait. To see it, set the device's Sandbox Apple Account to Under 13 (Settings → Developer → Sandbox Apple Account → Manage → Age Assurance), then, signed out, You → Erase your data on this phone if a band was already shared, and relaunch.
+
+Usage counts: before any is sent from a phone without an account, the Warm-up's first screen says "Fairly Sure sends a few usage counts, with no account or device id, to see how the app is used. You can turn this off here or in You." with a switch (also in You → Usage stats). On a phone set to Canada the switch starts off and the line says so. Without an account they carry no account, device or install id; the sign-in screen says what goes with an account, with the same switch.
+
+Optional app lock: You → Lock with Face ID (named for the phone's unlock method; off by default). It uses LocalAuthentication with LAPolicy.deviceOwnerAuthentication, so the device passcode is always offered as the alternative to Face ID. The app never receives biometric data or the passcode, only whether the check passed and which unlock methods the phone has set up, to name the switch. It is not account sign-in, and nothing requires it.
+
+There is no gambling, no stakes and no currency. Predictions are private notes about the user's own life ("I'll finish the report by Friday").
+```
+
+**What the lines rest on.** The Google sentence holds: `auth.audit_log_entries` read 0
+rows on the live database on 2026-11-20 (read-only), consistent with the audit-log setting
+off and the table purged. As written 2026-11-18: "our database removes the name and
 picture Google sends as they arrive" is true only once the owner has turned off Supabase's
 Authentication → Configuration → Audit Logs → "Write audit logs to the database" and
 purged `auth.audit_log_entries`; until then each sign-in keeps the Google name there
@@ -292,26 +274,20 @@ privacy policy's working notes, `PRIVACY_POLICY.notes.md`, step 8); the words "t
 carries round 7 (2026-11-19, the policy re-audit's L1); check the quote against that build. The sign-in and sign-out lines hold from the
 same build (`EMAIL_SIGN_UP_ENABLED = false`, D69 (a) and (c)); "with the same switch" only
 from the build that carries D71 (d) (`UsageStatsSwitch` on the sign-in screen).
->
-> Optional app lock: You → Lock with Face ID (off by default; named Lock with
-> Touch ID or Lock with iPhone passcode on other iPhones). It uses
-> LocalAuthentication with LAPolicy.deviceOwnerAuthentication, so the device
-> passcode is always offered as the alternative to Face ID. The app never
-> receives biometric data or the passcode: only whether the check passed, and
-> which methods the phone has set up, to name the switch. This is the app's
-> only use of Face ID. It is not account sign-in, and nothing requires it. On a
-> device with no passcode the switch explains that one must be set and does
-> not turn on.
->
-> There is no gambling, no stakes and no currency. Predictions are private
-> notes about the user's own life ("I'll finish the report by Friday").
 
 **Give the demo account Plus before review** (the policy audit, 2026-11-14): right
 after a sandbox purchase the server may not have the entitlement yet, and the
 reviewer would see "Coach couldn't confirm your Plus subscription yet" (since step
 189 the Coach asks RevenueCat itself then, so this should be rare). Seed the account, grant it
 Plus in RevenueCat (a promotional entitlement), and tell the reviewer to look at
-the purchase flow signed out.
+the purchase flow signed out (the notes above now do). From the release gate's policy
+audit, 2026-11-20: create the user email-confirmed (the app's sign-up is hidden and no
+mail is sent); sign in once on a phone first so RevenueCat has the customer; make the
+grant **Lifetime** (a timed grant reads as a monthly subscription, which shows the
+subscription warning on Delete account and could lapse during review); then make one
+Coach request as that user. The server reads its `entitlements` row and, failing that,
+asks RevenueCat for the account's active entitlements; that a promotional grant shows up
+there was not confirmed from the repo. The Coach allows 25 requests a day per account.
 
 **Why the demo account matters:** a reviewer on a fresh install has no resolved
 predictions. The Coach then says it needs a scored answer first, and Insights shows
@@ -341,7 +317,9 @@ background and typeface. `final-1206/` is the upload set (1206 × 2622), `final/
 at 1320 × 2868; `frame/index.html` and `frame/shots.js` re-render them
 (`?shot=<name>`, `&size=1206`) from the `cap-*.png` captures. Order and captions:
 Today "Know when to trust your gut"; curve "See exactly where you’re overconfident";
-Log "Say how sure you are. Find out later."; badges "Badges you can’t luck into"; share
+Log "Say how sure you are. Find out later." (due "In a week", so the title's Friday and the
+date agree); badges "Badges need a real track record" (the gate's audits failed "Badges you
+can’t luck into": luck can still clear a bar about 1 time in 10); share
 card "Sharp in health. Tracker in finance."; year "Your year in predictions". They are
 web renders: no SF Symbols or glass. The table and "How" below are the earlier plan.
 

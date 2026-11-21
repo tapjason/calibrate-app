@@ -8,6 +8,58 @@ held D72, three of the owner's-list items the owner agreed to on 2026-11-19 ("Ag
 the entire owners list"; then "Start building your items and I will work on mine in
 parallel"), built 2026-11-20 as steps 202 to 205, then D73 (206) and the review (207).
 
+**The release gate, 2026-11-20 (the owner ran `/release-gate` while filling in App Store
+Connect): NO-GO until his short list is done; nothing in build 7's code blocks.** First
+submission, no `submitted-*` tag. The build is production 1.0.0 (7) from `590ab75`; only
+docs changed since, so the gate read build 7's code. Every auditor on Opus (`xhigh` for
+the four reviews).
+- *The check:* `check.sh --release` exit 0 (249 suites, 5,256 tests; doctor 20/20; no
+  drift; export 7.63 MB, bundle 7.22 MB; both pages 200).
+- *Code review:* no blocker; the §8 checks are clean (no shipped migration edited, ids
+  and identity unchanged, `EVENT_PROPS` closed, no flag early). **One should-fix, in
+  since build 2:** a signed-in phone launched offline with an expired token waits about
+  25 to 50 s on `getSession()` (`src/store/authStore.ts:868`, no timeout), then opens as
+  the guest: an empty Today, the account's reminders cancelled, anything logged filed
+  under the guest until the next sign-in the person starts. Read from auth-js 2.106.2's
+  source; no device has shown it. Fix: a timeout, then open as the stored session's
+  account. The owner decides 1.0 or the first update. Nits: the launch-error title has
+  no colour token; no `+not-found` route; `UTC_OFFSET_SYNC`'s comment still names 011.
+- *Record:* HOLDS, all of R1 to R12; every number on the six store screenshots
+  recomputed from the demo data and matching. For later: History's "happened" counts
+  answers that weren't scored; the give-or-take depends on row order; `demoData.test.ts`
+  doesn't pin the low-end badges.
+- *Policy:* the code passes. Round 1 failed four items of store text and docs, all fixed:
+  the review notes (rewritten, `docs/APP_STORE_LISTING.md` §4: buy Plus before signing
+  in, delete an account of your own, "Answer it now"), the caption "Badges you can’t luck
+  into" (now "Badges need a real track record"), `APP_PRIVACY.md`'s default for Canada,
+  the listing's header. Round 2 passed three and asked for the app-lock paragraph's two
+  clauses back; applied as worded, unread by a reviewer. The published policy is true of
+  build 7. Judgment calls left with the owner: the Coach needing an account after a
+  guest purchase, "a third-party AI service" unnamed, "Manage or cancel any time" on
+  plans with no trial (next build), Contests "None".
+- *Playtest (web):* works; both flows at 402 × 874 and 320 × 568, light and dark; no app
+  errors. Should-fix: the Warm-up result has no headings for VoiceOver
+  (`src/components/warmup/WarmupVerdict.tsx:40, 119`). Notes: "80–100%" wraps at 320;
+  a few sheets lack a heading or group name.
+- *Release audit:* budgets, config, entitlements, lengths and the screenshots pass.
+  Game Center ticked on the version and an empty Contact Information stop "Add for
+  Review"; both are App Store Connect settings. iPhone Duo screenshots aren't required
+  until April 2027.
+- *Checked by the main session:* `auth.audit_log_entries` reads 0 rows (read-only), so
+  the notes' Google sentence and the policy's claim hold.
+- **What makes it NO-GO, all his:** (1) on the iPhone, never reported on any build: a
+  due-day reminder arriving, the largest text size, VoiceOver through one log and
+  answer; and on build 7 from TestFlight: Share → Save Image (the Info.plist has no
+  `NSPhotoLibraryAddUsageDescription`; a crash there needs a new build) and the paywall
+  showing the App Store's prices and the free month; (2) App Store Connect: Game Center
+  off, Contact Information, the three products attached with review screenshots, the
+  demo account seeded with a Lifetime grant and entered under Sign-In Information, the
+  notes, the privacy answers, the age rating, the four storefronts, manual release.
+- **For the first update (1.0.1), unless he wants a new build now:** the offline launch,
+  the Warm-up result's headings, "cancel any time", the three nits.
+- The screenshots: `screenshots/store/final-1206/` (git-ignored), six at 1206 × 2622;
+  `APP_STORE_LISTING.md` §5 has the captions and how to re-render.
+
 **After the merge, the same day (docs only, pushed):**
 - **No beta stage.** The owner: "I dont want to add beta testers, the beta testing stage
   completely." No external TestFlight; stages 2 and 3 and their exit criteria don't run

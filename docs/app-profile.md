@@ -601,8 +601,9 @@ Saved exports go under `docs/live/` for `/live-review`.
 
 `docs/APP_STORE_LISTING.md` is the draft and wins. Name `Fairly Sure: Calibration Log`; subtitle
 "Know when to trust your gut" [30]; keywords [100 bytes] in §1 there; Productivity, then
-Lifestyle; age rating 4+ with "Yes" for age assurance; screenshots: at least one 6.9-inch set
-(1320 × 2868), seven planned (§5 there), finals from a device build; privacy policy
+Lifestyle; age rating 4+ with "Yes" for age assurance; screenshots: at least one set for the iPhone
+medium display (1206 × 2622, what App Store Connect asks since 2026-11; six made, §5 there, web
+captures in a drawn frame); privacy policy
 `https://tapjason.github.io/calibrate-app/privacy/` and support `/support/` (live on GitHub
 Pages); App Privacy answers in `docs/APP_PRIVACY.md`; review notes in §4 there; export
 compliance declared (`ITSAppUsesNonExemptEncryption: false`).

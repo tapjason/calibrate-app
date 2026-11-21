@@ -18,7 +18,7 @@ matter for the privacy policy). The privacy policy's working notes (`PRIVACY_POL
 
 **The owner's decisions of 2026-11-19** (he adopted the main session's recommendations;
 the IP address row and the storefront list were corrected by the D70/D71 review's policy
-audit afterwards and await his nod):
+audit afterwards, and he agreed to both as corrected):
 
 - **IP address:** Diagnostics → Other Diagnostic Data, Collected, Linked, App
   Functionality (§1, the IP address row).
@@ -332,7 +332,8 @@ relay address — the app treats it as any other email).
   (TestFlight build 2) has no stamp, and the notice is on the Warm-up's first
   screen only, so it sends nothing until it signs in (policy re-audit L4). Erase
   and account deletion clear the stamp.
-- Users can turn it off: You → "Usage stats" (default on), on that Warm-up
+- Users can turn it off: You → "Usage stats" (default on; off until chosen on a phone set
+  to Canada, D72 (b)), on that Warm-up
   screen, and on the sign-in screen, where the line says what goes up with the
   account and, while off, "Usage stats are off, so no record of which features you
   use is sent. You can turn them on here or in You, under Usage stats." (D71 (d),

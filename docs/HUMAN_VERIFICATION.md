@@ -1644,7 +1644,8 @@ in [`APP_PRIVACY.md`](./APP_PRIVACY.md); export compliance was declared at the f
       answer. Neither names OpenAI (owner, 2026-11-17; from build 3). Confirm both on the
       device build.
 - [ ] Screenshots (the identity card and the calibration curve are the two that sell it).
-      Drafts exist; finals come from the device (`APP_STORE_LISTING.md` §5).
+      The upload set was made 2026-11-20 from web captures in a drawn frame, 1206 × 2622
+      (`APP_STORE_LISTING.md` §5); captures from the device would replace it.
 - [ ] **Age-rating questionnaire** in App Store Connect: the updated question
       set (in-app controls, capabilities, medical or wellness topics, AI
       features) has been mandatory since 2026-01-31. Proposed answers:
