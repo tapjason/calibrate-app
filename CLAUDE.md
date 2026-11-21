@@ -777,6 +777,14 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
   unavailable, older iOS) means nothing changes.
   `docs/design/research/under-13-2026-11.md` has the calls, the residuals and the points
   for counsel.
+- **A phone that holds a sign-in opens as that account, with or without a connection**
+  (step 209, the release gate's finding, 2026-11-20). Launch waits at most 2 s for the
+  sign-in service (`LAUNCH_SESSION_WAIT_MS`), then opens from the stored session: the
+  account's predictions and reminders, not the guest's empty Today. Until the service
+  confirms the account, nothing is sent for it (sync asks for the session before each
+  request); a refusal that arrives later (signed out elsewhere, the account deleted)
+  signs the phone out then. Before it, an offline launch after an hour away waited 25 to
+  50 s and opened as the guest, cancelling the account's reminders.
 - **Server limits** (migrations 010–012): what the public key can write, per-account write
   limits and a 25 MB text budget, no answer put back to open, and a storage ceiling (400 MB,
   checked every 5 minutes) past which the app's writes that add rows or text wait. The owner applies them

@@ -37,7 +37,9 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
   return (
     <View style={styles.wrap} testID="warmup-verdict">
       <Text style={styles.eyebrow}>Your warm-up</Text>
-      <Text style={styles.title}>{verdict.title}</Text>
+      <Text accessibilityRole="header" style={styles.title}>
+        {verdict.title}
+      </Text>
       <Text style={styles.detail}>{verdict.detail}</Text>
       {/* What the verdict means in counts ("Your numbers expected about 7 right, and you got
           7"), straight under it: below the chart it sat three screens down at
@@ -116,7 +118,9 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
       </Text>
 
       <View style={styles.key}>
-        <Text style={styles.keyTitle}>The answers</Text>
+        <Text accessibilityRole="header" style={styles.keyTitle}>
+          The answers
+        </Text>
         {questions.map((q, i) => {
           const answered = answers[i];
           if (!answered) return null;

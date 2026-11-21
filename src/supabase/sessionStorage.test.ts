@@ -9,6 +9,7 @@ import {
   sessionKeys,
   splitUtf8,
   storedSessionExpiry,
+  storedSessionUser,
   type KeyValueStorage,
   type SecureStoreLike,
 } from './sessionStorage';
@@ -576,6 +577,89 @@ describe('both stores hold a session (N3)', () => {
       JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_at: -5 }),
     ];
     for (const raw of unreadable) expect(storedSessionExpiry(raw)).toBeNull();
+  });
+});
+
+// For a launch the client can't answer in time (the offline launch,
+// 2026-11-20): the account whose session is stored on this phone.
+describe('the stored session’s user', () => {
+  it('reads the user auth-js saved with the session, and nothing of the tokens', () => {
+    const raw = JSON.stringify({
+      access_token: 'access-secret',
+      refresh_token: 'refresh-secret',
+      expires_in: 3600,
+      expires_at: 1_700_000_000,
+      token_type: 'bearer',
+      user: {
+        id: 'user-1',
+        email: 'a@example.com',
+        app_metadata: { provider: 'email', providers: ['email', 'apple'] },
+        identities: [{ provider: 'apple' }],
+      },
+    });
+    const user = storedSessionUser(raw);
+    expect(user).toEqual({
+      id: 'user-1',
+      email: 'a@example.com',
+      app_metadata: { provider: 'email', providers: ['email', 'apple'] },
+      identities: [{ provider: 'apple' }],
+    });
+    // An expired session still names its account: auth-js keeps it to refresh.
+    expect(JSON.stringify(user)).not.toMatch(/secret/);
+  });
+
+  it('keeps an email only when it is a string', () => {
+    const raw = (email: unknown) =>
+      JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_at: 1, user: { id: 'u', email } });
+    expect(storedSessionUser(raw(42))).toEqual({ id: 'u' });
+    expect(storedSessionUser(raw(null))).toEqual({ id: 'u' });
+    expect(storedSessionUser(raw(''))).toEqual({ id: 'u', email: '' });
+  });
+
+  it('reads nothing from an empty, malformed or unusable record', () => {
+    const usable = { access_token: 'a', refresh_token: 'r', expires_at: 1_900_000_000 };
+    const unreadable = [
+      null,
+      undefined,
+      '',
+      'not json',
+      'null',
+      '[]',
+      '"user-1"',
+      '{}',
+      // A session auth-js couldn't use, whoever it names.
+      JSON.stringify({ user: { id: 'user-1' } }),
+      JSON.stringify({ ...usable, access_token: '', user: { id: 'user-1' } }),
+      JSON.stringify({ ...usable, refresh_token: '', user: { id: 'user-1' } }),
+      JSON.stringify({ ...usable, expires_at: 0, user: { id: 'user-1' } }),
+      JSON.stringify({ ...usable, expires_at: '1900000000', user: { id: 'user-1' } }),
+      // A usable session with no account in it.
+      JSON.stringify(usable),
+      JSON.stringify({ ...usable, user: null }),
+      JSON.stringify({ ...usable, user: ['user-1'] }),
+      JSON.stringify({ ...usable, user: 'user-1' }),
+      JSON.stringify({ ...usable, user: {} }),
+      JSON.stringify({ ...usable, user: { id: '' } }),
+      JSON.stringify({ ...usable, user: { id: 7 } }),
+    ];
+    for (const raw of unreadable) expect({ raw, user: storedSessionUser(raw) }).toEqual({ raw, user: null });
+  });
+
+  it('reads a session stored in Keychain pieces, as the storage puts it back together', async () => {
+    const { storage, keychain } = setup({ chunkBytes: 1000 });
+    const value = bigSession();
+    await storage.setItem(KEY, value);
+    expect(keychain.sessionEntries().length).toBeGreaterThan(4);
+    expect(storedSessionUser(await storage.getItem(KEY))).toMatchObject({
+      id: 'user-1',
+      email: 'zoë@example.com',
+    });
+
+    // A piece missing reads as no session, so no account.
+    const piece = keychain.sessionEntries().find((k) => k !== KEY)!;
+    keychain.data.delete(piece);
+    await expect(storage.getItem(KEY)).resolves.toBeNull();
+    expect(storedSessionUser(await storage.getItem(KEY))).toBeNull();
   });
 });
 

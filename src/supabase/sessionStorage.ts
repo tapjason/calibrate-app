@@ -133,13 +133,12 @@ export function supabaseStorageKey(url: string): string {
 }
 
 /**
- * When a stored session expires (`expires_at`, seconds since the epoch), or
- * null when `raw` isn't one auth-js could use: not JSON, not an object, or
- * without an access token, a refresh token and a positive, finite
- * `expires_at` (auth-js's own `_isValidSession` asks for the three). Never
- * throws. Exported for tests.
+ * A stored session as an object, or null when `raw` isn't one auth-js could
+ * use: not JSON, not an object, or without an access token, a refresh token
+ * and a positive, finite `expires_at` (auth-js's own `_isValidSession` asks
+ * for the three). Never throws.
  */
-export function storedSessionExpiry(raw: string | null | undefined): number | null {
+function usableStoredSession(raw: string | null | undefined): Record<string, unknown> | null {
   if (typeof raw !== 'string' || raw === '') return null;
   let data: unknown;
   try {
@@ -148,15 +147,52 @@ export function storedSessionExpiry(raw: string | null | undefined): number | nu
     return null;
   }
   if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
-  const {
-    access_token: access,
-    refresh_token: refresh,
-    expires_at: expiresAt,
-  } = data as { access_token?: unknown; refresh_token?: unknown; expires_at?: unknown };
+  const record = data as Record<string, unknown>;
+  const { access_token: access, refresh_token: refresh, expires_at: expiresAt } = record;
   if (typeof access !== 'string' || access === '') return null;
   if (typeof refresh !== 'string' || refresh === '') return null;
   if (typeof expiresAt !== 'number' || !Number.isFinite(expiresAt) || expiresAt <= 0) return null;
-  return expiresAt;
+  return record;
+}
+
+/**
+ * When a stored session expires (`expires_at`, seconds since the epoch), or
+ * null when `raw` isn't one auth-js could use (`usableStoredSession`). Never
+ * throws. Exported for tests.
+ */
+export function storedSessionExpiry(raw: string | null | undefined): number | null {
+  const record = usableStoredSession(raw);
+  return record ? (record.expires_at as number) : null;
+}
+
+/**
+ * The user a stored session was saved with. auth-js keeps the whole session,
+ * its user inside, under the storage key when the client has no separate user
+ * storage (`_saveSession`), and this app's client has none
+ * (src/supabase/client.ts). Only `id` is checked, and `email` is kept only
+ * when it is a string; the rest is whatever auth-js saved, unchecked. Never
+ * the tokens: they sit beside the user, not in it.
+ */
+export interface StoredSessionUser {
+  id: string;
+  email?: string;
+  [field: string]: unknown;
+}
+
+/**
+ * The user of a stored session, for a launch the client can't answer in time
+ * or can't reach the server for (authStore `initialize`; the offline launch,
+ * 2026-11-20). Null unless `raw` is a session auth-js could use
+ * (`usableStoredSession`) whose `user` is an object with a non-empty string
+ * `id`. Never throws. Exported for tests.
+ */
+export function storedSessionUser(raw: string | null | undefined): StoredSessionUser | null {
+  const record = usableStoredSession(raw);
+  const user = record?.user;
+  if (typeof user !== 'object' || user === null || Array.isArray(user)) return null;
+  const { id, email, ...rest } = user as Record<string, unknown>;
+  if (typeof id !== 'string' || id === '') return null;
+  return typeof email === 'string' ? { ...rest, id, email } : { ...rest, id };
 }
 
 /**

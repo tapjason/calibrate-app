@@ -69,6 +69,14 @@ describe('WarmupVerdictScreen', () => {
     expect(screen.getByTestId('warmup-expected')).toHaveTextContent(/Your numbers expected about/);
   });
 
+  // Release-gate playtest 2026-11-20: VoiceOver can jump by headings (DESIGN_SYSTEM §8).
+  it('marks the verdict title and the answer key title as headings', () => {
+    seed(ANSWERS);
+    render(<WarmupVerdictScreen onContinue={jest.fn()} />);
+    expect(screen.getByRole('header', { name: 'On these 2, no clear lean' })).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'The answers' })).toBeTruthy();
+  });
+
   // Roadmap D36: the line that answers 'so was I good?' is on the result.
   it('says it is not about being right', () => {
     seed(ANSWERS);

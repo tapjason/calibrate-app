@@ -1605,6 +1605,25 @@ with no item-by-item results, so the boxes below aren't ticked one by one.
       app. Then sign out: Plus is gone at once and stays gone after bringing the app
       back from the background.
 
+### D8. Step 209: the offline launch and the Warm-up result's headings (2026-11-20; JS only)
+Needs the build that carries step 209 (the production build after 1.0.0 (7), or a reload of
+the development build). Nothing here has run on the iPhone.
+- [ ] **Offline launch, signed in (step 209):** sign in, force-quit, wait more than an hour,
+      turn on Airplane Mode, launch. Pass: within about 2 seconds Today shows the
+      account's predictions and You shows its email; not an empty Today. Before step 209
+      this took 25 to 50 seconds and opened as the guest.
+- [ ] **Still offline:** log one prediction. Turn Airplane Mode off, reopen after a minute:
+      still signed in, and the new prediction is on the server (it appears on a second
+      device, or survives sign-out and sign-in).
+- [ ] **Reminders survive it:** with a prediction due later that day, do the offline launch
+      above before the reminder time; the reminder still arrives.
+- [ ] **Signed out elsewhere (optional, needs a second device):** sign out on the other
+      device with a connection, then launch this one offline and reconnect. Pass: the
+      account shows briefly, then the app moves to the guest.
+- [ ] **Headings on the Warm-up result (step 209):** with VoiceOver on, after a Warm-up
+      (Erase first), the rotor's Headings list holds the verdict ("On these ten, …") and
+      "The answers".
+
 ---
 
 ## Batch E — Ship (needs everything above)

@@ -37,7 +37,7 @@ import {
 } from '@/store/ageStore';
 
 import { getSupabaseClient, peekSupabaseClient } from './client';
-import { SESSION_KEY_SUFFIXES } from './sessionStorage';
+import { SESSION_KEY_SUFFIXES, storedSessionUser } from './sessionStorage';
 
 export type AuthOutcome =
   | { ok: true }
@@ -878,6 +878,67 @@ function isRemovableStorage(storage: unknown): storage is RemovableStorage {
     typeof storage === 'object' &&
     storage !== null &&
     typeof (storage as { removeItem?: unknown }).removeItem === 'function'
+  );
+}
+
+interface ReadableStorage {
+  getItem(key: string): unknown;
+}
+
+function isReadableStorage(storage: unknown): storage is ReadableStorage {
+  return (
+    typeof storage === 'object' &&
+    storage !== null &&
+    typeof (storage as { getItem?: unknown }).getItem === 'function'
+  );
+}
+
+/**
+ * The user of the session stored on this phone, read straight from the
+ * storage the client keeps it in (its `storage` and `storageKey`, read off the
+ * client as `discardStoredSession` does), without the client's lock and
+ * without the server. For a launch the client hasn't answered in time, or
+ * answered that it couldn't reach the server (authStore `initialize`; the
+ * offline launch, 2026-11-20): auth-js keeps the session it couldn't refresh,
+ * so the account is still the one signed in here.
+ *
+ * Null when nothing is stored, or nothing auth-js could use
+ * (`storedSessionUser`). Sends nothing: the read is the Keychain's on iOS,
+ * AsyncStorage's on web. The client is passed in, never made here. Never
+ * throws; the record and its tokens are never logged or returned.
+ */
+export async function readStoredSessionUser(client: SupabaseClient): Promise<User | null> {
+  try {
+    const { storageKey, storage } = client.auth as unknown as {
+      storageKey?: unknown;
+      storage?: unknown;
+    };
+    if (typeof storageKey !== 'string' || storageKey === '' || !isReadableStorage(storage)) return null;
+    const raw = await storage.getItem(storageKey);
+    // The user auth-js itself saved with the session, with its id checked. The
+    // identity checks below take any shape (`hasProviderIdentity`).
+    return storedSessionUser(typeof raw === 'string' ? raw : null) as User | null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether `error` is auth-js's `AuthRetryableFetchError`: the server couldn't
+ * be reached, or answered 502, 503, 504 or one of Cloudflare's 52x or 530
+ * (auth-js 2.106.2, lib/fetch.js `handleError`). auth-js keeps the stored
+ * session after a refresh that fails this way, and removes it after any other
+ * failure (GoTrueClient `_callRefreshToken`). The same test as auth-js's own
+ * `isAuthRetryableFetchError` (lib/errors.js), checked against it in
+ * auth.storedSession.test.ts; written out here because importing supabase-js
+ * at run time would load the SDK in this module. Never throws.
+ */
+export function isRetryableAuthError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    '__isAuthError' in error &&
+    (error as { name?: unknown }).name === 'AuthRetryableFetchError'
   );
 }
 

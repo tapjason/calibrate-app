@@ -40,6 +40,17 @@
 // device data with it (`wipeEverythingOnDevice`). Account deletion and
 // sign-out stay scoped to one account (`wipeLocalUserData`).
 //
+// A launch with no connection opens as the account signed in here (release
+// gate review, 2026-11-20). The client's read of the stored session refreshes
+// one near expiry, and with no connection retries for about 25 s, twice: the
+// launch page stayed up for up to 50 s, then the app opened as the guest, its
+// reminders cancelled and anything logged filed under the guest. Launch now
+// waits at most `LAUNCH_SESSION_WAIT_MS` for that read; past it, or when it
+// says the server couldn't be reached, the account comes from the session
+// record on this phone (`launchSession`), and the read's late answer is
+// followed (`followLateLaunchRead`). A session the server refused still signs
+// the phone out, as before.
+//
 // Layer rule: L4 (state). May import from L2 (db) and L5 (services): the
 // Supabase client, auth, account and sync modules and the account markers,
 // two functions of the reminder scheduler (after a wipe, and on leaving an
@@ -333,9 +344,159 @@ const wipesInHand = new Set<string>();
  * (round 6, N2). Forgotten when the app leaves the account.
  */
 let askedAbout: { account: string; atStake: AtStake } | null = null;
+/**
+ * The account launch opened from the session record on this phone
+ * (`launchSession`), until the client shows it holds that session (an event
+ * carrying it, or the late answer to launch's read) or the app leaves the
+ * account. While it is set, the client's own INITIAL_SESSION with no session
+ * is a refresh that couldn't reach the server, not an end (the subscription in
+ * `initialize`).
+ */
+let openedFromStorage: string | null = null;
 
 /** The event handleSession gets when the app's own sign-out or deletion ends a session. */
 const APP_SIGN_OUT = 'APP_SIGN_OUT';
+
+/**
+ * How long launch waits for the client's read of the stored session before
+ * opening as the account whose session is stored on this phone (the offline
+ * launch, 2026-11-20). auth-js 2.106.2 refreshes a stored session within 90 s
+ * of expiry inside that read (GoTrueClient `__loadSession`), and access tokens
+ * last an hour, so most cold starts refresh; with no connection each refresh
+ * retries for about 25 s (`_refreshAccessToken`). Online, a valid session
+ * answers at once and an expiring one in a round trip.
+ */
+export const LAUNCH_SESSION_WAIT_MS = 2_000;
+
+/** What `client.auth.getSession()` resolves to. */
+type SessionRead = Awaited<ReturnType<SupabaseClient['auth']['getSession']>>;
+
+/** A session as the app follows it: only its user is read (`sessionToState`). */
+type SessionLike = Pick<Session, 'user'>;
+
+/** What `withinMs` resolves to when the promise hasn't settled in time. */
+const NO_ANSWER: unique symbol = Symbol('no answer');
+
+/**
+ * `promise`'s value, or `NO_ANSWER` when it hasn't settled within `ms`. The
+ * pattern of `withTimeout` in src/supabase/auth.ts, except that running out
+ * of time resolves rather than rejects, so the caller keeps the promise and
+ * can follow its late answer. Rejects when `promise` rejects in time.
+ */
+function withinMs<T>(promise: Promise<T>, ms: number): Promise<T | typeof NO_ANSWER> {
+  return new Promise<T | typeof NO_ANSWER>((resolve, reject) => {
+    const timer = setTimeout(() => resolve(NO_ANSWER), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (e: unknown) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
+/** What launch opens as (`launchSession`). */
+interface LaunchSession {
+  /** The session, or the stored session's user, launch opens as; null for none. */
+  session: SessionLike | null;
+  /** True when `session` came from the record on this phone, not the client's answer. */
+  fromStorage: boolean;
+  /** The client's read, which keeps running after a timeout: its late answer is followed. */
+  read: Promise<SessionRead>;
+}
+
+/**
+ * The session launch opens as (the offline launch, 2026-11-20).
+ *
+ * The client's own answer when it comes within `LAUNCH_SESSION_WAIT_MS`: a
+ * session (valid, or refreshed in time), or none with no error (nothing
+ * stored) or with any error but a retryable one (the server refused the
+ * session, and auth-js has removed it): the guest, as before.
+ *
+ * The session record on this phone instead, read without the server
+ * (`auth.readStoredSessionUser`), when the client hasn't answered in time,
+ * answered with auth-js's retryable fetch error (it couldn't reach the server
+ * and kept the session), or threw: the account still signed in here, which
+ * is what the client would answer with a connection. No record, or none
+ * auth-js could use: the guest, as before.
+ *
+ * The read is the one request launch always made (src/age/egress.test.ts
+ * pins it); the record is read from the phone's own storage. Never rejects.
+ */
+async function launchSession(client: SupabaseClient): Promise<LaunchSession> {
+  const read = client.auth.getSession();
+  let answer: SessionRead | typeof NO_ANSWER;
+  try {
+    answer = await withinMs(read, LAUNCH_SESSION_WAIT_MS);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] could not read the session at launch:', errorForLog(e));
+    answer = NO_ANSWER;
+  }
+  if (answer !== NO_ANSWER) {
+    const session = answer.data?.session ?? null;
+    if (session || !answer.error || !auth.isRetryableAuthError(answer.error)) {
+      return { session, fromStorage: false, read };
+    }
+  }
+  const user = await auth.readStoredSessionUser(client);
+  return { session: user ? { user } : null, fromStorage: user !== null, read };
+}
+
+/**
+ * Follow the late answer to launch's read of the session, after launch opened
+ * `userId` from the record on this phone (`launchSession`). Only while the app
+ * is still that account, unconfirmed: an event that came first has already
+ * moved it on (handleSession). Never rejects.
+ *
+ *   - That account's session: the refresh landed. auth-js sent
+ *     TOKEN_REFRESHED, which handleSession takes as the same account: no
+ *     reload, and no guest rows moved, since only a SIGNED_IN during a
+ *     sign-in the person started moves them. Nothing is left to confirm.
+ *   - No session, with auth-js's retryable fetch error: still no connection.
+ *     The app stays the account; the client's refresh timer, or the next read
+ *     of the session, tries again, and auth-js keeps the session meanwhile.
+ *   - No session, with any other answer: the server refused the session
+ *     (signed out elsewhere, the account deleted), or it is no longer stored.
+ *     auth-js removed it and sent SIGNED_OUT (GoTrueClient
+ *     `_callRefreshToken` → `_removeSession`) to the listeners it had then,
+ *     which may have been before the subscription was made: the app signs
+ *     out here, as that event would have done. Twice is harmless:
+ *     handleSession does nothing twice for the same id.
+ *   - A throw: nothing can be told from it, and the app stays the account.
+ */
+async function followLateLaunchRead(
+  read: Promise<SessionRead>,
+  userId: string,
+  set: (s: Partial<AuthState>) => void,
+): Promise<void> {
+  let answer: SessionRead;
+  try {
+    answer = await read;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] the session read at launch failed:', errorForLog(e));
+    return;
+  }
+  if (openedFromStorage !== userId) return;
+  const session = answer.data?.session ?? null;
+  if (session) {
+    if (session.user?.id === userId) openedFromStorage = null;
+    return;
+  }
+  if (auth.isRetryableAuthError(answer.error)) return;
+  openedFromStorage = null;
+  try {
+    await handleSession('SIGNED_OUT', null, set);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] could not follow the session read at launch:', errorForLog(e));
+  }
+}
 
 /**
  * An error as the device log may carry it: its code and message, never the
@@ -583,7 +744,7 @@ const GUEST_STATE = {
  * Compute the new auth state from a session. Pure — testable without touching
  * the store.
  */
-function sessionToState(session: Session | null): {
+function sessionToState(session: SessionLike | null): {
   userId: string;
   email: string | null;
   status: AuthStatus;
@@ -611,10 +772,13 @@ function sessionToState(session: Session | null): {
  * sign-out and wrote it back (client reviewer LOW-A): ignored, and taken off
  * the phone again. Only a SIGNED_IN during a sign-in the person started moves
  * the guest's rows into an account.
+ *
+ * At launch the session may be the stored session's user alone, when the
+ * client couldn't answer (`launchSession`): only the user is read here.
  */
 async function handleSession(
   event: string,
-  session: Session | null,
+  session: SessionLike | null,
   set: (s: Partial<AuthState>) => void,
 ): Promise<void> {
   const next = sessionToState(session);
@@ -639,6 +803,8 @@ async function handleSession(
   }
 
   lastUserId = next.userId;
+  // Leaving the account launch opened from storage: nothing of it is left to confirm.
+  if (openedFromStorage !== null && next.userId !== openedFromStorage) openedFromStorage = null;
 
   // Another account, or none: the Coach's cards go before the new state
   // shows, so one account's never draw under the next one's. And what a
@@ -864,9 +1030,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await markers.loadAuthMarkers();
 
     // Read whatever session storage already has (warm start), then
-    // subscribe to future changes.
-    const { data } = await client.auth.getSession();
-    let session = data.session;
+    // subscribe to future changes. The client gets `LAUNCH_SESSION_WAIT_MS`
+    // to answer; with no answer by then, or one that says the server couldn't
+    // be reached, the session record on this phone stands in for it
+    // (`launchSession`), and everything below treats it as the client's.
+    const launch = await launchSession(client);
+    let session = launch.session;
     // A session this phone signed out of alone, written back by a token
     // refresh that landed late and kept by a restart before it was taken off
     // again: it doesn't count.
@@ -891,9 +1060,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await markers.settleOwedWipe(userId);
       }
     }
+    const storedUserId = launch.fromStorage && session ? session.user.id : null;
+    openedFromStorage = storedUserId;
     await handleSession('INITIAL_SESSION', session, set);
+    // Only once the account has been opened, so a late sign-out never races
+    // its reload.
+    if (storedUserId !== null) void followLateLaunchRead(launch.read, storedUserId, set);
 
     const { data: sub } = client.auth.onAuthStateChange((event, changed) => {
+      if (openedFromStorage !== null) {
+        if (changed?.user?.id === openedFromStorage) {
+          // The client holds the account's session now: a refresh landed.
+          openedFromStorage = null;
+        } else if (event === 'INITIAL_SESSION' && changed === null) {
+          // The client's own first read for this listener, which couldn't
+          // refresh the session either: auth-js 2.106.2 sends INITIAL_SESSION
+          // with no session when that read fails (`_emitInitialSession`), and
+          // keeps the session when the failure is a retryable one. Every way
+          // it removes a session sends SIGNED_OUT first (`_removeSession`), and
+          // that ends the account below.
+          return;
+        }
+      }
       void handleSession(event, changed, set).catch((e) => {
         // eslint-disable-next-line no-console
         console.warn('[auth] could not follow a session change:', errorForLog(e));
@@ -916,6 +1104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     pendingHolds = 0;
     wipesInHand.clear();
     askedAbout = null;
+    openedFromStorage = null;
     markers.__resetAuthMarkersForTests();
     set({
       userId: null,

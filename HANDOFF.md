@@ -1,6 +1,6 @@
 # Handoff
 
-**Branch:** `master`. `builder/owner-list-19-30` is merged into it (fast-forward) and
+**Branch:** `builder/offline-launch-headings` (step 209, two fixes from the release gate; see the gate's block below), cut from `master`. Before it, `master`: `builder/owner-list-19-30` is merged into it (fast-forward) and
 pushed, 2026-11-20, on the owner's words that day: "Review steps 202 through 206. If
 everything passes then merge and push". The review ran its three rounds (step 207 below).
 The push also published the privacy page without its on-device-scan paragraph. The branch
@@ -55,8 +55,17 @@ the four reviews).
   off, Contact Information, the three products attached with review screenshots, the
   demo account seeded with a Lifetime grant and entered under Sign-In Information, the
   notes, the privacy answers, the age rating, the four storefronts, manual release.
-- **For the first update (1.0.1), unless he wants a new build now:** the offline launch,
-  the Warm-up result's headings, "cancel any time", the three nits.
+- **The two code fixes are built (step 209; the owner: "Two code fixes now please.")**, on
+  `builder/offline-launch-headings`: a phone that holds a sign-in opens as that account
+  within 2 s, online or not (`CLAUDE.md` §10 has the rule), and the Warm-up result's two
+  titles are headings. The full check passes (251 suites, 5,285 tests); the gate's
+  code reviewer re-read the diff: clean. JS only, so no new development build, but
+  **build 1.0.0 (7) is no longer the one to submit: a new production build is needed**
+  (`eas build`, on his confirmation of the command), then `HUMAN_VERIFICATION.md` D8 and
+  the gate's device list on it. The record and policy audits weren't re-run: the diff
+  touches no score, no copy and no data leaving the phone (the reviewer's read).
+- **Still for the first update (1.0.1):** "cancel any time" on plans with no trial, the
+  three nits, and the notes from step 209's review (BUILT_LOG row 209).
 - The screenshots: `screenshots/store/final-1206/` (git-ignored), six at 1206 × 2622;
   `APP_STORE_LISTING.md` §5 has the captions and how to re-render.
 
