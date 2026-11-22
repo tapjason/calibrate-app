@@ -1,6 +1,46 @@
 # Handoff
 
-**Branch:** `master`. `builder/practice-sheet-header` (step 210, from the owner's device report on build 8; see "Build 8's device report" in the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21. **Production build 1.0.0 (9), from `b944a6c`, is the one to submit; build 8 is superseded.** Before it: `builder/offline-launch-headings` (step 209, two fixes from the release gate; see the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21, on the owner's words: "Merge the branc hadn push please, and I will submit this build". Production build 1.0.0 (8) was made from that commit, `7f61f60` (the gate's block below). Before it: `builder/owner-list-19-30` is merged into it (fast-forward) and
+**Now, 2026-11-22: branch `harness/expo-simulators`, off `master` (`64576ae`), not merged or
+pushed.** Harness and docs only; no app code changed.
+- **Expo Simulators is set up** (the owner, 2026-11-21: "adjust the harness to reflect the new
+  change"). Expo's cloud iOS Simulator, driven by agents through the Expo MCP server.
+  - *Account:* the owner's Expo account has it (`eas simulator:availability` true). eas-cli
+    27.11.0 is global.
+  - *Plugin:* `expo@claude-plugins-official`, project scope; its server `plugin:expo:expo` is
+    signed in.
+  - *Harness:* the new agent `sim-playtester`, the simulator pass in `/playtest`,
+    `/device-check`, `/build` (`preview`) and `/release-gate`, and the permission entries the
+    owner approved as drafted (agent-device `exec` allowed without asking).
+  - *Docs:* `docs/tooling-notes.md` "Expo Simulators" has how to drive it and what the first
+    runs taught.
+  - *Cost:* $0.10 a minute, 60 minutes a month included through 2027; a simulator build is
+    about $2.
+- **Simulator build** `6b0fd5af` (profile `preview`, from `1b8d8ab`, app code = build 9's), run
+  on the owner's confirmation.
+  - The `preview` EAS environment has no Supabase or RevenueCat values: You shows no account
+    row and the paywall says "Plus isn't available on this build yet." So a simulator run
+    can't sign in or load prices, and sends nothing to the live server.
+  - Release-style, so no demo data: every run starts from a fresh install. Three ways in, none
+    built, are listed in tooling-notes.
+- **Two runs.**
+  - *Run 1 (dry run, 7 min):* proved the tools: taps by testID or coordinates, typing,
+    scrolling with an accessibility diff, screenshots, dark mode, text size.
+  - *Run 2 (13 min):* covered `HUMAN_VERIFICATION.md` D9. Every sheet's title and × passes and
+    Practice passes, on the simulator.
+  - *Passed on by the owner, not run:* the lock's Unlock tap (D74), the paywall's
+    "$2.91 / month", D8's offline launch, VoiceOver. He: "if not, they are minor enough to
+    document and pass on for the time being".
+  - *Sessions:* he deleted run 1's on expo.dev. **Run 2's, `01a201f7`, is still to delete.**
+- **For 1.0.1, found on the simulator:**
+  - At the largest accessibility text size, the tabs' large titles are clipped and long words
+    break mid-word ("Calibratin / g", "predicti / on", "80%" as a column), Today's streak row
+    is cramped, and Log's Save footer takes about a quarter of the screen.
+  - A large gap on the Sign in sheet.
+  - Details in D9.
+- **Build 9 has no phone checks left owed.** Submit it, then tag `submitted-1.0.0` on
+  `b944a6c` when he says so (below).
+
+**Branch before this:** `master`. `builder/practice-sheet-header` (step 210, from the owner's device report on build 8; see "Build 8's device report" in the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21. **Production build 1.0.0 (9), from `b944a6c`, is the one to submit; build 8 is superseded.** Before it: `builder/offline-launch-headings` (step 209, two fixes from the release gate; see the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21, on the owner's words: "Merge the branc hadn push please, and I will submit this build". Production build 1.0.0 (8) was made from that commit, `7f61f60` (the gate's block below). Before it: `builder/owner-list-19-30` is merged into it (fast-forward) and
 pushed, 2026-11-20, on the owner's words that day: "Review steps 202 through 206. If
 everything passes then merge and push". The review ran its three rounds (step 207 below).
 The push also published the privacy page without its on-device-scan paragraph. The branch

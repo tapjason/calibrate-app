@@ -1650,20 +1650,34 @@ screenshots; no item-by-item results):
   "$2.91 / month"; the app lock opens on a tap (D74).
 
 **On the build that carries step 210 (production 1.0.0 (9)).** Nothing here has run on the
-iPhone.
-- [ ] **Every sheet's title and ×:** open each once: Log (+), an open prediction's details,
-      Resolve, Practice (a question, and the answers), Share, How scoring works, Categories,
-      the paywall, Sign in. Pass: the title is clear of the grabber and of the content, and
-      the × closes the sheet.
-- [ ] **Practice:** after an answer is picked on a question, Next is in view; the answers
-      open at their top.
-- [ ] **The lock opens on a tap (D74):** with "Lock with Face ID" on, force-quit and open:
-      the lock screen shows its line and Unlock, and Face ID doesn't start until Unlock is
-      tapped. Switch to another app and back: the same. A failed or closed check stays
-      locked, and Unlock asks again.
-- [ ] **The paywall's line:** Annual reads "$2.91 / month" under "$34.99 a year", on one line.
-- [ ] **D8's offline launch** (above), and VoiceOver through one log and one answer, unless
-      he waives VoiceOver for 1.0.
+iPhone. **Covered on Expo Simulators instead, 2026-11-22** (the owner: "I don't really want to do
+any more phone checks, please see if you can do them on the EAS simulator. And if not, they are
+minor enough to document and pass on for the time being"). Simulator build `6b0fd5af` from
+`1b8d8ab`, whose app code is build 9's; session `01a201f7` (13 min); evidence labelled
+**simulator**, captures in `.tooling/sim/2026-11-22/run2/` (git-ignored). What the simulator
+couldn't reach is **passed on by the owner**, not run.
+- [x] **Every sheet's title and ×** (simulator): Log (+), an open prediction's details, Resolve,
+      Practice (a question, and the answers), Share, How scoring works, Categories, the
+      paywall, Sign in. The title is clear of the grabber and the content and the × closes
+      each, at the default text size; light and dark for Log, details, Resolve, Practice and
+      the paywall, light only for the rest.
+- [x] **Practice** (simulator): after an answer is picked, Next is in view; the answers open at
+      their top.
+- [ ] **The lock opens on a tap (D74):** passed on. The simulator has no biometric controls and
+      a passcode sheet with no cancel. Unit-tested; the owner confirmed Face ID on the
+      development build (2026-11-15), before D74.
+- [ ] **The paywall's line** ("$2.91 / month"): passed on. The simulator build has no
+      RevenueCat key ("Plus isn't available on this build yet."); a copy change, unit-tested.
+- [ ] **D8's offline launch** and **VoiceOver through one log and one answer:** passed on. The
+      simulator run doesn't sign in, and VoiceOver can't be driven there. Step 209 is
+      unit-tested and its code review was clean. The Warm-up result's headings couldn't be
+      read either: the automation tree shows no heading roles at all.
+- **Found on the simulator, for 1.0.1:** at the largest accessibility text size (AX5, set with
+  `textSize.set` and a relaunch), every tab's large title is clipped along its bottom, and long
+  words break mid-word ("Calibratin / g" on Today, "New / predicti / on" on Log, a card's "80%"
+  as a column in History); Today's streak row is cramped and Log's Save footer takes about a
+  quarter of the screen. The owner's "text size also work" on build 8 was most likely a smaller
+  size. Also cosmetic: a large gap on the Sign in sheet between the intro and "Privacy policy".
 
 ---
 

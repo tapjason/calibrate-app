@@ -91,20 +91,35 @@ that apply here.
 - **Two ways to drive a session, one per session.** The MCP way: `simulator_start` with `buildId`
   (installs and launches the build before the session is ready; the idle stop defaults to 10
   minutes), `simulator_get` until `IN_PROGRESS`, then `automation_tap`, `_type`, `_scroll`,
-  `_take_screenshot` and `_find_view` by testID or accessibility label. It gives no accessibility
-  tree and no appearance control. The CLI way: `eas simulator:start --platform ios --type
+  `_take_screenshot` and `_find_view` by testID or accessibility label. In the first run
+  (2026-11-22) testIDs and coordinates (points) worked, but a long composite label (a card's) did
+  not match: tap cards by coordinates. It has no full tree, but `automation_scroll` returns an
+  accessibility-tree diff with roles, labels and states. The CLI way: `eas simulator:start --platform ios --type
   agent-device …` writes `.env.eas-simulator`, then `eas simulator:exec npx agent-device@latest
   snapshot -i` (the tree), `press`, `fill`, `screenshot`. The CLI sets **no idle stop and a
   115-minute cap unless told**: always pass `--max-duration-minutes` and
   `--max-idle-time-minutes`. `simulator_get` never returns device credentials, so agent-device
-  can't drive an MCP-started session (inferred, not tried); whether the MCP automation tools drive a
+  can't drive an MCP-started session (confirmed 2026-11-22: `simulator:exec` found no
+  `.env.eas-simulator`, takes no `--id`, and agent-device answered `DEVICE_NOT_FOUND`), so start
+  with the CLI when the tree is wanted; whether the MCP automation tools drive a
   CLI-started one isn't documented. `npx agent-device@latest` downloads and runs a package on this
   PC at each call, so the sim-playtester takes that way only when the owner allows it in the brief.
 - **Direct controls** on any iOS session: `eas simulator:control --json --id <id>` lists the
   session's actions (they depend on its serve-sim version); `appearance.set dark` or `light`,
   `screenshot.capture --output <path>`, `app.launch <bundle id> 'launchArgs=[…]'`, `gesture '[…]'`
-  (a swipe), `button home`, `app.file.upload`. Whether a text-size action exists isn't documented:
-  read the catalog. Not yet tried on an MCP-started session.
+  (a swipe), `button home`, `app.file.upload`. All of these work on an MCP-started session too
+  (2026-11-22: `appearance.set` re-themes live in about 3 s; `screenshot.capture` gives a
+  1206 × 2622 PNG; `app.stop` and `app.launch app.fairlysure` cold-start the app).
+  **Text size:** the catalog has `textSize.set` (`extra-small` to
+  `accessibility-extra-extra-extra-large`, plus increment and decrement). A live change leaves a
+  half-relaid screen with clipped text: always `app.stop` then `app.launch` before judging.
+  `eas simulator:logs --id <id> --limit 30` reads the device log.
+- **The simulator itself** (2026-11-22): 402 × 874 pt with the Dynamic Island, a US time zone and
+  12-hour clock. It has a passcode set: the app lock's switch opens the system's "Enter iPhone
+  Passcode" sheet with no cancel; `button home` and a relaunch leave the lock off. A screenshot
+  call once failed with an ngrok 503 (`ERR_NGROK_3004`); an immediate retry worked.
+- **A run's size:** the first dry run covered Warm-up, Log, Today, Practice, You, Categories and
+  Share in light and dark, plus the largest text, in about 7 minutes (about $0.70).
 - **Secrets and data.** `.env.eas-simulator` holds controller tokens: git-ignored (its own line
   since 2026-11-21; `.env.*` already covered it), never printed or committed. The `remoteConfig` in
   `--json` output holds the same tokens: never print it, read single fields with `node -e`.
