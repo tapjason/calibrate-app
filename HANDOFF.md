@@ -37,8 +37,12 @@ pushed.** Harness and docs only; no app code changed.
     is cramped, and Log's Save footer takes about a quarter of the screen.
   - A large gap on the Sign in sheet.
   - Details in D9.
-- **Build 9 has no phone checks left owed.** Submit it, then tag `submitted-1.0.0` on
-  `b944a6c` when he says so (below).
+- **Build 9 has no phone checks left owed.**
+- **Production build 1.0.0 (12)** (`d0acd9fd`) is the newest. The owner made it from this
+  branch's `56580bf`, finished 2026-11-22. Its app code is build 9's: everything after
+  `b944a6c` is docs and harness, so D9's results carry over to it. Builds 10 (`64576ae`, same
+  code) and 9 are superseded as the one to submit. When he says build 12 is submitted, tag
+  `submitted-1.0.0` on `56580bf`, not `b944a6c`.
 
 **Branch before this:** `master`. `builder/practice-sheet-header` (step 210, from the owner's device report on build 8; see "Build 8's device report" in the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21. **Production build 1.0.0 (9), from `b944a6c`, is the one to submit; build 8 is superseded.** Before it: `builder/offline-launch-headings` (step 209, two fixes from the release gate; see the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21, on the owner's words: "Merge the branc hadn push please, and I will submit this build". Production build 1.0.0 (8) was made from that commit, `7f61f60` (the gate's block below). Before it: `builder/owner-list-19-30` is merged into it (fast-forward) and
 pushed, 2026-11-20, on the owner's words that day: "Review steps 202 through 206. If
