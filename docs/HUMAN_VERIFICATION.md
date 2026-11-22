@@ -1672,12 +1672,24 @@ couldn't reach is **passed on by the owner**, not run.
       simulator run doesn't sign in, and VoiceOver can't be driven there. Step 209 is
       unit-tested and its code review was clean. The Warm-up result's headings couldn't be
       read either: the automation tree shows no heading roles at all.
-- **Found on the simulator, for 1.0.1:** at the largest accessibility text size (AX5, set with
+- **Found on the simulator; the text-size items are deferred, not scheduled** (the owner,
+  2026-11-22: "documented and ignored for now, since they are a very extreme accessbility edge
+  case"). At the largest accessibility text size (AX5, set with
   `textSize.set` and a relaunch), every tab's large title is clipped along its bottom, and long
   words break mid-word ("Calibratin / g" on Today, "New / predicti / on" on Log, a card's "80%"
   as a column in History); Today's streak row is cramped and Log's Save footer takes about a
   quarter of the screen. The owner's "text size also work" on build 8 was most likely a smaller
   size. Also cosmetic: a large gap on the Sign in sheet between the intro and "Privacy policy".
+- **Run 3 (simulator, 2026-11-22, session `01a2043c`, 8 min; app code = production build 14's):**
+  the main flow end to end passes on the simulator: Warm-up (slider tap, drag, ±5), the first
+  log with the keyboard up, "+ New category", Edit, "Answer it now" with the early and same-day
+  notes, Resolve, Change answer, the draft kept after a relaunch, History, Insights' fold, You's
+  switches and time wheel, Share's card and the native share sheet, dark mode on the four tabs
+  and Log; safe areas clear. Deferred with the text-size items above: from AX2
+  (`accessibility-large`) the tab titles lose their descenders, History's "30%" splits into "30"
+  over "%", the category chips are cut at the right and Log's Save footer wraps. Minor: on
+  Warm-up question 1 the slider sits partly under the footer until scrolled; "Answer it now"'s
+  early note sits about 10 pt above its button. Captures in `.tooling/sim/2026-11-22/run3/`.
 
 ---
 

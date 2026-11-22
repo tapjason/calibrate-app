@@ -1,7 +1,7 @@
 # Handoff
 
 **Now, 2026-11-22: branch `harness/expo-simulators`, off `master` (`64576ae`), not merged or
-pushed.** Harness and docs only; no app code changed.
+pushed. Wrapping up for the 1.0.0 submission: build 14, tag `submitted-1.0.0`.** Harness and docs only; no app code changed.
 - **Expo Simulators is set up** (the owner, 2026-11-21: "adjust the harness to reflect the new
   change"). Expo's cloud iOS Simulator, driven by agents through the Expo MCP server.
   - *Account:* the owner's Expo account has it (`eas simulator:availability` true). eas-cli
@@ -31,18 +31,33 @@ pushed.** Harness and docs only; no app code changed.
     "$2.91 / month", D8's offline launch, VoiceOver. He: "if not, they are minor enough to
     document and pass on for the time being".
   - *Sessions:* he deleted run 1's on expo.dev. **Run 2's, `01a201f7`, is still to delete.**
-- **For 1.0.1, found on the simulator:**
-  - At the largest accessibility text size, the tabs' large titles are clipped and long words
-    break mid-word ("Calibratin / g", "predicti / on", "80%" as a column), Today's streak row
-    is cramped, and Log's Save footer takes about a quarter of the screen.
-  - A large gap on the Sign in sheet.
-  - Details in D9.
+  - *Run 3 (8 min, session `01a2043c`, still to delete):* the main flow end to end on the
+    simulator build, whose app code is production build 14's. Works: Warm-up (slider tap, drag,
+    ±5), the first log with the keyboard up, "+ New category", Edit, "Answer it now" with the
+    early and same-day notes, Resolve, Change answer, the draft kept after a relaunch, History,
+    Insights' fold, You's switches and time wheel, Share's card and the native share sheet, and
+    dark mode on the four tabs and Log. Safe areas clear everywhere. Captures in
+    `.tooling/sim/2026-11-22/run3/`.
+- **Text-size findings, deferred** (the owner, 2026-11-22: "Text sizes fixed should be
+  documented and ignored for now, since they are a very extreme accessbility edge case"). Not
+  scheduled for 1.0.1 or any build; recorded in `HUMAN_VERIFICATION.md` D9.
+  - At AX5 (the largest), the tabs' large titles clip and long words break mid-word
+    ("Calibratin / g", "predicti / on", "80%" as a column), Today's streak row is cramped and
+    Log's Save footer takes about a quarter of the screen.
+  - From AX2 (run 3): "Today" and "History" lose their descenders under the bar's hairline,
+    History's cards split "30%" into "30" over "%", the category chips are cut at the right
+    edge, and Log's Save footer wraps to two lines.
+- **Small, for a later build (not text size):** a large gap on the Sign in sheet; on Warm-up
+  question 1 the slider sits partly under the footer until scrolled (the usage-count intro
+  pushes it down); "Answer it now"'s early note sits about 10 pt above its button.
 - **Build 9 has no phone checks left owed.**
-- **Production build 1.0.0 (12)** (`d0acd9fd`) is the newest. The owner made it from this
-  branch's `56580bf`, finished 2026-11-22. Its app code is build 9's: everything after
-  `b944a6c` is docs and harness, so D9's results carry over to it. Builds 10 (`64576ae`, same
-  code) and 9 are superseded as the one to submit. When he says build 12 is submitted, tag
-  `submitted-1.0.0` on `56580bf`, not `b944a6c`.
+- **Production build 1.0.0 (14)** (`47b5c09f`) is the newest and **the one to submit** (the
+  owner, 2026-11-22: "Tag the very recent build for submission, and I will submit to app
+  store"). Made from `d7341d8`, a docs-only commit; its app code is build 9's (everything after
+  `b944a6c` is docs and harness), so D9's results and run 3 carry over. Builds 13 (same commit),
+  12 (`56580bf`), 10 and 9 are superseded. **Tagged `submitted-1.0.0` on `d7341d8`** (local,
+  annotated; pushing it is the owner's). His to do: `npx eas submit --profile production
+  --platform ios`, choosing build 14, then select build 14 on the version page.
 
 **Branch before this:** `master`. `builder/practice-sheet-header` (step 210, from the owner's device report on build 8; see "Build 8's device report" in the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21. **Production build 1.0.0 (9), from `b944a6c`, is the one to submit; build 8 is superseded.** Before it: `builder/offline-launch-headings` (step 209, two fixes from the release gate; see the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21, on the owner's words: "Merge the branc hadn push please, and I will submit this build". Production build 1.0.0 (8) was made from that commit, `7f61f60` (the gate's block below). Before it: `builder/owner-list-19-30` is merged into it (fast-forward) and
 pushed, 2026-11-20, on the owner's words that day: "Review steps 202 through 206. If
