@@ -47,3 +47,6 @@ screenshots/
 # Firebase / Google service configs (carry project keys): never commit
 GoogleService-Info.plist
 google-services.json
+
+# Expo Simulators controller credentials (eas-cli writes it; .env.* above covers it too)
+.env.eas-simulator

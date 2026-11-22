@@ -4,11 +4,12 @@ description: Write the owner's iPhone checklist for what changed since the last 
 argument-hint: "[optional: 'record' plus the owner's results, or a range like master..HEAD]"
 ---
 
-The iPhone is the only place this app really runs (`docs/app-profile.md` §18): an iPhone 17 on iOS 26, with a development build (the PC serving JS over `--tunnel`) and TestFlight builds (production builds from App Store Connect, no dev server). Agents can't see it; the owner can. This skill turns a change into checks the owner can do in a few minutes, and turns their answers into the record.
+The iPhone is the only place this app really runs (`docs/app-profile.md` §18): an iPhone 17 on iOS 26, with a development build (the PC serving JS over `--tunnel`) and TestFlight builds (production builds from App Store Connect, no dev server). Agents can't see it; the owner can. A `sim-playtester` run on Expo's cloud iOS Simulator sees native layout on a build of the same code, and nothing the phone alone shows. This skill turns a change into checks the owner can do in a few minutes, and turns their answers into the record.
 
 ## Writing the checklist
 
 1. Read `HANDOFF.md` (what is confirmed on the phone, what isn't, and which TestFlight build is installed) and `docs/app-profile.md` §18. Find the changes since the last confirmed device run (`git log` on the range given, or since the commit HANDOFF names). Say which build each check is for: the development build, or a TestFlight build by version and build number. A check can only pass on a build that contains the change, so name the commit a TestFlight build was made from.
+   **A simulator run of the same commit** (a `sim-playtester` report in HANDOFF or the playtest file): drop the checks it lists under "Confirmed on the simulator" (layout and presentation only: sheets and their headers, safe areas, switch rows, light and dark, large text where it set one) and say which run covered them. Keep every check its Not verified list names: haptics, Face ID and the passcode, notifications and their actions, Sign in with Apple, purchases, the age-range sheet, VoiceOver, Dynamic Type set in Settings, cold start, the share sheet, and the TestFlight build itself.
 2. **Reload or rebuild.**
    - Development build: a change to `package.json` native packages, an `app.json` plugin, an entitlement or an Info.plist key needs a new development build (`/build development`). Anything else needs only a reload: on the PC, `npx expo start --dev-client --tunnel` (add `--clear` if a fix doesn't show), then shake the phone → Reload, or press `r` in the terminal.
    - TestFlight: there is no dev server, so any change, JS included, needs a new production build (`/build production`, which runs `npx eas build --profile production --platform ios` once the owner confirms), then the owner's `npx eas submit --profile production --platform ios`, App Store Connect's processing, and an install from TestFlight.
@@ -22,7 +23,7 @@ The iPhone is the only place this app really runs (`docs/app-profile.md` §18): 
 
 ## Recording results (`record`)
 
-5. For each result: confirmed → move it to "Confirmed on the phone (<date>)" in `HANDOFF.md`, with the build it ran on, and tick the matching box in `docs/HUMAN_VERIFICATION.md` (Batch C, D) with the date; failed → a bug with the owner's screenshot described in words, the suspected cause, and the next step in `HANDOFF.md`. Never mark something confirmed that the owner didn't report.
+5. For each result: confirmed → move it to "Confirmed on the phone (<date>)" in `HANDOFF.md`, with the build it ran on, and tick the matching box in `docs/HUMAN_VERIFICATION.md` (Batch C, D) with the date; failed → a bug with the owner's screenshot described in words, the suspected cause, and the next step in `HANDOFF.md`. Never mark something confirmed that the owner didn't report; a simulator result is recorded as "seen on the simulator (<date>, build id)", never as confirmed on the phone.
 6. A device-only bug also gets a line in `docs/app-profile.md` §18 "Known iOS-vs-web traps" once its cause is understood, and in `docs/tooling-notes.md` if it cost time to diagnose.
 
-Never claim a native behaviour works from a web run, a test or a reading of the code.
+Never claim a native behaviour works from a web run, a test or a reading of the code, or from a simulator run beyond the layout it saw.

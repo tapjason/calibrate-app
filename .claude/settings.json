@@ -49,7 +49,31 @@
       "mcp__playwright__browser_evaluate",
       "mcp__playwright__browser_wait_for",
       "mcp__playwright__browser_handle_dialog",
-      "mcp__playwright__browser_tabs"
+      "mcp__playwright__browser_tabs",
+      "mcp__plugin_expo_expo__simulator_start",
+      "mcp__plugin_expo_expo__simulator_get",
+      "mcp__plugin_expo_expo__simulator_list",
+      "mcp__plugin_expo_expo__simulator_stop",
+      "mcp__plugin_expo_expo__automation_tap",
+      "mcp__plugin_expo_expo__automation_type",
+      "mcp__plugin_expo_expo__automation_scroll",
+      "mcp__plugin_expo_expo__automation_take_screenshot",
+      "mcp__plugin_expo_expo__automation_find_view",
+      "mcp__plugin_expo_expo__search_documentation",
+      "mcp__plugin_expo_expo__read_documentation",
+      "mcp__plugin_expo_expo__build_list",
+      "mcp__plugin_expo_expo__build_info",
+      "mcp__plugin_expo_expo__build_logs",
+      "Bash(eas simulator:availability *)",
+      "Bash(eas simulator:get *)",
+      "Bash(eas simulator:list *)",
+      "Bash(eas simulator:events *)",
+      "Bash(eas simulator:logs *)",
+      "Bash(eas simulator:stop *)",
+      "Bash(eas simulator:start *)",
+      "Bash(eas simulator:control appearance.set *)",
+      "Bash(eas simulator:control screenshot.capture *)",
+      "Bash(eas simulator:exec npx agent-device@latest *)"
     ],
     "deny": [
       "Bash(eas submit *)",
@@ -58,7 +82,16 @@
       "Bash(git push --force *)",
       "Bash(git push -f *)",
       "Bash(npx supabase db reset *)",
-      "Bash(npm publish *)"
+      "Bash(npm publish *)",
+      "mcp__plugin_expo_expo__build_submit",
+      "mcp__plugin_expo_expo__appstore_reply_review",
+      "mcp__plugin_expo_expo__appstore_delete_review_response",
+      "mcp__plugin_expo_expo__playstore_reply_review",
+      "mcp__plugin_expo_expo__usage_budget_create",
+      "Bash(eas simulator:start *--public-link*)",
+      "Bash(eas simulator:start *--egress*)",
+      "Bash(eas simulator:start *--frame-ancestor*)",
+      "Bash(eas simulator:start *--cors-origin*)"
     ],
     "ask": [
       "Bash(eas build *)",
@@ -87,5 +120,8 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "expo@claude-plugins-official": true
   }
 }

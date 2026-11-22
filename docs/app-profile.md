@@ -24,7 +24,8 @@ Status: filled in 2026-11-08
   The web build exists for automated screenshots and playtests, never as a product (§9).
 - **Stack:** Expo SDK 55 (`expo` ~55.0.32), React Native 0.83.10 on the New Architecture (Fabric),
   expo-router, expo-sqlite, Zustand, Supabase, RevenueCat, local notifications, react-native-svg,
-  react-native-view-shot. EAS cloud builds from Windows; there is no Mac.
+  react-native-view-shot. EAS cloud builds from Windows; there is no Mac. Agents get a cloud iOS
+  Simulator through Expo Simulators (2026-11-21, §18).
 - **Identity values:** bundle id `app.fairlysure`, scheme `fairlysure`, slug `calibrate`, EAS owner
   `tapjason`, `extra.eas.projectId` `02491cb4-6c7c-464e-8193-81c813ed87cd`, App Store Connect app id
   `6831917395` (`APP_STORE_ID`, `eas.json` `submit.production.ios.ascAppId`).
@@ -310,6 +311,12 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   `page.context().setOffline(true)`. Voice Control's stand-in is the accessibility snapshot: every
   control's name must contain its visible words, so "tap Save" works.
 - **What web can't show (always under Not verified):** everything in §18.
+- **The cloud simulator has no test bridge.** The `preview` build `sim-playtester` installs is
+  release-style: `__DEV__` is false, so `/dev/seed` redirects home (`app/dev/seed.tsx`), You has no
+  `you-dev-seed` row and `loadPlaytestProfile` throws (`src/dev/loadProfile.ts`). A simulator run
+  starts from a fresh install and reaches only what it can log by hand: the Warm-up, open
+  predictions, a same-day (unscored) answer, the calibrating states. The demo data and every
+  profile with answered history stay web-only until a way in is decided (§18, Expo Simulators).
 
 ## §10 Personas
 
@@ -532,6 +539,7 @@ demo data stand in. Numbers an agent reasons to without them are labelled **esti
 | iOS JS bundle | Baseline at the first `bash scripts/check.sh --release` (`.tooling/export`); flag a rise over 10% between releases |
 | Cold start | Not measured yet; the first TestFlight build is on the phone, and the owner's measurement on it sets the baseline (device only) |
 | Network | Complete offline; sync, billing, Coach and analytics degrade silently |
+| Simulator minutes | Each `sim-playtester` session capped at 30 min (`maxDurationMinutes`, more only when the brief says) with a 5-minute idle stop, one session at a time; the report gives the minutes used. The Starter plan includes 60 min a month until 2027, then $0.10 a minute billed per second; sessions cap at 115 min |
 
 ## §14 Live ops
 
@@ -585,7 +593,12 @@ Saved exports go under `docs/live/` for `/live-review`.
   Team ID stay out of the repo).
 - EAS: `eas login`, `eas credentials`, `eas env:create` (values from `.env.local`, which agents never
   read), `eas build` (an agent may run it only after the owner confirms the exact command),
-  `eas submit` (never an agent).
+  `eas submit` (never an agent). Any `eas build` counts, the `preview` simulator build included.
+- Expo: the plan and billing (Starter, $19 a month plus usage), usage budgets
+  (`usage_budget_create`), project roles (who can start, view and delete simulator sessions; a
+  View Only member can read a running session's controller tokens), the Expo MCP server's OAuth
+  sign-in (`/mcp`), and deleting finished simulator sessions on expo.dev (no CLI or MCP command
+  deletes one; deleting removes its screenshots and recordings).
 - Supabase: dashboard settings, Auth providers, applying migrations to the live project, Edge
   Function deploys and secrets, restoring a paused project.
 - RevenueCat: the dashboard, products, offerings, keys.
@@ -610,8 +623,18 @@ compliance declared (`ITSAppUsesNonExemptEncryption: false`).
 
 ## §18 The iPhone
 
-The owner's phone is an **iPhone 17 on iOS 26**. There is no simulator and no Mac, so every native
-behaviour is checked by the owner on that phone, and an agent says so in every report.
+The owner's phone is an **iPhone 17 on iOS 26**. There is no Mac and no local simulator. Three
+tiers confirm a change, each only what it can show:
+
+1. **The web build and tests** (§9): logic, flow, copy, web layout.
+2. **Expo Simulators** (since 2026-11-21): Expo's cloud iOS Simulator, an iPhone 17 on a macOS
+   Tahoe 26.5 image with Xcode 26.6 (iOS 26.x, not selectable), driven by `sim-playtester` through
+   the Expo MCP server on a `preview` build of the commit. It shows native layout and presentation:
+   `formSheet` and page sheets with their headers, safe areas and the Dynamic Island, the iOS
+   switch, SF Symbols and `ui-rounded` numerals, Liquid Glass as drawn, the pickers' look, light
+   and dark, large text where the session can set it. Evidence label **simulator**.
+3. **The iPhone:** everything else, below. An agent says what only the phone can show in every
+   report.
 
 - **Running it:** a development build from EAS (`eas build --profile development --platform ios`,
   installed from the EAS link), then `npx expo start --dev-client --tunnel` on the PC (port 8081)
@@ -619,12 +642,27 @@ behaviour is checked by the owner on that phone, and an agent says so in every r
   Reload, or `r` in the terminal); a stale screen after a fix usually means the bundle didn't
   reload (`--clear` rebuilds the cache). A native change (a new native package, an `app.json`
   plugin, an entitlement) needs a new build.
+- **Expo Simulators:** `npx eas build --profile preview --platform ios` (unsigned, release-style,
+  the JS of the commit it was built from, no Metro; the owner confirms it like any build, about $2
+  on a medium worker after the plan's build credit), then `sim-playtester` with the build id. It
+  runs a fresh install only (no dev routes in a release build, §9), demo data only (sessions keep
+  screenshots on expo.dev until deleted, visible to anyone with view access to the project), one
+  capped session at a time (§13), stopped every time. Not expected to work there: Face ID and the
+  passcode (the app lock), real notification delivery and the reminder's actions, Sign in with
+  Apple, StoreKit purchases, the Declared Age Range sheet, haptics; VoiceOver can't be driven, and
+  speed and cold start aren't the phone's. A dev-client simulator build could load live JS from
+  Metro over a public tunnel on a port other than 8081 (`docs/tooling-notes.md`); there is no
+  profile for it, so it isn't the default. Open: whether the EAS `preview` environment holds the
+  public variables (`eas env:list --environment preview`, the owner), and a way to get demo data
+  into a release-style build (options in `docs/tooling-notes.md`, none built).
 - **TestFlight builds:** `npx eas build --profile production --platform ios`, then
   `npx eas submit --profile production --platform ios` (both the owner's), installed from the
   TestFlight app. They carry the bundle as built and use no dev server, so any change, JS
   included, reaches the phone only in the next build. Build 2 (1.0.0, steps through 186) has been
   on the phone since 2026-11-16.
-- **Native only, never verified on web:** haptics; SF Symbols (web falls back to Ionicons);
+- **Native only, never verified on web** (the simulator can show the look of the sheets, the
+  switch, SF Symbols, the numerals, Liquid Glass and the pickers; the rest is the phone's):
+  haptics; SF Symbols (web falls back to Ionicons);
   `ui-rounded` numerals; Liquid Glass; native sheets (`formSheet`, page sheets) and their gestures;
   the iOS switch (63 × 28 pt on iOS 26, drawn exactly in its measured frame); the date and time
   pickers; local notifications, their permission dialog and the Happened / Didn't actions; Sign in

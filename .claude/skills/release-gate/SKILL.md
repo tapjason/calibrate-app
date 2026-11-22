@@ -15,7 +15,8 @@ Decide whether the current commit is ready to build for the App Store (or for ex
    - `record-auditor` over the whole app: every R id, the fixtures, reconciliation across every surface.
    - `web-playtester`: the full profile §2 flow from a fresh install and from the demo data, at 320 × 568 and 402 × 874, both appearances.
    - `release-auditor`: the §13 budgets and the §17 store checklist.
-4. **The iPhone.** Read `docs/HUMAN_VERIFICATION.md` Batch C and D and `HANDOFF.md`: every native check not yet confirmed on the owner's iPhone for this build is NO-GO for the App Store (a TestFlight build to the owner alone may go ahead; say so).
+   - `sim-playtester`, recommended: the profile §18 traps and the sheets on Expo's cloud iOS Simulator, from a preview build of this commit (the owner confirms that extra build like any other, `/build preview`). After the web-playtester, never beside it. A gate without it says so; it isn't NO-GO by itself.
+4. **The iPhone.** Read `docs/HUMAN_VERIFICATION.md` Batch C and D and `HANDOFF.md`: every native check not yet confirmed on the owner's iPhone for this build is NO-GO for the App Store (a TestFlight build to the owner alone may go ahead; say so). A simulator pass shortens that list for layout and presentation only; it never stands in for the phone on native behaviour.
 5. Collect every unticked owner item in `docs/HUMAN_VERIFICATION.md` and every agent's "Needs you" list, without duplicates, and put them in order: version and build number → `/build production` → TestFlight internal (the owner installs and runs Batch C/D on it) → the App Store Connect listing (name, subtitle, description, keywords, screenshots, privacy labels, age rating, URLs, subscriptions and their metadata, review notes, export compliance) → submit → `git tag submitted-<version>` once submitted (the owner says when; you tag).
 
 Reply in this format:
@@ -33,4 +34,4 @@ Watch after release
 - what to check in the first hour and first day (App Store Connect crashes and reviews, RevenueCat, Supabase errors, the keep-alive workflow)
 ```
 
-Any blocker, any FAIL, any broken R id, a release-auditor flag marked blocking, a playtest that couldn't run, or a native check never run on the iPhone means NO-GO. Merge every "Not verified" list and say plainly what was not verified. Record the result in `HANDOFF.md` and `docs/design/BUILT_LOG.md`.
+Any blocker, any FAIL, any broken R id, a release-auditor flag marked blocking, a playtest that couldn't run, or a native check never run on the iPhone means NO-GO. Merge every "Not verified" list and say plainly what was not verified. Record the result in `HANDOFF.md` and `docs/design/BUILT_LOG.md`, with any simulator session still to delete on expo.dev.

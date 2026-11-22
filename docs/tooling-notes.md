@@ -1,15 +1,17 @@
 # Tooling notes: what every agent must know on this machine
 
 Read before driving the web build through the Playwright MCP (`web-playtester`, the main session
-preparing `blind-playtester` runs) and before any build step. Add a line whenever a quirk costs real
+preparing `blind-playtester` runs), before an Expo Simulators session (`sim-playtester`) and before
+any build step. Add a line whenever a quirk costs real
 time. Started 2026-11-08 from what this repo learned, plus the two lessons from `duolingo-bible`
 that apply here.
 
 ## The machine
 
 - Windows 11, Git Bash for scripts (the Bash tool), PowerShell 5.1 also available; Node 24, npm 11,
-  Python 3.12. No Xcode, no Mac, no simulator, no Android device. The owner has an iPhone 17 on
-  iOS 26 (`docs/app-profile.md` §18).
+  Python 3.12. No Xcode, no Mac, no local simulator, no Android device; agents get a cloud iOS
+  Simulator through Expo Simulators (below). The owner has an iPhone 17 on iOS 26
+  (`docs/app-profile.md` §18).
 - Scripts are bash: run them with the Bash tool, not PowerShell. The Bash tool's command line is
   capped at about 8 KB; write bigger files with the Write tool.
 - For several exact edits to one file, a short Python script (`io.open(..., encoding='utf-8')`,
@@ -56,11 +58,133 @@ that apply here.
 - EAS never sees `.env.local` (git-ignored). The build's three public values are EAS environment
   variables per profile (`eas.json` `environment`); names in `docs/HUMAN_VERIFICATION.md` "Build day
   runbook". Agents never read or print `.env.local` or the values.
-- The `preview` profile builds for the simulator only (`ios.simulator: true`): useless without a
-  Mac. Use `development` for the phone and `production` for TestFlight.
+- The `preview` profile builds for the simulator only (`ios.simulator: true`): since 2026-11-21 it
+  is the build `sim-playtester` installs on Expo Simulators (below). Use `development` for the
+  phone and `production` for TestFlight.
 - The Supabase free tier pauses after about a week idle and then every live test fails silently;
   the keep-alive workflow (`.github/workflows/supabase-keepalive.yml`) prevents it but can't wake
   a paused project (the owner restores it from the dashboard).
+
+## Expo Simulators (cloud iOS Simulator, 2026-11-21)
+
+- **What it is.** Expo's cloud iOS Simulator, driven by agents through the Expo MCP server
+  (`sim-playtester`). On the owner's account since 2026-11-21 (`eas simulator:availability --json`
+  read `"available": true`). Starter plan, $19 a month plus usage: $0.10 a simulator minute, billed
+  per second, 60 minutes a month included until 2027; a session caps at 115 minutes; an iOS
+  simulator build costs about $2 on a medium worker after the plan's build credit. The image is
+  macOS Tahoe 26.5 with Xcode 26.6; the default device is an iPhone 17; the iOS version can't be
+  chosen. "9:41" in the status bar is the simulator's default, not a stale build.
+- **eas-cli 27.11 or later** (global, upgraded 2026-11-21; the version before had no
+  `simulator:*`). The commands are experimental and hidden: `eas simulator:<cmd> --help` and the
+  plugin skill `expo:eas-simulator` have the current syntax. 27.11.0 has `availability`, `start`
+  (also `eas simulator`, `eas sim`), `control`, `exec`, `events`, `logs`, `get`, `list`, `stop` and
+  `egress`, and no delete: a finished session is deleted from its page on expo.dev, which also
+  deletes its screenshots and recordings. Agents call the global `eas simulator:…`, the form the
+  permission entries name; the plugin skill's `npx --yes eas-cli@latest` downloads the newest CLI
+  on every call. Its command blocks assume a POSIX shell: run them with the Bash tool.
+- **The plugin.** `expo@claude-plugins-official`, enabled at project scope (`enabledPlugins` in
+  `.claude/settings.json`), registers the MCP server `plugin:expo:expo`
+  (https://mcp.expo.dev/mcp, HTTP, OAuth). It wasn't in `/mcp` until Claude Code was restarted;
+  then the owner authenticated it in the browser from `/mcp`. Its tools are
+  `mcp__plugin_expo_expo__<tool>`; it also brings skills, among them `expo:eas-simulator` and
+  `expo:expo-upgrade`.
+- **Two ways to drive a session, one per session.** The MCP way: `simulator_start` with `buildId`
+  (installs and launches the build before the session is ready; the idle stop defaults to 10
+  minutes), `simulator_get` until `IN_PROGRESS`, then `automation_tap`, `_type`, `_scroll`,
+  `_take_screenshot` and `_find_view` by testID or accessibility label. It gives no accessibility
+  tree and no appearance control. The CLI way: `eas simulator:start --platform ios --type
+  agent-device …` writes `.env.eas-simulator`, then `eas simulator:exec npx agent-device@latest
+  snapshot -i` (the tree), `press`, `fill`, `screenshot`. The CLI sets **no idle stop and a
+  115-minute cap unless told**: always pass `--max-duration-minutes` and
+  `--max-idle-time-minutes`. `simulator_get` never returns device credentials, so agent-device
+  can't drive an MCP-started session (inferred, not tried); whether the MCP automation tools drive a
+  CLI-started one isn't documented. `npx agent-device@latest` downloads and runs a package on this
+  PC at each call, so the sim-playtester takes that way only when the owner allows it in the brief.
+- **Direct controls** on any iOS session: `eas simulator:control --json --id <id>` lists the
+  session's actions (they depend on its serve-sim version); `appearance.set dark` or `light`,
+  `screenshot.capture --output <path>`, `app.launch <bundle id> 'launchArgs=[…]'`, `gesture '[…]'`
+  (a swipe), `button home`, `app.file.upload`. Whether a text-size action exists isn't documented:
+  read the catalog. Not yet tried on an MCP-started session.
+- **Secrets and data.** `.env.eas-simulator` holds controller tokens: git-ignored (its own line
+  since 2026-11-21; `.env.*` already covered it), never printed or committed. The `remoteConfig` in
+  `--json` output holds the same tokens: never print it, read single fields with `node -e`.
+  Screenshots and recordings stay until the session is deleted, visible to anyone with view access
+  to the project; an artifact's `downloadUrl` needs no login (each request redirects to a signed
+  URL valid for an hour). Job logs stay 30 days. A View Only member can read a running session's
+  tokens. Never `--public-link`, `--frame-ancestor`, `--cors-origin` or `--egress local`. Demo data
+  only.
+- **The build.** `npx eas build --profile preview --platform ios` (the owner confirms it like any
+  build): an unsigned, release-style `.app` for the simulator, holding the JS of the commit it was
+  built from, with no Metro, so a new commit needs a new build. `__DEV__` is false in it: no dev
+  routes (profile §9). Open: whether the EAS `preview` environment holds the three public
+  variables (`eas env:list --environment preview`, the owner). Empty, sign-in, sync, usage counts
+  and the Plus plans fail silently, by design; with the live values, a guest run's usage counts
+  would reach the live project unless the Warm-up's switch is turned off, which the
+  sim-playtester does first.
+- **Demo data in a release-style build: no way in today.** Options, none built, the owner's call:
+  (a) a dev-client simulator profile (`developmentClient: true` with `ios.simulator: true`) loading
+  JS from Metro over a tunnel, which has `/dev/seed`, but runs development JS and exposes a public
+  Metro URL while it runs; (b) `eas simulator:control app.file.upload` of a prepared
+  `Documents/SQLite/calibrate.db` (10 MiB at most, the app stopped first), untried, and the settings
+  in AsyncStorage wouldn't come with it; (c) a seed in the release binary behind a launch argument:
+  app code and a seed path in what ships, so a design decision first.
+- **Live JS** (possible, not the default): a dev-client simulator build loads JS from Metro over a
+  public tunnel. Git Bash: `EXPO_UNSTABLE_TUNNEL_V2=1 npx expo start --dev-client --tunnel --port
+  8098`; PowerShell: `$env:EXPO_UNSTABLE_TUNNEL_V2 = "1"; npx expo start --dev-client --tunnel
+  --port 8098`. Never 8081 (the iPhone's dev server) or 8097 (the web build); another port with
+  the tunnel is untried here. `simulator_start`'s `openUrl` then takes
+  `exp+calibrate://expo-development-client/?url=<the https tunnel URL, URL-encoded>`. The tunnel
+  URL needs no login while it runs: stop Metro afterwards.
+- **Permission entries, in `.claude/settings.json`** (the owner approved them as drafted,
+  2026-11-21, the agent-device `exec` entry allowed without asking included). `build_run`,
+  `build_cancel`, `workflow_*`, `sandbox_*` and the other `simulator:control` actions stay on ask.
+
+  ```json
+  {
+    "allow": [
+      "mcp__plugin_expo_expo__simulator_start",
+      "mcp__plugin_expo_expo__simulator_get",
+      "mcp__plugin_expo_expo__simulator_list",
+      "mcp__plugin_expo_expo__simulator_stop",
+      "mcp__plugin_expo_expo__automation_tap",
+      "mcp__plugin_expo_expo__automation_type",
+      "mcp__plugin_expo_expo__automation_scroll",
+      "mcp__plugin_expo_expo__automation_take_screenshot",
+      "mcp__plugin_expo_expo__automation_find_view",
+      "mcp__plugin_expo_expo__search_documentation",
+      "mcp__plugin_expo_expo__read_documentation",
+      "mcp__plugin_expo_expo__build_list",
+      "mcp__plugin_expo_expo__build_info",
+      "mcp__plugin_expo_expo__build_logs",
+      "Bash(eas simulator:availability *)",
+      "Bash(eas simulator:get *)",
+      "Bash(eas simulator:list *)",
+      "Bash(eas simulator:events *)",
+      "Bash(eas simulator:logs *)",
+      "Bash(eas simulator:stop *)",
+      "Bash(eas simulator:start *)",
+      "Bash(eas simulator:control appearance.set *)",
+      "Bash(eas simulator:control screenshot.capture *)",
+      "Bash(eas simulator:exec npx agent-device@latest *)"
+    ],
+    "deny": [
+      "mcp__plugin_expo_expo__build_submit",
+      "mcp__plugin_expo_expo__appstore_reply_review",
+      "mcp__plugin_expo_expo__appstore_delete_review_response",
+      "mcp__plugin_expo_expo__playstore_reply_review",
+      "mcp__plugin_expo_expo__usage_budget_create",
+      "Bash(eas simulator:start *--public-link*)",
+      "Bash(eas simulator:start *--egress*)",
+      "Bash(eas simulator:start *--frame-ancestor*)",
+      "Bash(eas simulator:start *--cors-origin*)"
+    ]
+  }
+  ```
+
+  The `exec` entry lets any agent-device verb run, through a package fetched from npm at each call;
+  pinning a version (and naming it in the entry) or leaving `exec` on ask is the owner's call. Other
+  `simulator:control` actions (`app.install`, `media.add`, `app.file.upload` send a file from this PC)
+  stay on ask; the agent puts the action before `--id`, so the two allowed prefixes can't carry one.
 
 ## The web build
 

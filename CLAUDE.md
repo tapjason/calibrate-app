@@ -1110,14 +1110,14 @@ record rules R1–R12, the test bridge, personas, budgets, human-only actions, t
 | `npx expo start --dev-client --tunnel` | Serves JS to the development build on the owner's iPhone (port 8081). |
 
 Skills: `/step <n | topic>` (build a roadmap step on its own `builder/` branch), `/design`,
-`/playtest`, `/device-check`, `/build <development | production>`, `/release-gate`,
+`/playtest`, `/device-check`, `/build <development | production | preview>`, `/release-gate`,
 `/live-review` (after launch), `/check`, `/new-content`, plus `frontend-design` for UI work.
 
 ### When to use subagents
 
 The reviewing agents read and report; the builder agents write code in their layer when
 delegated; the main session owns the branch, the commits and `HANDOFF.md`. Each reviewing agent
-ends with "Needs you" and "Not verified". Browser agents run one at a time.
+ends with "Needs you" and "Not verified". Browser and simulator agents run one at a time.
 
 **Who does what.** Fable, the main session, always does design and orchestration: deciding
 what to build, writing the briefs, choosing each brief's model, evaluating screenshots and
@@ -1150,6 +1150,7 @@ when the question touches the record, money, privacy or data loss.
 | Build | `policy-auditor` | Inside an owner-called review, when the changes touch sign-in, notifications, data leaving the phone, analytics, the Coach, permissions, the paywall, age assurance or store copy; `/design`'s policy questions; release mode at the gate |
 | Play | `web-playtester` | After a flow or UI change (`/playtest`): does it work in the web build |
 | Play | `blind-playtester` | One persona per run, browser only (`/playtest`): would this person keep it |
+| Play | `sim-playtester` | After a change with a native or layout effect, once a preview build of the commit exists (`/playtest`; recommended before `/build production` and at the gate): does it hold up on a cloud iOS Simulator |
 | Ship | `release-auditor` | Before every production build and at every `/release-gate` |
 | Ship | `live-ops-analyst` | After launch only (`/live-review`) |
 
@@ -1160,11 +1161,15 @@ knows. Code changes, however small, go to a builder subagent, never the main ses
 
 The app ships on iOS only, iPhone only. The owner's phone is an iPhone 17 on iOS 26
 running a development build and TestFlight builds (1.0.0 build 2 installed 2026-11-16;
-Apple Developer account active since 2026-11-07); there is no simulator and no Mac. Web
-and tests are stand-ins: haptics, SF Symbols, Liquid Glass, native sheets, the iOS switch,
-pickers, notifications, Sign in with Apple, the age-range sheet, the share sheet, purchases,
-Dynamic Type and VoiceOver are confirmed only on the phone (`docs/app-profile.md` §18, which also
-lists the iOS-vs-web layout traps found there). Say what no device has run, and use
+Apple Developer account active since 2026-11-07); there is no Mac and no local simulator.
+**Expo Simulators** (2026-11-21) gives agents a cloud iOS Simulator (iPhone 17, iOS 26.x)
+through the Expo MCP server: `sim-playtester` installs a preview build of the commit
+(`eas build --profile preview`, owner-confirmed, billed per minute; demo data only) and checks
+native layout: sheets, safe areas and the Dynamic Island, the iOS switch, SF Symbols, light and
+dark. Web and tests are stand-ins below it. Haptics, Face ID and the lock, notifications and
+their actions, Sign in with Apple, the age-range sheet, the share sheet, purchases, Dynamic
+Type set in Settings, VoiceOver and cold start are confirmed only on the phone
+(`docs/app-profile.md` §18, which also lists the iOS-vs-web layout traps found there). Say what no device has run, and use
 `/device-check` for the owner's checklist. A native change (a native package, an `app.json`
 plugin, an entitlement) needs a new development build; a JS change needs only a reload of
 the development build. TestFlight has no dev server: any change, JS included, needs a new
@@ -1175,8 +1180,9 @@ the development build. TestFlight has no dev server: any change, JS included, ne
 The list in `docs/app-profile.md` §16: App Store Connect, identifiers and capabilities, the `.p8`
 key (never handled), `eas login`, `eas credentials`, `eas env:create`, `eas build` (an agent runs
 it only after the owner confirms the exact command), `eas submit` (never an agent), Supabase and
-RevenueCat dashboards, applying live migrations and deploying Edge Functions, `git push`, GitHub
-Pages, running the app on the iPhone, pricing and other open decisions, anything that spends money
+RevenueCat dashboards, the Expo plan, billing, usage budgets and project roles, the Expo MCP
+sign-in, deleting simulator sessions on expo.dev, applying live migrations and deploying Edge
+Functions, `git push`, GitHub Pages, running the app on the iPhone, pricing and other open decisions, anything that spends money
 or deletes someone's data.
 
 ## Agent security

@@ -41,15 +41,19 @@ session.
 - **One browser at a time.** The web-playtester and the blind-playtester share the one Playwright
   session, the one web server and the one browser database; they run one after the other. Agents
   that don't touch the browser may run side by side.
-- **The iPhone is the truth.** Web and tests are stand-ins. Every report lists what only the
-  owner's iPhone can show (profile §18) under "Not verified", and `/device-check` turns it into the
-  owner's checklist.
+- **One simulator session at a time.** The sim-playtester's Expo Simulators session is billed per
+  minute: one per run, capped, never beside a browser agent or a second session, and stopped
+  before it reports, failures included. Demo data only, since its screenshots stay on expo.dev
+  until the session is deleted.
+- **The iPhone is the truth.** Web, tests and the cloud simulator are stand-ins. Every report lists
+  what only the owner's iPhone can show (profile §18) under "Not verified", and `/device-check`
+  turns it into the owner's checklist; a simulator run takes only the layout it saw off that list.
 - **Blind playtests stay blind.** The blind-playtester has only browser tools, the method every
   playtest round since October has used (`docs/design/research/playtest-*.md`). The main session
   writes its brief and checks its findings against the code afterwards.
-- **Models:** `sonnet` for fact-checking, driving the browser and measuring; `inherit` for judgment
-  (review, the record, policy, design, the blind runs, live ops), set at spawn by "Who does what"
-  above.
+- **Models:** `sonnet` for fact-checking, driving the browser or the simulator, and measuring;
+  `inherit` for judgment (review, the record, policy, design, the blind runs, live ops), set at
+  spawn by "Who does what" above.
 - **The profile, not the prompt.** Agents read app facts from `docs/app-profile.md` by section.
 - **Where things are recorded** (this repo's existing documents, not new ones):
   - decisions: `docs/design/UI_ROADMAP.md` §2 (D numbers), and `CLAUDE.md` where it is the spec;
@@ -71,12 +75,14 @@ session.
 | 2 Build | Inside a review the owner calls, a change to sign-in, notifications, data leaving the phone, analytics, the Coach, permissions, the paywall, age assurance or store copy | `policy-auditor` | Does it break an Apple or project rule? | PASS / FAIL / NEEDS HUMAN | The owner, `/design`, `/release-gate` |
 | 3 Play | After a flow or UI change; before a release | `web-playtester` | Does it work in the web build? | WORKS / BROKEN / BLOCKED | `/playtest` |
 | 3 Play | After a flow, copy, onboarding or share change; whenever a round of judgement is wanted | `blind-playtester` | Would this person keep it? | Verdict, score, ranked complaints | `/playtest` |
+| 3 Play | After a change with a native or layout effect, once a preview (simulator) build of the commit exists; recommended before a production build and at the gate | `sim-playtester` | Does it hold up on an iOS Simulator? | WORKS / BROKEN / BLOCKED, minutes used | `/playtest`, `/release-gate` |
 | 3 Play | After any change with a native or layout effect; when the owner sends device results | (the owner, on the iPhone) | Does it work on the phone? | Confirmed / failed, recorded | `/device-check` |
 | 4 Ship | Before every production build and at every release gate | `release-auditor` | Is it ready to submit? | READY / FLAGS / BLOCKED | `/release-gate`, `/build` |
 | 4 Ship | Weekly after launch, on data the owner pastes in | `live-ops-analyst` | What hurts the funnel now? | Issues ranked by the §14 signals | `/live-review` |
 
-`/release-gate` runs the reviewing agents in release mode, the web-playtester and the
-release-auditor, checks the iPhone record, then says GO or NO-GO.
+`/release-gate` runs the reviewing agents in release mode, the web-playtester, the sim-playtester
+(recommended, on a preview build of the commit) and the release-auditor, checks the iPhone record,
+then says GO or NO-GO.
 
 ## What each agent reads from the profile
 
@@ -88,6 +94,7 @@ release-auditor, checks the iPhone record, then says GO or NO-GO.
 | `record-auditor` | §5, §8 |
 | `policy-auditor` | §1, §3, §6, §7, §8, §14, §17 |
 | `web-playtester` | §2, §9, §18 |
+| `sim-playtester` | §1, §2, §9, §13, §16, §18 |
 | `blind-playtester` | none (blind: the brief carries everything) |
 | `release-auditor` | §1, §8, §13, §16, §17, §18 |
 | `live-ops-analyst` | §1, §5, §12, §14 |
@@ -117,6 +124,8 @@ Severity words:
 
 Evidence labels: every claim says where it came from.
 - **measured:** a browser run, a test, a number from `check.sh --release`.
+- **simulator:** an Expo Simulators run on a preview build of the named commit (layout and
+  presentation; never a device pass).
 - **device:** the owner's report from the iPhone.
 - **docs:** a source URL.
 - **estimate:** the agent's judgment, said as such.
@@ -145,6 +154,13 @@ Evidence labels: every claim says where it came from.
 - **web-playtester** (sonnet, green): the web server through the Playwright MCP: a fresh install
   and the demo data, the §2 flow, iPhone widths in both appearances and at large text, console
   errors from app code, the accessibility tree, DESIGN_SYSTEM §8.
+- **sim-playtester** (sonnet, green): an Expo Simulators session (iPhone 17) through the Expo MCP
+  server, on the preview build whose id the brief gives (it never builds): a fresh install, the
+  sheets that broke on the phone (Log, Practice, Categories, Share), safe areas and the Dynamic
+  Island, switch rows, the lock, light and dark and the largest text where it can be set; a
+  30-minute cap and a 5-minute idle stop by default; stops the session whatever happens, reports
+  the minutes and leaves the session's deletion on expo.dev to the owner. The agent-device path
+  (accessibility tree) only when the owner allows it.
 - **blind-playtester** (inherit, yellow): one persona, browser only, as judgemental as is fair;
   the main session synthesises the runs against the docs into a playtest file.
 - **release-auditor** (sonnet, blue): `check.sh --release`, doctor and drift, the iOS bundle and
@@ -173,13 +189,17 @@ invoked by the model; the rest have `disable-model-invocation: true` (the user s
   subagent (Opus or Sonnet, weighed per task), check, look, record in BUILT_LOG, the decision row, SHIP_READINESS "Open work" and
   HANDOFF (the step listed as unreviewed), commit once the check exits 0; then the owner's iPhone
   checks. No review unless the owner asks for one.
-- **`/playtest`:** the web server, `web-playtester`, then one `blind-playtester` run per persona,
-  synthesised and ranked into `docs/design/research/playtest-<date>.md`.
+- **`/playtest`:** the web server, `web-playtester`, an optional native pass by `sim-playtester`
+  when the change has a native or layout effect and a preview build of the commit exists, then one
+  `blind-playtester` run per persona, synthesised and ranked into
+  `docs/design/research/playtest-<date>.md`.
 - **`/device-check`:** the owner's iPhone checklist for what changed (reload or rebuild, steps,
-  what passes), then recording what they report.
-- **`/build <development | production>`:** pre-flight (clean tree, check, drift, EAS login and
-  environment names, native changes), then the exact `npx eas build` command, run only after the
-  owner confirms; never `eas submit`.
+  what passes), less the layout a simulator run of the same commit confirmed, then recording what
+  they report.
+- **`/build <development | production | preview>`:** pre-flight (clean tree, check, drift, EAS login
+  and environment names, native changes), then the exact `npx eas build` command, run only after
+  the owner confirms; never `eas submit`. `preview` is the unsigned simulator build the
+  sim-playtester installs, recommended before a production build.
 - **`/release-gate`:** release-mode check, the §8 NO-GO checks, the release agents, the iPhone
   record, the owner's steps; GO or NO-GO.
 - **`/live-review`:** `live-ops-analyst` on pasted data, routed into decisions and steps.
@@ -201,11 +221,18 @@ invoked by the model; the rest have `disable-model-invocation: true` (the user s
   own and adds to it; an "ask" or "deny" here still applies over a local "allow".
 - The Playwright MCP server is configured in the owner's Claude Code settings (`playwright`,
   `--isolated`), not in the repo.
+- The Expo plugin (`expo@claude-plugins-official`, enabled at project scope in `.claude/settings.json`)
+  registers the MCP server `plugin:expo:expo` (OAuth, signed in by the owner through `/mcp`) and
+  the skills `expo:eas-simulator` and `expo:expo-upgrade`. The permission entries for its tools and
+  `eas simulator:*` are proposed in `docs/tooling-notes.md` ("Expo Simulators"), pending the owner;
+  until he applies them, those calls ask.
 
 ## Not covered
 
 - **Teams:** CI on push, file ownership, several people's sessions. Branches and PRs exist, but
   pushing and merging are the owner's.
-- **Native test automation:** no simulator and no Mac; device checks are the owner's (profile
-  §18), and every report says so.
+- **Native test automation beyond the cloud simulator:** no Mac, no local simulator and no
+  scripted suite (Maestro, Appium); the sim-playtester drives a session step by step from its
+  brief, a release-style build has no demo data, and everything only the phone shows stays the
+  owner's (profile §18). Every report says so.
 - **Android:** not planned.

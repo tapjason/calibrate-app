@@ -45,6 +45,11 @@ done
 if head -n 10 .claude/agents/blind-playtester.md | grep "^tools: " | grep -qE '\b(Read|Grep|Glob|Bash|WebFetch|WebSearch)\b'; then
 	fail "blind-playtester can see more than the browser"
 fi
+# The simulator playtester drives a billed session and nothing else: no builds, workflows, sandboxes,
+# submissions, review replies or budgets.
+if head -n 10 .claude/agents/sim-playtester.md | grep "^tools: " | grep -qE 'mcp__plugin_expo_expo__(build_|workflow_|sandbox_|usage_budget_create|appstore_reply|appstore_delete|playstore_reply)'; then
+	fail "sim-playtester has a tool that builds, submits, replies or spends"
+fi
 
 echo "== Skills"
 for skill in .claude/skills/*/SKILL.md; do
@@ -58,6 +63,8 @@ for s in check design step playtest release-gate build device-check live-review 
 done
 
 echo "== Hook and settings"
+# Expo Simulators writes controller tokens to .env.eas-simulator (docs/tooling-notes.md).
+git check-ignore -q .env.eas-simulator || fail ".env.eas-simulator isn't git-ignored"
 [ -f .claude/hooks/check-ts-edit.sh ] || fail ".claude/hooks/check-ts-edit.sh is missing"
 grep -q "check-ts-edit.sh" .claude/settings.json || fail ".claude/settings.json doesn't register the edit hook"
 node -e 'JSON.parse(require("fs").readFileSync(".claude/settings.json", "utf8"))' 2>/dev/null || fail ".claude/settings.json isn't valid JSON"
