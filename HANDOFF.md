@@ -1,6 +1,6 @@
 # Handoff
 
-**Branch:** `builder/practice-sheet-header` (step 210, from the owner's device report on build 8; see "Build 8's device report" in the gate's block below), cut from `master`. **Build 1.0.0 (8) is no longer the one to submit; build 9 is needed.** Before it, `master`: `builder/offline-launch-headings` (step 209, two fixes from the release gate; see the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21, on the owner's words: "Merge the branc hadn push please, and I will submit this build". Production build 1.0.0 (8) was made from that commit, `7f61f60` (the gate's block below). Before it: `builder/owner-list-19-30` is merged into it (fast-forward) and
+**Branch:** `master`. `builder/practice-sheet-header` (step 210, from the owner's device report on build 8; see "Build 8's device report" in the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21. **Production build 1.0.0 (9), from `b944a6c`, is the one to submit; build 8 is superseded.** Before it: `builder/offline-launch-headings` (step 209, two fixes from the release gate; see the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21, on the owner's words: "Merge the branc hadn push please, and I will submit this build". Production build 1.0.0 (8) was made from that commit, `7f61f60` (the gate's block below). Before it: `builder/owner-list-19-30` is merged into it (fast-forward) and
 pushed, 2026-11-20, on the owner's words that day: "Review steps 202 through 206. If
 everything passes then merge and push". The review ran its three rounds (step 207 below).
 The push also published the privacy page without its on-device-scan paragraph. The branch
@@ -91,10 +91,15 @@ the four reviews).
   app shows a trial only when Apple says the account can still take it, and his has most
   likely used it (he saw the trial on 2026-11-17); not confirmed, and he was asked to
   check the introductory offer is still on the annual product in App Store Connect.
-  **Next:** his word to merge and push, and his confirmation of
-  `npx eas build --profile production --platform ios` (build 9); then his `eas submit`
-  and `HUMAN_VERIFICATION.md` D9: every sheet's title and ×, the lock's Unlock tap, the
-  offline launch, and VoiceOver through a log and an answer unless he waives it.
+  **Merged, pushed and built the same day** (the owner: "Yes to merge, pushing, and
+  running."): `master` is `b944a6c`, and **production build 1.0.0 (9) from it finished on
+  EAS and is the one to submit**
+  (https://expo.dev/accounts/tapjason/projects/calibrate/builds/a05deed6-8e29-4c0b-b909-44015c939c2a).
+  **Next, his:** `npx eas submit --profile production --platform ios`, install from
+  TestFlight, and `HUMAN_VERIFICATION.md` D9: every sheet's title and ×, the lock's Unlock
+  tap, the offline launch, and VoiceOver through a log and an answer unless he waives it;
+  then select build 9 on the version page. When he says it's submitted, tag
+  `submitted-1.0.0` on `b944a6c`.
 - **Still for the first update (1.0.1):** "cancel any time" on plans with no trial, the
   three nits, and the notes from step 209's review (BUILT_LOG row 209).
 - The screenshots: `screenshots/store/final-1206/` (git-ignored), six at 1206 × 2622;
