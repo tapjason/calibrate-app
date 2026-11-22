@@ -637,6 +637,10 @@ behaviour is checked by the owner on that phone, and an agent says so in every r
 - **Known iOS-vs-web traps** (from the first device run, 2026-11-07 and 08):
   - react-native-screens on the New Architecture can resize a `formSheet`'s scroll view over its
     header; Log is a page sheet with its header inside the scroll view (`app/_layout.tsx`).
+    The practice sheet hit it too (2026-11-21, build 8: the progress bar on its title, the ×
+    untappable) and now follows Share's shape, its title and × inside the scroll view
+    (`PracticeScreen.test.tsx` pins it); Categories had the same shape, unreported, and was
+    moved to it the same day (`CategoriesScreen.test.tsx`).
   - Yoga squashes an in-flow child inside a 0-height wrapper down to its padding where CSS
     wouldn't; a measured canvas lays out out of flow (`ScaledCanvas`, `position: 'absolute'`).
   - Centring a switch on a label plus a two-line description lines it up with neither; switch rows

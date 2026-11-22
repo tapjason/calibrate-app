@@ -1,6 +1,6 @@
 # Handoff
 
-**Branch:** `master`. `builder/offline-launch-headings` (step 209, two fixes from the release gate; see the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21, on the owner's words: "Merge the branc hadn push please, and I will submit this build". **Production build 1.0.0 (8) is made from that commit, `7f61f60`, and is the one to submit** (the gate's block below). Before it: `builder/owner-list-19-30` is merged into it (fast-forward) and
+**Branch:** `builder/practice-sheet-header` (step 210, from the owner's device report on build 8; see "Build 8's device report" in the gate's block below), cut from `master`. **Build 1.0.0 (8) is no longer the one to submit; build 9 is needed.** Before it, `master`: `builder/offline-launch-headings` (step 209, two fixes from the release gate; see the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21, on the owner's words: "Merge the branc hadn push please, and I will submit this build". Production build 1.0.0 (8) was made from that commit, `7f61f60` (the gate's block below). Before it: `builder/owner-list-19-30` is merged into it (fast-forward) and
 pushed, 2026-11-20, on the owner's words that day: "Review steps 202 through 206. If
 everything passes then merge and push". The review ran its three rounds (step 207 below).
 The push also published the privacy page without its on-device-scan paragraph. The branch
@@ -64,7 +64,7 @@ the four reviews).
   (`eas build`, on his confirmation of the command), then `HUMAN_VERIFICATION.md` D8 and
   the gate's device list on it. The record and policy audits weren't re-run: the diff
   touches no score, no copy and no data leaving the phone (the reviewer's read).
-- **Build 1.0.0 (8), 2026-11-21, is the one to submit.** Merged and pushed on his word
+- **Build 1.0.0 (8), 2026-11-21** (superseded the same day by step 210, below). Merged and pushed on his word
   (above); asked which build he meant, he chose "I run build 8 now". Production, commit
   `7f61f60`, finished on EAS
   (https://expo.dev/accounts/tapjason/projects/calibrate/builds/346f2208-e0a9-4980-ab78-52c60c0393e3);
@@ -74,6 +74,27 @@ the four reviews).
   largest text, VoiceOver through a log and an answer, Share → Save Image, the paywall's
   prices), then select build 8 on the version page. When he says it's submitted, tag
   `submitted-1.0.0` on `7f61f60`.
+- **Build 8's device report, and step 210 (2026-11-21).** The owner on build 8 from
+  TestFlight: "Save image works. Paywall works. Reminder and text size also work", with
+  screenshots. Three things came of it, all built on `builder/practice-sheet-header`
+  (253 suites, 5,302 tests; `check.sh --release` passed; unreviewed; nothing on the iPhone):
+  - *The practice sheet* drew its question over the title and its × couldn't be tapped
+    (the formSheet trap, `docs/app-profile.md` §18). It and Categories, which had the
+    same shape, now keep the header inside the scroll view, as Share does.
+  - *The app lock opens on a tap* (D74, his call, not vetoed): nothing asks for Face ID
+    until Unlock is tapped, at launch and on return alike (the scope is the main
+    session's call). The switch's line in You says so.
+  - *The paywall's monthly figure* reads "$2.91 / month" (his wording); no colour, since
+    the billed price has to stay the most prominent.
+  His other calls: the Warm-up stays; he doesn't want the pre-release checks stretched,
+  and UI on the phone matters most to him. **The free month wasn't on his paywall**: the
+  app shows a trial only when Apple says the account can still take it, and his has most
+  likely used it (he saw the trial on 2026-11-17); not confirmed, and he was asked to
+  check the introductory offer is still on the annual product in App Store Connect.
+  **Next:** his word to merge and push, and his confirmation of
+  `npx eas build --profile production --platform ios` (build 9); then his `eas submit`
+  and `HUMAN_VERIFICATION.md` D9: every sheet's title and ×, the lock's Unlock tap, the
+  offline launch, and VoiceOver through a log and an answer unless he waives it.
 - **Still for the first update (1.0.1):** "cancel any time" on plans with no trial, the
   three nits, and the notes from step 209's review (BUILT_LOG row 209).
 - The screenshots: `screenshots/store/final-1206/` (git-ignored), six at 1206 × 2622;

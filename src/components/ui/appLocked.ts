@@ -8,8 +8,9 @@ import { useLockStore } from '@/store/lockStore';
  * RCTAlertController, at UIWindowLevelAlert + 1). iOS doesn't close it when
  * the app goes to the background, and React Native can't: one left up when
  * the person went Home is still there, and its buttons still work, when
- * someone else opens the app and cancels Face ID (security review,
- * 2026-11-18). An action sheet is presented in the app's own window, under
+ * someone else opens the app to the lock screen, before any Unlock (security
+ * review, 2026-11-18; since D74 nothing asks for Face ID until Unlock is
+ * tapped). An action sheet is presented in the app's own window, under
  * a lock drawn after it, but gets the same check.
  *
  * So every alert or action-sheet button that deletes, erases, discards or

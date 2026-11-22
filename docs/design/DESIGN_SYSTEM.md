@@ -736,9 +736,11 @@ third row) → **honest timeline** → **one** CTA.
   (Lifetime never does); the timeline box opens with "How the free trial works". Without
   a trial on offer, Annual's tagline is "Best value" and nobody says "No free trial".
 - **Annual's monthly figure** sits under its price in `footnote` `textSecondary`:
-  "Works out to $2.92 a month." It is RevenueCat's `pricePerMonthString`, never our
-  division, and absent when the store gives none. App Review 3.1.2: the billed
-  amount stays the most prominent price.
+  "$2.50 / month", on one line (no-break spaces, no full stop). VoiceOver keeps the
+  sentence, "Works out to $2.50 a month.", in the card's label, not a slash (the owner,
+  2026-11-21; it read "Works out to $2.92 a month." on screen until then). It is
+  RevenueCat's `pricePerMonthString`, never our division, and absent when the store
+  gives none. App Review 3.1.2: the billed amount stays the most prominent price.
 
 - Timeline, in the store's own units: *Today* — full Plus access · *Two days before* — a
   notification with the date it renews and the price · *In 1 month* — your year
@@ -1545,6 +1547,9 @@ for a built-in as much as for an added category. Tapping it again, or Done, clos
 - **It scrolls**, padded by the safe area, and only the name is capped (`DISPLAY_MAX_SCALE`):
   at the largest text sizes the lines and the button are taller than the screen, and the
   button is the way in.
+- **It opens on a tap** (D74, the owner, 2026-11-21): the phone's check starts only when
+  Unlock is tapped, at launch and on coming back alike. Until then it started by itself
+  the moment the app was in front, which he found too sudden when switching back.
 - **Words:** "Locked. Unlock with Face ID or your iPhone passcode to see your predictions."
   A closed prompt says nothing more; a failed check adds "That didn’t unlock it. Try again.",
   spoken as well as shown.

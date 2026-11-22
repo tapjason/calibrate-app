@@ -338,8 +338,9 @@ Start from a fresh install: delete the app, reinstall from TestFlight.
 
 **The app lock**
 14. You → Lock with Face ID: Face ID is asked before the switch moves.
-15. Go to the Home Screen and come back: Face ID, then the app. Once, with no second
-    prompt.
+15. Go to the Home Screen and come back: the lock screen with Unlock; tap it: Face ID, then
+    the app. Once, with no second prompt. (Since D74, 2026-11-21; before it Face ID ran by
+    itself.)
 16. The app switcher shows the app's name, not a prediction.
 17. Cover the camera so Face ID fails: the passcode gets you in.
 
@@ -942,9 +943,11 @@ Added 2026-11-15 (step 180, the app lock and units by Region; native, in build 2
       face; the switch turns on. Tap it again and cancel the prompt: it stays on, with no
       message. Tap it and pass: it turns off. Turn it back on for the checks below.
 - [ ] **The app lock, at launch and on return (step 180):** close the app from the switcher and
-      open it: "Fairly Sure" and "Locked…" show, Face ID runs by itself, and the app opens on
-      Today. Go to the Home Screen and back: the same. Cancel the prompt: the lock screen stays
-      with **Unlock**, no prompt reopens by itself, and tapping Unlock asks again (this is the
+      open it: "Fairly Sure" and "Locked…" show with **Unlock**, and nothing asks until it is
+      tapped (D74, 2026-11-21; as first built, Face ID ran by itself); tap it, pass, and the
+      app opens on Today. Go to the Home Screen and back: the same. Cancel the prompt: the
+      lock screen stays with **Unlock**, no prompt reopens by itself, and tapping Unlock asks
+      again (this is the
       check that the button takes a tap inside the overlay). Pull Notification Center down and
       let it go: the app's name covers the screen and it does **not** ask for Face ID.
 - [ ] **The app lock, in the app switcher (step 180):** with a prediction's words on Today,
@@ -958,7 +961,7 @@ Added 2026-11-15 (step 180, the app lock and units by Region; native, in build 2
       fails: iOS offers "Enter Passcode", and the passcode opens the app **once, with no
       second prompt** (this is the one check that shows whether the passcode screen sends the
       app to the background; report it either way). Then Settings →
-      Fairly Sure → Face ID off: opening the app still asks (for the passcode), and it does
+      Fairly Sure → Face ID off: Unlock still asks (for the passcode), and the app does
       **not** open without one. Turn Face ID back on.
 - [ ] **The app lock, VoiceOver (step 180):** with VoiceOver on and the app locked, swiping
       reads "Fairly Sure", the locked line and Unlock, and nothing from the screen behind.
@@ -966,7 +969,8 @@ Added 2026-11-15 (step 180, the app lock and units by Region; native, in build 2
       lock screen first, then the question; do it once with the app killed first. With "Show
       the words in reminders" on and the lock on, a new reminder has no Happened / Didn't. Turn
       the lock off, let a reminder with the buttons arrive, turn the lock on, then tap Happened:
-      the app asks for Face ID and then shows the question, with nothing recorded.
+      the lock screen shows; after Unlock and Face ID the app shows the question, with
+      nothing recorded.
 - [ ] **The app lock at the largest text (step 180):** Settings → Accessibility → Display &
       Text Size → Larger Text, all the way up. Lock the app and cancel the prompt: the screen
       scrolls, and Unlock can be reached and tapped. In dark appearance too.
@@ -1607,7 +1611,10 @@ with no item-by-item results, so the boxes below aren't ticked one by one.
 
 ### D8. Step 209: the offline launch and the Warm-up result's headings (2026-11-20; JS only)
 Needs the build that carries step 209 (the production build after 1.0.0 (7), or a reload of
-the development build). Nothing here has run on the iPhone.
+the development build). **Build 1.0.0 (8) from TestFlight, 2026-11-21:** the owner reported
+the gate's other checks on it ("Save image works. Paywall works. Reminder and text size also
+work", with screenshots; D9 below has what they showed) and nothing in this section: the
+offline launch and VoiceOver are still to run, on build 9.
 - [ ] **Offline launch, signed in (step 209):** sign in, force-quit, wait more than an hour,
       turn on Airplane Mode, launch. Pass: within about 2 seconds Today shows the
       account's predictions and You shows its email; not an empty Today. Before step 209
@@ -1623,6 +1630,40 @@ the development build). Nothing here has run on the iPhone.
 - [ ] **Headings on the Warm-up result (step 209):** with VoiceOver on, after a Warm-up
       (Erase first), the rotor's Headings list holds the verdict ("On these ten, …") and
       "The answers".
+
+### D9. Build 8's device report and step 210's fixes (2026-11-21; JS only)
+**What the owner reported on build 1.0.0 (8), TestFlight, 2026-11-21** (his words, with seven
+screenshots; no item-by-item results):
+- [x] **Share → Save Image** works (the saved Warm-up card came back as an image; no crash
+      without `NSPhotoLibraryAddUsageDescription`).
+- [x] **A due-day reminder arrived**, and **the largest text size** holds up.
+- [x] **The paywall shows the App Store's prices:** $34.99 a year, $4.99 a month, $79.99.
+- [ ] **The free month on Annual was not on his screen** ("Best value", "Subscribe for
+      $34.99 a year"). The app shows a trial only when Apple says this Apple Account can
+      still take it; he saw it on TestFlight on 2026-11-17 and has bought in the sandbox
+      since, so the account has most likely used it. Not confirmed. His to check: in App
+      Store Connect the annual subscription still lists the introductory offer (free, one
+      month) for the four storefronts.
+- **Found:** on the practice sheet the question was drawn over "Today's practice" and the ×
+  couldn't be tapped (the formSheet trap, `docs/app-profile.md` §18). Fixed in step 210.
+- **His calls that day:** the Warm-up stays as it is; "Works out to $2.91 a month." becomes
+  "$2.91 / month"; the app lock opens on a tap (D74).
+
+**On the build that carries step 210 (production 1.0.0 (9)).** Nothing here has run on the
+iPhone.
+- [ ] **Every sheet's title and ×:** open each once: Log (+), an open prediction's details,
+      Resolve, Practice (a question, and the answers), Share, How scoring works, Categories,
+      the paywall, Sign in. Pass: the title is clear of the grabber and of the content, and
+      the × closes the sheet.
+- [ ] **Practice:** after an answer is picked on a question, Next is in view; the answers
+      open at their top.
+- [ ] **The lock opens on a tap (D74):** with "Lock with Face ID" on, force-quit and open:
+      the lock screen shows its line and Unlock, and Face ID doesn't start until Unlock is
+      tapped. Switch to another app and back: the same. A failed or closed check stays
+      locked, and Unlock asks again.
+- [ ] **The paywall's line:** Annual reads "$2.91 / month" under "$34.99 a year", on one line.
+- [ ] **D8's offline launch** (above), and VoiceOver through one log and one answer, unless
+      he waives VoiceOver for 1.0.
 
 ---
 

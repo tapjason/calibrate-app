@@ -156,7 +156,9 @@ export function noTrialLine(plan: PlusPlan, plans: readonly PlusPlan[]): string 
 /**
  * What VoiceOver reads for a plan card, in the order the card shows it: the
  * name, the trial badge, the price, the monthly figure and "No free trial";
- * a plain tagline comes last, as it's the least of it.
+ * a plain tagline comes last, as it's the least of it. The monthly figure is
+ * the spoken sentence, not the visible "$2.50 / month": the card is one
+ * element with this label, so its lines aren't read on their own.
  */
 export function planAccessibilityLabel(plan: PlusPlan, plans: readonly PlusPlan[]): string {
   const badge = planBadge(plan);
@@ -164,7 +166,7 @@ export function planAccessibilityLabel(plan: PlusPlan, plans: readonly PlusPlan[
   return [
     badge.trial ? `${PLAN_LABELS[plan.plan]}, ${badge.text}.` : `${PLAN_LABELS[plan.plan]},`,
     `${priceLine(plan)}.`,
-    monthlyEquivalentLine(plan),
+    monthlyEquivalentSpoken(plan),
     noTrial ? `${noTrial}.` : null,
     badge.trial ? null : badge.text,
   ]
@@ -174,10 +176,23 @@ export function planAccessibilityLabel(plan: PlusPlan, plans: readonly PlusPlan[
 
 /**
  * Annual's monthly equivalent, under its price and smaller (DESIGN_SYSTEM
- * §7.6): "Works out to $2.50 a month." The figure is the store's, never our
- * division. Null for other plans, or when the store gives none.
+ * §7.6): "$2.50 / month", held together with no-break spaces so it never
+ * wraps mid-line. It read "Works out to $2.50 a month." until the owner asked
+ * for it shorter (2026-11-21); VoiceOver still hears that sentence
+ * (`monthlyEquivalentSpoken`), not a slash. The figure is the store's, never
+ * our division. Null for other plans, or when the store gives none.
  */
 export function monthlyEquivalentLine(plan: PlusPlan): string | null {
+  if (plan.plan !== 'annual' || !plan.pricePerMonthString) return null;
+  return `${plan.pricePerMonthString} / month`.replace(/ /g, '\u00A0');
+}
+
+/**
+ * The monthly equivalent as the plan card's VoiceOver label says it: "Works
+ * out to $2.50 a month." A screen reader would read the visible line's slash
+ * aloud. Null whenever `monthlyEquivalentLine` is.
+ */
+export function monthlyEquivalentSpoken(plan: PlusPlan): string | null {
   if (plan.plan !== 'annual' || !plan.pricePerMonthString) return null;
   return `Works out to ${plan.pricePerMonthString} a month.`;
 }

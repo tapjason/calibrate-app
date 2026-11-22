@@ -61,7 +61,8 @@ describe('SettingsView: the app lock', () => {
     const row = await screen.findByTestId('toggle-app-lock-row');
     expect(row.props.accessibilityLabel).toBe('Lock with Face ID');
     expect(row.props.accessibilityState.checked).toBe(false);
-    expect(row.props.accessibilityHint).toMatch(/Asks for Face ID, or your iPhone passcode, each time/);
+    expect(row.props.accessibilityHint).toMatch(/^Locks Fairly Sure each time it opens or comes back to the front/);
+    expect(row.props.accessibilityHint).toMatch(/Unlock opens it with Face ID or your iPhone passcode\./);
   });
 
   it('turns on once the phone has checked, and off the same way', async () => {
@@ -149,9 +150,10 @@ describe('the lock switch in words', () => {
   it('never names Face ID on a phone without it', () => {
     expect(appLockLabel('Touch ID')).toBe('Lock with Touch ID');
     expect(appLockLabel('your passcode')).toBe('Lock with iPhone passcode');
-    expect(appLockLine('ready', 'your passcode', false)).toMatch(/^Asks for your iPhone passcode each time/);
+    expect(appLockLine('ready', 'your passcode', false)).toMatch(/^Locks Fairly Sure each time it opens or comes back to the front/);
+    expect(appLockLine('ready', 'your passcode', false)).toMatch(/Unlock opens it with your iPhone passcode\./);
     expect(appLockLine('ready', 'your passcode', false)).not.toMatch(/Face ID|Touch ID/);
-    expect(appLockLine('ready', 'Touch ID', false)).toMatch(/Touch ID, or your iPhone passcode,/);
+    expect(appLockLine('ready', 'Touch ID', false)).toMatch(/Unlock opens it with Touch ID or your iPhone passcode\./);
   });
 
   // Policy audit of step 180: the line mustn't promise more than the lock does.

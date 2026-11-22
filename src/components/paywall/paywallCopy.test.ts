@@ -4,6 +4,7 @@ import {
   ctaLabel,
   defaultPlan,
   monthlyEquivalentLine,
+  monthlyEquivalentSpoken,
   noPlansText,
   noTrialLine,
   noticeText,
@@ -155,10 +156,14 @@ describe('noTrialLine', () => {
 describe('planAccessibilityLabel', () => {
   const offer = [annualMonthTrial, monthly, lifetime];
 
+  // The monthly figure as a sentence, not the visible "$2.50 / month": a
+  // slash read aloud (owner, 2026-11-21).
   it('reads the name, the trial badge, the price and the monthly figure, in that order', () => {
-    expect(
-      planAccessibilityLabel({ ...annualMonthTrial, pricePerMonthString: '$2.50' }, offer),
-    ).toBe('Annual, 1 month free. $29.99\u00A0a\u00A0year after 1 month free. Works out to $2.50 a month.');
+    const label = planAccessibilityLabel({ ...annualMonthTrial, pricePerMonthString: '$2.50' }, offer);
+    expect(label).toBe(
+      'Annual, 1 month free. $29.99\u00A0a\u00A0year after 1 month free. Works out to $2.50 a month.',
+    );
+    expect(label).not.toContain('/');
   });
 
   it('says "No free trial" before a plain tagline', () => {
@@ -293,9 +298,15 @@ describe('plan selector copy', () => {
 
 // Roadmap step 50: the store's per-month figure, under annual only.
 describe('monthlyEquivalentLine', () => {
-  it("says annual's monthly figure in the store's own format", () => {
+  // "$2.50 / month" (owner, 2026-11-21; "Works out to $2.50 a month." until
+  // then), with no full stop and no-break spaces, so it never wraps mid-line.
+  it("says annual's monthly figure in the store's own format, kept on one line", () => {
     expect(monthlyEquivalentLine({ ...annualMonthTrial, pricePerMonthString: '$2.50' })).toBe(
-      'Works out to $2.50 a month.',
+      '$2.50\u00A0/\u00A0month',
+    );
+    // A store figure with a space in it stays whole too.
+    expect(monthlyEquivalentLine({ ...annualMonthTrial, pricePerMonthString: '2,50 €' })).toBe(
+      '2,50\u00A0€\u00A0/\u00A0month',
     );
   });
 
@@ -304,5 +315,21 @@ describe('monthlyEquivalentLine', () => {
     expect(monthlyEquivalentLine(lifetime)).toBeNull();
     expect(monthlyEquivalentLine(annualMonthTrial)).toBeNull();
     expect(monthlyEquivalentLine({ ...annualMonthTrial, pricePerMonthString: null })).toBeNull();
+  });
+});
+
+// What VoiceOver hears in place of the visible line: a sentence, not a slash.
+describe('monthlyEquivalentSpoken', () => {
+  it('says the monthly figure as a sentence', () => {
+    expect(monthlyEquivalentSpoken({ ...annualMonthTrial, pricePerMonthString: '$2.50' })).toBe(
+      'Works out to $2.50 a month.',
+    );
+  });
+
+  it('says nothing where the visible line says nothing', () => {
+    expect(monthlyEquivalentSpoken({ ...monthly, pricePerMonthString: '$4.99' })).toBeNull();
+    expect(monthlyEquivalentSpoken(lifetime)).toBeNull();
+    expect(monthlyEquivalentSpoken(annualMonthTrial)).toBeNull();
+    expect(monthlyEquivalentSpoken({ ...annualMonthTrial, pricePerMonthString: null })).toBeNull();
   });
 });

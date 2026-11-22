@@ -17,11 +17,21 @@ export default function CategoriesScreen() {
     else router.replace('/you' as never);
   };
   return (
+    // The practice sheet's shape (app/practice.tsx): the scroll view is the
+    // only child, and the × scrolls inside it. react-native-screens on the New
+    // Architecture resizes a formSheet's scroll view to the whole sheet and can
+    // lay it at the top, over a header beside it (docs/app-profile.md §18): on
+    // the practice sheet the content sat on the title and the × couldn't be
+    // tapped (owner, 2026-11-21).
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.top}>
-        <CloseButton onPress={close} testID="categories-close" />
-      </View>
-      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+        testID="categories-scroll"
+      >
+        <View style={styles.top}>
+          <CloseButton onPress={close} testID="categories-close" />
+        </View>
         <CategoryManager />
       </ScrollView>
     </SafeAreaView>

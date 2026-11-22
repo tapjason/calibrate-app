@@ -391,9 +391,9 @@ export function appLockLine(
   if (support === 'no_passcode') {
     return `This iPhone has no passcode, so there is nothing to lock with. Set one in Settings → ${page}, then turn this on.`;
   }
-  const check =
-    method === 'your passcode' ? 'your iPhone passcode' : `${method}, or your iPhone passcode,`;
-  const line = `Asks for ${check} each time ${APP_NAME} opens or comes back to the front, and covers it in the app switcher. For a phone someone else picks up. Reminders aren’t covered: while this is on they have no Happened or Didn’t, and their words have their own switch under Notifications.`;
+  const unlock =
+    method === 'your passcode' ? 'your iPhone passcode' : `${method} or your iPhone passcode`;
+  const line = `Locks ${APP_NAME} each time it opens or comes back to the front, and covers it in the app switcher. Unlock opens it with ${unlock}. For a phone someone else picks up. Reminders aren’t covered: while this is on they have no Happened or Didn’t, and their words have their own switch under Notifications.`;
   return failed ? `${APP_LOCK_FAILED} ${line}` : line;
 }
 

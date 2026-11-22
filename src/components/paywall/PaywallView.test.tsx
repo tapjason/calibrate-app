@@ -149,7 +149,9 @@ describe('PaywallView', () => {
   });
 
   // Roadmap step 50: the monthly figure sits under annual's price, smaller,
-  // and only when the store reports one.
+  // and only when the store reports one. It shows "$2.50 / month" (owner,
+  // 2026-11-21); the card's label, which VoiceOver reads in place of its
+  // lines, keeps the sentence.
   it("shows annual's monthly equivalent under its price", () => {
     seed({
       plans: PLANS.map((p) =>
@@ -157,8 +159,8 @@ describe('PaywallView', () => {
       ),
     });
     render(<PaywallView />);
-    expect(screen.getByTestId('plan-annual-equivalent')).toHaveTextContent(
-      'Works out to $2.50 a month.',
+    expect(screen.getByTestId('plan-annual-equivalent').props.children).toBe(
+      '$2.50\u00A0/\u00A0month',
     );
     expect(screen.getByTestId('plan-annual').props.accessibilityLabel).toBe(
       'Annual, 1 month free. $29.99\u00A0a\u00A0year after 1 month free. Works out to $2.50 a month.',

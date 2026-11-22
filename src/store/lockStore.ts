@@ -1,17 +1,25 @@
-// Whether the app is locked right now (roadmap D64, step 180). The choice to
-// lock at all is a setting (`settingsStore.appLock`); this is the state of
-// one run of the app, and none of it is stored.
+// Whether the app is locked right now (roadmap D64, step 180; D74). The
+// choice to lock at all is a setting (`settingsStore.appLock`); this is the
+// state of one run of the app, and none of it is stored.
 //
 // When it locks: at launch, and each time the app goes to the background.
 // Never on "inactive" alone: the app switcher, Notification Center, a system
 // alert and iOS's own Face ID prompt all pass through it, and locking there
-// would ask again the moment the prompt closed. Inactive only covers the
+// would lock again the moment the prompt closed. Inactive only covers the
 // screen.
 //
-// The phone is asked once per lock, by itself, when the app is next active.
-// After a prompt that didn't pass, nothing asks again until the person taps
-// Unlock (or leaves and comes back): a prompt that reopened itself on every
-// cancel would be a loop with no way out.
+// What opens it: a tap on Unlock, and nothing else (D74). The phone used to
+// be asked by itself once per lock, the moment the app was next active. The
+// owner, after living with it on the iPhone (2026-11-21): "there should be a
+// more manual confirmation coming out of locking the app, the face ID should
+// not be instant especially if the user is switching back." So at launch and
+// on every return the lock screen waits with its line and Unlock, and Face ID
+// or the passcode is asked only when Unlock is tapped. The switch in You
+// still asks at once (`setEnabled`): that is the person's own tap.
+//
+// Nor does a prompt that didn't pass reopen itself: one that came back on
+// every cancel would be a loop with no way out. The next prompt is always the
+// person's next tap on Unlock.
 
 import { create } from 'zustand';
 
@@ -54,8 +62,6 @@ interface LockState {
   covered: boolean;
   /** A prompt is up. */
   checking: boolean;
-  /** One automatic prompt is still owed for this lock. */
-  promptOwed: boolean;
   /**
    * Counts each time the app locks. A prompt answers for the lock it was
    * shown for: a pass that arrives after the app has been to the background
@@ -68,9 +74,9 @@ interface LockState {
   method: LockMethod | null;
   /** At launch, once the settings are read: lock if the person chose to. */
   arm: () => void;
-  /** The app moved between front, switcher and background. */
+  /** The app moved between front, switcher and background. Never asks the phone. */
   appPhaseChanged: (next: AppPhase) => void;
-  /** Ask the phone. Passing opens the app. */
+  /** A tap on Unlock: ask the phone. Passing opens the app. */
   unlock: () => Promise<void>;
   /** The phone has no passcode any more: turn the lock off and open. */
   continueWithoutLock: () => Promise<void>;
@@ -87,14 +93,14 @@ export const useLockStore = create<LockState>((set, get) => ({
   locked: false,
   covered: false,
   checking: false,
-  promptOwed: false,
   lockSeq: 0,
   notice: null,
   method: null,
 
   arm: () => {
     if (!lockOn()) return;
-    set((s) => ({ locked: true, promptOwed: true, notice: null, lockSeq: s.lockSeq + 1 }));
+    // Locked, and nothing asked: the lock screen waits for Unlock (D74).
+    set((s) => ({ locked: true, notice: null, lockSeq: s.lockSeq + 1 }));
     void lockMethod().then((method) => set({ method }));
   },
 
@@ -111,7 +117,6 @@ export const useLockStore = create<LockState>((set, get) => ({
       }
       set((s) => ({
         locked: true,
-        promptOwed: true,
         checking: false,
         notice: null,
         lockSeq: s.lockSeq + 1,
@@ -121,9 +126,9 @@ export const useLockStore = create<LockState>((set, get) => ({
       return;
     }
     if (next === 'active') {
+      // Back in front: the cover goes. A lock stays up with its Unlock
+      // button, and nothing is asked until that is tapped (D74).
       set({ covered: false });
-      const { locked, promptOwed } = get();
-      if (locked && promptOwed) void get().unlock();
       return;
     }
     // Inactive (and the states iOS never sends an app): cover, don't lock.
@@ -134,24 +139,24 @@ export const useLockStore = create<LockState>((set, get) => ({
     if (!get().locked || get().checking) return;
     // The lock was turned off while this screen was up: nothing to ask.
     if (!lockOn()) {
-      set({ locked: false, covered: false, promptOwed: false, notice: null });
+      set({ locked: false, covered: false, notice: null });
       return;
     }
     const seq = get().lockSeq;
     // The notice goes while the phone is asked, so the same one is said
     // again if this check fails too.
-    set({ checking: true, promptOwed: false, notice: null });
+    set({ checking: true, notice: null });
     const result = await checkLock(UNLOCK_REASON);
     // A pass always opens, whatever happened meanwhile. Nobody knows yet
     // whether iOS's passcode screen sends the app to the background: if it
     // does and a pass were dropped for arriving "after" that, every passcode
     // would be asked for again, with no way in (code review, round 2).
     if (result === 'passed') {
-      set({ checking: false, locked: false, promptOwed: false, notice: null });
+      set({ checking: false, locked: false, notice: null });
       return;
     }
     // Anything else from before the app last went away says nothing about
-    // the lock that is up now, which has its own prompt to come.
+    // the lock that is up now, which waits for its own tap on Unlock.
     if (get().lockSeq !== seq) return;
     set({
       checking: false,
@@ -163,7 +168,7 @@ export const useLockStore = create<LockState>((set, get) => ({
     // Only from the notice that the phone has nothing to check against.
     if (get().notice !== 'no_passcode') return;
     await useSettingsStore.getState().setAppLock(false);
-    set({ locked: false, covered: false, promptOwed: false, checking: false, notice: null });
+    set({ locked: false, covered: false, checking: false, notice: null });
   },
 
   setEnabled: async (on) => {
@@ -171,7 +176,7 @@ export const useLockStore = create<LockState>((set, get) => ({
     // may have been to the background while the prompt was up.
     const turnOff = async (): Promise<LockChange> => {
       await useSettingsStore.getState().setAppLock(false);
-      set({ locked: false, covered: false, promptOwed: false, checking: false, notice: null });
+      set({ locked: false, covered: false, checking: false, notice: null });
       return 'changed';
     };
     const support = await lockSupport();
@@ -200,7 +205,6 @@ export function __resetLockStoreForTests(): void {
     locked: false,
     covered: false,
     checking: false,
-    promptOwed: false,
     lockSeq: 0,
     notice: null,
     method: null,

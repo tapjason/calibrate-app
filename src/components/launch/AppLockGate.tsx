@@ -14,7 +14,10 @@ export const FAILED_LINE = 'That didn’t unlock it. Try again.';
  * beside the navigator in the root layout, and drawn over everything.
  *
  * - **Locked:** the app's name, "Locked", and Unlock. iOS's own prompt opens
- *   by itself once per lock; Unlock asks again after a prompt that was closed.
+ *   only when Unlock is tapped, at launch and on every return alike (D74, the
+ *   owner, 2026-11-21: Face ID that started by itself was too sudden when
+ *   switching back). Unlock is ready as soon as the screen is up, and is
+ *   disabled only while a prompt is up.
  * - **Covered:** the lock is on and the app isn't in front (the app switcher,
  *   Notification Center, a system alert): the name alone, so the switcher's
  *   picture of the app shows no prediction.
@@ -41,8 +44,9 @@ export function AppLockGate() {
   const unlock = useLockStore((s) => s.unlock);
   const continueWithoutLock = useLockStore((s) => s.continueWithoutLock);
   // The store follows the app in and out of the foreground from here, so it
-  // needs nothing from react-native itself. The first call covers a launch:
-  // a lock armed before this mounted gets its one prompt once the app is active.
+  // needs nothing from react-native itself. The first call says where the app
+  // is when this mounts, so the cover starts from where the app really is.
+  // None of these calls asks the phone: only Unlock does (D74).
   useEffect(() => {
     useLockStore.getState().appPhaseChanged(AppState.currentState);
     const sub = AppState.addEventListener('change', (next) => {

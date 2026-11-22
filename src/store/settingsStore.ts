@@ -104,8 +104,9 @@ export interface StoredSettings {
    */
   hideTitles: boolean;
   /**
-   * Whether the app asks for Face ID or the passcode when it opens (roadmap
-   * D64, step 180). Off by default. "Hide the words" is a curtain: one tap
+   * Whether the app locks when it opens and when it goes to the background,
+   * with Face ID or the passcode asked when Unlock is tapped (roadmap D64,
+   * step 180; D74). Off by default. "Hide the words" is a curtain: one tap
    * opens a card (the top privacy finding of blind playtests 2026-11-13e and
    * 2026-11-14). The choice is kept here; whether the app is locked right now
    * is `lockStore`'s, and never stored.

@@ -1,4 +1,6 @@
-// When the app locks and what opens it (roadmap D64, step 180).
+// When the app locks and what opens it (roadmap D64, step 180). Since D74
+// (the owner, 2026-11-21) only a tap on Unlock asks the phone: nothing asks
+// by itself at launch or on a return from the background.
 
 import { __setLockDepsForTests, type LockDeps } from '@/lock/appLock';
 
@@ -31,6 +33,19 @@ const settle = async () => {
   for (let i = 0; i < 5; i += 1) await Promise.resolve();
 };
 
+/** Prompts that answer only when the test says so, in the order they opened. */
+function heldPrompts(): Array<(r: Result) => void> {
+  const finishers: Array<(r: Result) => void> = [];
+  authenticateAsync = jest.fn(
+    (_options: { promptMessage: string }) =>
+      new Promise<Result>((resolve) => {
+        finishers.push(resolve);
+      }),
+  );
+  install();
+  return finishers;
+}
+
 beforeEach(() => {
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   answers = [];
@@ -51,24 +66,36 @@ const lock = () => useLockStore.getState();
 const on = () => useSettingsStore.setState({ appLock: true });
 
 describe('lockStore: at launch', () => {
-  it('stays open when the person never chose a lock', () => {
+  it('stays open when the person never chose a lock', async () => {
     lock().arm();
     expect(lock().locked).toBe(false);
     lock().appPhaseChanged('active');
+    await settle();
     expect(authenticateAsync).not.toHaveBeenCalled();
   });
 
-  it('locks, then asks once when the app is active, and opens on a pass', async () => {
+  it('locks, and asks nothing when the app is active', async () => {
     on();
     lock().arm();
     expect(lock().locked).toBe(true);
-    expect(authenticateAsync).not.toHaveBeenCalled();
     lock().appPhaseChanged('active');
     await settle();
+    expect(authenticateAsync).not.toHaveBeenCalled();
+    expect(lock().locked).toBe(true);
+    expect(lock().covered).toBe(false);
+    expect(lock().checking).toBe(false);
+    expect(lock().method).toBe('Face ID');
+  });
+
+  it('asks once when Unlock is tapped, and opens on a pass', async () => {
+    on();
+    lock().arm();
+    lock().appPhaseChanged('active');
+    await settle();
+    await lock().unlock();
     expect(authenticateAsync).toHaveBeenCalledTimes(1);
     expect(authenticateAsync.mock.calls[0][0].promptMessage).toBe(UNLOCK_REASON);
     expect(lock().locked).toBe(false);
-    expect(lock().method).toBe('Face ID');
   });
 
   // A build made before the package was added: a lock nobody can open is
@@ -106,14 +133,17 @@ describe('lockStore: at launch after the settings', () => {
     await launchWith(async () => null);
     expect(lock().locked).toBe(false);
     lock().appPhaseChanged('active');
+    await settle();
     expect(authenticateAsync).not.toHaveBeenCalled();
   });
 
-  it('a corrupt settings record locks, and Face ID or the passcode opens it', async () => {
+  it('a corrupt settings record locks, and Face ID or the passcode opens it on a tap', async () => {
     await launchWith(async () => 'not a settings object');
     expect(lock().locked).toBe(true);
     lock().appPhaseChanged('active');
     await settle();
+    expect(authenticateAsync).not.toHaveBeenCalled();
+    await lock().unlock();
     expect(authenticateAsync.mock.calls[0][0].promptMessage).toBe(UNLOCK_REASON);
     expect(lock().locked).toBe(false);
   });
@@ -138,7 +168,7 @@ describe('lockStore: at launch after the settings', () => {
       throw new Error('storage unavailable');
     });
     lock().appPhaseChanged('active');
-    await settle();
+    await lock().unlock();
     expect(lock().locked).toBe(false);
 
     expect(await lock().setEnabled(false)).toBe('changed');
@@ -156,7 +186,7 @@ describe('lockStore: at launch after the settings', () => {
       throw new Error('storage unavailable');
     });
     lock().appPhaseChanged('active');
-    await settle();
+    await lock().unlock();
     expect(lock().notice).toBe('no_passcode');
     await lock().continueWithoutLock();
     expect(lock().locked).toBe(false);
@@ -182,78 +212,127 @@ describe('lockStore: in and out of the foreground', () => {
     expect(lock().locked).toBe(false);
   });
 
-  it('locks on the background and asks once on return', async () => {
+  // D74: switching back opens on the lock screen, not on Face ID.
+  it('locks on the background, and on return uncovers and waits for Unlock', async () => {
     on();
     lock().appPhaseChanged('inactive');
     lock().appPhaseChanged('background');
     expect(lock().locked).toBe(true);
     lock().appPhaseChanged('inactive');
-    expect(authenticateAsync).not.toHaveBeenCalled();
     lock().appPhaseChanged('active');
     await settle();
+    expect(authenticateAsync).not.toHaveBeenCalled();
+    expect(lock().locked).toBe(true);
+    expect(lock().covered).toBe(false);
+    expect(lock().checking).toBe(false);
+    await lock().unlock();
     expect(authenticateAsync).toHaveBeenCalledTimes(1);
     expect(lock().locked).toBe(false);
   });
 
+  it('asks nothing by itself however often the app comes and goes', async () => {
+    on();
+    lock().arm();
+    for (const phase of ['active', 'inactive', 'background', 'inactive', 'active', 'background', 'active'] as const) {
+      lock().appPhaseChanged(phase);
+      await settle();
+    }
+    expect(authenticateAsync).not.toHaveBeenCalled();
+    expect(lock().locked).toBe(true);
+  });
+
   // iOS's own prompt can send the app through inactive and back: a prompt
   // that reopened itself on every cancel would be a loop.
-  it('does not ask again by itself after a prompt that was closed', async () => {
+  it('does not ask again by itself after a prompt that was closed, and a later tap asks again', async () => {
     on();
     answers = [{ success: false, error: 'user_cancel' }];
     lock().arm();
     lock().appPhaseChanged('active');
-    await settle();
+    await lock().unlock();
+    expect(authenticateAsync).toHaveBeenCalledTimes(1);
     expect(lock().locked).toBe(true);
+    // Closing the prompt isn't a failure: nothing more is said.
     expect(lock().notice).toBeNull();
     lock().appPhaseChanged('inactive');
     lock().appPhaseChanged('active');
     await settle();
     expect(authenticateAsync).toHaveBeenCalledTimes(1);
-    // Unlock asks again; so does leaving and coming back.
     await lock().unlock();
     expect(authenticateAsync).toHaveBeenCalledTimes(2);
     expect(lock().locked).toBe(false);
   });
 
-  it('asks again after the app has been away', async () => {
+  it('after a closed prompt and a trip away, waits for a tap again', async () => {
     on();
     answers = [{ success: false, error: 'system_cancel' }];
     lock().arm();
     lock().appPhaseChanged('active');
-    await settle();
+    await lock().unlock();
     lock().appPhaseChanged('background');
     lock().appPhaseChanged('active');
     await settle();
+    expect(authenticateAsync).toHaveBeenCalledTimes(1);
+    expect(lock().locked).toBe(true);
+    await lock().unlock();
     expect(authenticateAsync).toHaveBeenCalledTimes(2);
     expect(lock().locked).toBe(false);
   });
 
-  it('says a check failed, and stays locked', async () => {
+  it('says a check failed, stays locked, and a later tap asks again', async () => {
     on();
     answers = [{ success: false, error: 'not_available' }];
     lock().arm();
     lock().appPhaseChanged('active');
-    await settle();
+    await lock().unlock();
     expect(lock().locked).toBe(true);
     expect(lock().notice).toBe('failed');
+    lock().appPhaseChanged('inactive');
+    lock().appPhaseChanged('active');
+    await settle();
+    expect(authenticateAsync).toHaveBeenCalledTimes(1);
+    await lock().unlock();
+    expect(authenticateAsync).toHaveBeenCalledTimes(2);
+    expect(lock().locked).toBe(false);
+    expect(lock().notice).toBeNull();
   });
 
-  it('shows one prompt at a time', async () => {
+  it('shows one prompt at a time: a second tap while one is up is ignored', async () => {
     on();
-    let finish: (r: Result) => void = () => {};
-    authenticateAsync = jest.fn(
-      (_options: { promptMessage: string }) => new Promise<Result>((resolve) => (finish = resolve)),
-    );
-    install();
+    const finishers = heldPrompts();
     lock().arm();
     lock().appPhaseChanged('active');
     void lock().unlock();
     void lock().unlock();
     expect(lock().checking).toBe(true);
     expect(authenticateAsync).toHaveBeenCalledTimes(1);
-    finish({ success: true });
+    finishers[0]({ success: true });
     await settle();
     expect(lock().checking).toBe(false);
+    expect(lock().locked).toBe(false);
+  });
+
+  // iOS closes its prompt when the app goes away. Coming back shows the lock
+  // screen with Unlock ready, and nothing is asked until it is tapped.
+  it('after going away during a prompt, stays locked on return with no new prompt until a tap', async () => {
+    on();
+    const finishers = heldPrompts();
+    lock().arm();
+    lock().appPhaseChanged('active');
+    void lock().unlock();
+    await settle();
+    expect(lock().checking).toBe(true);
+    lock().appPhaseChanged('background');
+    expect(lock().checking).toBe(false);
+    lock().appPhaseChanged('active');
+    await settle();
+    expect(authenticateAsync).toHaveBeenCalledTimes(1);
+    expect(lock().locked).toBe(true);
+    expect(lock().checking).toBe(false);
+    void lock().unlock();
+    await settle();
+    expect(authenticateAsync).toHaveBeenCalledTimes(2);
+    finishers[1]({ success: true });
+    await settle();
     expect(lock().locked).toBe(false);
   });
 });
@@ -261,12 +340,12 @@ describe('lockStore: in and out of the foreground', () => {
 // Removing a passcode takes the passcode, so this is the one failure that
 // opens the app; the person is told, and the lock is turned off.
 describe('lockStore: a phone that lost its passcode', () => {
-  it('says so, and Continue turns the lock off and opens', async () => {
+  it('says so on Unlock, and Continue turns the lock off and opens', async () => {
     on();
     answers = [{ success: false, error: 'passcode_not_set' }];
     lock().arm();
     lock().appPhaseChanged('active');
-    await settle();
+    await lock().unlock();
     expect(lock().locked).toBe(true);
     expect(lock().notice).toBe('no_passcode');
     await lock().continueWithoutLock();
@@ -279,7 +358,7 @@ describe('lockStore: a phone that lost its passcode', () => {
     answers = [{ success: false, error: 'not_available' }];
     lock().arm();
     lock().appPhaseChanged('active');
-    await settle();
+    await lock().unlock();
     await lock().continueWithoutLock();
     expect(lock().locked).toBe(true);
     expect(useSettingsStore.getState().appLock).toBe(true);
@@ -344,16 +423,10 @@ describe('lockStore: the edges', () => {
   // asked for again every time, with no way in (code review, round 2).
   it('opens on a pass even if the app went to the background while the prompt was up', async () => {
     on();
-    const finishers: Array<(r: Result) => void> = [];
-    authenticateAsync = jest.fn(
-      (_options: { promptMessage: string }) =>
-        new Promise<Result>((resolve) => {
-          finishers.push(resolve);
-        }),
-    );
-    install();
+    const finishers = heldPrompts();
     lock().arm();
     lock().appPhaseChanged('active');
+    void lock().unlock();
     await settle();
     expect(lock().checking).toBe(true);
     // The passcode screen, if it backgrounds the app: locked again meanwhile.
@@ -371,19 +444,15 @@ describe('lockStore: the edges', () => {
   // A late answer that isn't a pass says nothing about the lock that is up now.
   it('ignores a late failure from before the app went away', async () => {
     on();
-    const finishers: Array<(r: Result) => void> = [];
-    authenticateAsync = jest.fn(
-      (_options: { promptMessage: string }) =>
-        new Promise<Result>((resolve) => {
-          finishers.push(resolve);
-        }),
-    );
-    install();
+    const finishers = heldPrompts();
     lock().arm();
     lock().appPhaseChanged('active');
+    void lock().unlock();
     await settle();
     lock().appPhaseChanged('background');
     lock().appPhaseChanged('active');
+    // The person taps Unlock on the new lock.
+    void lock().unlock();
     await settle();
     expect(authenticateAsync).toHaveBeenCalledTimes(2);
     expect(lock().checking).toBe(true);
@@ -403,19 +472,12 @@ describe('lockStore: the edges', () => {
     answers = [{ success: false, error: 'not_available' }];
     lock().arm();
     lock().appPhaseChanged('active');
-    await settle();
+    await lock().unlock();
     expect(lock().notice).toBe('failed');
-    let finish: (r: Result) => void = () => {};
-    authenticateAsync = jest.fn(
-      (_options: { promptMessage: string }) =>
-        new Promise<Result>((resolve) => {
-          finish = resolve;
-        }),
-    );
-    install();
+    const finishers = heldPrompts();
     const again = lock().unlock();
     expect(lock().notice).toBeNull();
-    finish({ success: false, error: 'not_available' });
+    finishers[0]({ success: false, error: 'not_available' });
     await again;
     expect(lock().notice).toBe('failed');
   });
@@ -436,8 +498,9 @@ describe('lockStore: the edges', () => {
     expect(authenticateAsync).toHaveBeenCalledTimes(2);
   });
 
-  // A prompt that never answers at all: leaving and coming back still asks.
-  it('asks again on return even if the last prompt never answered', async () => {
+  // A prompt that never answers at all: after leaving and coming back, a tap
+  // on Unlock still asks.
+  it('a tap asks again on return even if the last prompt never answered', async () => {
     on();
     authenticateAsync = jest.fn(
       (_options: { promptMessage: string }) => new Promise<Result>(() => {}),
@@ -445,9 +508,14 @@ describe('lockStore: the edges', () => {
     install();
     lock().arm();
     lock().appPhaseChanged('active');
+    void lock().unlock();
     await settle();
+    expect(authenticateAsync).toHaveBeenCalledTimes(1);
     lock().appPhaseChanged('background');
     lock().appPhaseChanged('active');
+    await settle();
+    expect(authenticateAsync).toHaveBeenCalledTimes(1);
+    void lock().unlock();
     await settle();
     expect(authenticateAsync).toHaveBeenCalledTimes(2);
   });
@@ -464,22 +532,14 @@ describe('lockStore: the edges', () => {
   // The app went to the background while "Turn off the app lock" was up.
   it('leaves nothing locked when the lock is turned off', async () => {
     on();
-    let finish: (r: Result) => void = () => {};
-    authenticateAsync = jest.fn(
-      (_options: { promptMessage: string }) =>
-        new Promise<Result>((resolve) => {
-          finish = resolve;
-        }),
-    );
-    install();
+    const finishers = heldPrompts();
     const change = lock().setEnabled(false);
     await settle();
-    useLockStore.setState({ locked: true, promptOwed: true, covered: true });
-    finish({ success: true });
+    useLockStore.setState({ locked: true, covered: true });
+    finishers[0]({ success: true });
     expect(await change).toBe('changed');
     expect(useSettingsStore.getState().appLock).toBe(false);
     expect(lock().locked).toBe(false);
     expect(lock().covered).toBe(false);
-    expect(lock().promptOwed).toBe(false);
   });
 });

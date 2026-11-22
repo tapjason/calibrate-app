@@ -47,12 +47,48 @@ describe('AppLockGate', () => {
     expect(authenticateAsync).not.toHaveBeenCalled();
   });
 
-  it('asks the phone by itself at launch and goes once it passes', async () => {
+  // D74 (the owner, 2026-11-21): nothing asks until Unlock is tapped.
+  it('at launch shows its line and a ready Unlock, and asks nothing until it is tapped', async () => {
     useSettingsStore.setState({ appLock: true });
     useLockStore.getState().arm();
     renderInFront();
+    const unlock = await screen.findByTestId('app-lock-unlock');
+    await waitFor(() =>
+      expect(screen.getByText(/Locked\. Unlock with Face ID or your iPhone passcode/)).toBeTruthy(),
+    );
+    expect(unlock.props.accessibilityState.disabled).toBe(false);
+    expect(authenticateAsync).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.press(unlock);
+    });
     await waitFor(() => expect(screen.queryByTestId('app-lock')).toBeNull());
     expect(authenticateAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('holds Unlock while a prompt is up, so a second tap asks nothing', async () => {
+    useSettingsStore.setState({ appLock: true });
+    let finish: (r: Result) => void = () => {};
+    authenticateAsync.mockImplementation(
+      () =>
+        new Promise<Result>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    useLockStore.getState().arm();
+    renderInFront();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('app-lock-unlock'));
+    });
+    const unlock = screen.getByTestId('app-lock-unlock');
+    expect(unlock.props.accessibilityState.disabled).toBe(true);
+    await act(async () => {
+      fireEvent.press(unlock);
+    });
+    expect(authenticateAsync).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish({ success: true });
+    });
+    await waitFor(() => expect(screen.queryByTestId('app-lock')).toBeNull());
   });
 
   it('stays up after a closed prompt, and Unlock asks again', async () => {
@@ -60,11 +96,15 @@ describe('AppLockGate', () => {
     answers = [{ success: false, error: 'user_cancel' }];
     useLockStore.getState().arm();
     renderInFront();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('app-lock-unlock'));
+    });
     const unlock = await screen.findByTestId('app-lock-unlock');
     await waitFor(() => expect(unlock.props.accessibilityState.disabled).toBe(false));
     expect(screen.getByText(/Locked\. Unlock with Face ID or your iPhone passcode/)).toBeTruthy();
     // No words about a failure: closing the prompt isn't one.
     expect(screen.queryByTestId('app-lock-failed')).toBeNull();
+    expect(authenticateAsync).toHaveBeenCalledTimes(1);
     await act(async () => {
       fireEvent.press(unlock);
     });
@@ -78,6 +118,9 @@ describe('AppLockGate', () => {
     useLockStore.getState().arm();
     renderInFront();
     const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('app-lock-unlock'));
+    });
     expect(await screen.findByTestId('app-lock-failed')).toBeTruthy();
     expect(screen.getByTestId('app-lock-unlock')).toBeTruthy();
     // Spoken: VoiceOver hears nothing change on its own.
@@ -90,6 +133,9 @@ describe('AppLockGate', () => {
     useLockStore.getState().arm();
     renderInFront();
     const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('app-lock-unlock'));
+    });
     expect(await screen.findByTestId('app-lock-no-passcode')).toBeTruthy();
     expect(screen.queryByTestId('app-lock-unlock')).toBeNull();
     expect(announce).toHaveBeenCalledWith(NO_PASSCODE_LINE);
@@ -113,9 +159,9 @@ describe('AppLockGate', () => {
 });
 
 // The gate is what tells the store where the app is: without its listener
-// nothing would lock on the way out or ask on the way back.
+// nothing would lock on the way out or uncover on the way back.
 describe('AppLockGate and the app going in and out of the foreground', () => {
-  it('follows iOS: covers on inactive, locks on background, asks on return', async () => {
+  it('follows iOS: covers on inactive, locks on background, waits for Unlock on return', async () => {
     const add = jest.spyOn(AppState, 'addEventListener');
     useSettingsStore.setState({ appLock: true });
     render(<AppLockGate />);
@@ -135,6 +181,13 @@ describe('AppLockGate and the app going in and out of the foreground', () => {
     await act(async () => {
       fire('active');
     });
+    // Back in front: the lock screen, its Unlock ready, and no prompt (D74).
+    const unlock = screen.getByTestId('app-lock-unlock');
+    expect(unlock.props.accessibilityState.disabled).toBe(false);
+    expect(authenticateAsync).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.press(unlock);
+    });
     await waitFor(() => expect(screen.queryByTestId('app-lock')).toBeNull());
     expect(authenticateAsync).toHaveBeenCalledTimes(1);
   });
@@ -153,7 +206,6 @@ describe('AppLockGate and the app going in and out of the foreground', () => {
 describe('AppLockGate at large text', () => {
   it('scrolls, and caps only the name', async () => {
     useSettingsStore.setState({ appLock: true });
-    answers = [{ success: false, error: 'user_cancel' }];
     useLockStore.getState().arm();
     renderInFront();
     const screenView = await screen.findByTestId('app-lock');
