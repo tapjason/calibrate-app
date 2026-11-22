@@ -1,6 +1,6 @@
 # Handoff
 
-**Branch:** `builder/offline-launch-headings` (step 209, two fixes from the release gate; see the gate's block below), cut from `master`. Before it, `master`: `builder/owner-list-19-30` is merged into it (fast-forward) and
+**Branch:** `master`. `builder/offline-launch-headings` (step 209, two fixes from the release gate; see the gate's block below) is merged into it (fast-forward) and pushed, 2026-11-21, on the owner's words: "Merge the branc hadn push please, and I will submit this build". **Production build 1.0.0 (8) is made from that commit, `7f61f60`, and is the one to submit** (the gate's block below). Before it: `builder/owner-list-19-30` is merged into it (fast-forward) and
 pushed, 2026-11-20, on the owner's words that day: "Review steps 202 through 206. If
 everything passes then merge and push". The review ran its three rounds (step 207 below).
 The push also published the privacy page without its on-device-scan paragraph. The branch
@@ -64,6 +64,16 @@ the four reviews).
   (`eas build`, on his confirmation of the command), then `HUMAN_VERIFICATION.md` D8 and
   the gate's device list on it. The record and policy audits weren't re-run: the diff
   touches no score, no copy and no data leaving the phone (the reviewer's read).
+- **Build 1.0.0 (8), 2026-11-21, is the one to submit.** Merged and pushed on his word
+  (above); asked which build he meant, he chose "I run build 8 now". Production, commit
+  `7f61f60`, finished on EAS
+  (https://expo.dev/accounts/tapjason/projects/calibrate/builds/346f2208-e0a9-4980-ab78-52c60c0393e3);
+  `check.sh --release` had passed on that tree. Nothing has run on the iPhone from it.
+  His to do: `npx eas submit --profile production --platform ios`, install from
+  TestFlight, `HUMAN_VERIFICATION.md` D8 and the gate's device list (a reminder arriving,
+  largest text, VoiceOver through a log and an answer, Share → Save Image, the paywall's
+  prices), then select build 8 on the version page. When he says it's submitted, tag
+  `submitted-1.0.0` on `7f61f60`.
 - **Still for the first update (1.0.1):** "cancel any time" on plans with no trial, the
   three nits, and the notes from step 209's review (BUILT_LOG row 209).
 - The screenshots: `screenshots/store/final-1206/` (git-ignored), six at 1206 × 2622;
