@@ -26,6 +26,12 @@ describe('share links (GROWTH §0, step 1)', () => {
     );
   });
 
+  it("the configured link is the one App Store Connect generated (2026-11-23)", () => {
+    expect(appStoreLink(shareCampaign('card', 'text'))).toBe(
+      'https://apps.apple.com/app/apple-store/id6831917395?pt=129758335&ct=share-card-text&mt=8',
+    );
+  });
+
   it('links to the product page without a campaign until there is a provider token', () => {
     expect(appStoreLink('share-card-text', { id: '6740000000', providerToken: null })).toBe(
       'https://apps.apple.com/app/apple-store/id6740000000',

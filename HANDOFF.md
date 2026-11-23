@@ -1,6 +1,17 @@
 # Handoff
 
-**Now, 2026-11-23: branch `master`. Version 1.0.0 (build 14) passed App Review (submitted
+**Now, 2026-11-23: branch `builder/share-campaign-token`, off `master` (`2aaa769`), committed,
+not merged or pushed.** The share campaign token is on (GROWTH §0 step 1): the owner made the
+first campaign link in App Store Connect (`pt=129758335`, campaign `share-card-text`) and
+`APP_STORE_PROVIDER_TOKEN` is set from it, so a text share's link is
+`…/id6831917395?pt=129758335&ct=share-card-text&mt=8`, the same as Apple's own. Built by
+`services` on Sonnet (one constant and one test; the brief was exact); `check.sh` exit 0, 253
+suites, 5,303 tests. JS only. **1.0.0 on the store doesn't have it: counting starts with the
+next build (1.0.1)**, his `eas build` and `eas submit` when there is more to ship with it. The
+demo account needs a re-seed before that submission (its dates are relative to 2026-11-22).
+Product Page Optimization tests wait for traffic (a few hundred page views a week).
+
+**Before it, 2026-11-23: `master`. Version 1.0.0 (build 14) passed App Review (submitted
 2026-11-22; Apple's mail: "It is now eligible for distribution") and App Store Connect shows
 "Ready for Distribution" (the owner, 2026-11-23). `harness/expo-simulators` is merged into
 `master` (fast-forward) and pushed with the tag `submitted-1.0.0`, on his words that day:

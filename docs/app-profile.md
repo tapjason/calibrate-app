@@ -546,7 +546,7 @@ demo data stand in. Numbers an agent reasons to without them are labelled **esti
 none until launch. Then: D0 aha rate (`warmup_completed / warmup_started`) and share rate (shares
 per active user), the two validation questions with their SQL in `docs/HUMAN_VERIFICATION.md`
 "Open work that is code"; D1 / D7 / D30 retention and crashes (App Store Connect); installs per
-share surface (the `ct=share-card-text` campaign token, once `APP_STORE_PROVIDER_TOKEN` is set);
+share surface (the `ct=share-card-text` campaign token; `APP_STORE_PROVIDER_TOKEN` is set, in builds after 1.0.0);
 trial conversion (RevenueCat); range
 coverage (the share of predictions under 40%). The event catalogue is `src/analytics/events.ts`.
 Saved exports go under `docs/live/` for `/live-review`.

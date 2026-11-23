@@ -137,12 +137,12 @@ export const SUPPORT_URL = 'https://tapjason.github.io/calibrate-app/support/';
 export const APP_STORE_ID: string | null = '6831917395';
 
 /**
- * The provider token (`pt=`) App Store Connect issues with the first campaign
- * link (Analytics → Acquisition → Campaigns). It's the same for every
- * campaign. Null until then: shares link to the product page without a
- * campaign, so App Store Connect can't say which share brought an install.
+ * The provider token (`pt=`) App Store Connect issued with the first campaign
+ * link (Analytics → Acquisition → Campaigns) on 2026-11-23. It's the same for
+ * every campaign. Null would mean shares link to the product page without a
+ * campaign, so App Store Connect couldn't say which share brought an install.
  */
-export const APP_STORE_PROVIDER_TOKEN: string | null = null;
+export const APP_STORE_PROVIDER_TOKEN: string | null = '129758335';
 
 /**
  * Scored answers a confidence range needs before Log's track record shows it

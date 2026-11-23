@@ -660,8 +660,8 @@ See the authoritative section above.
   rating ("All time: calibration 87/100, give or take 3, from 148 scored answers.").
 - Exports a PNG the OS share sheet accepts.
 - The text share ends on the App Store link (`APP_STORE_ID` is set). The campaign token
-  (`ct=share-card-text`) is added only once `APP_STORE_PROVIDER_TOKEN` is set (it is still
-  `null`; `src/share/link.ts`, `GROWTH_AND_MONETIZATION.md` §0 step 1), so App Store
+  (`ct=share-card-text`) is added because `APP_STORE_PROVIDER_TOKEN` is set (2026-11-23, in builds after
+  1.0.0; `src/share/link.ts`, `GROWTH_AND_MONETIZATION.md` §0 step 1), so App Store
   Connect counts installs per share surface with no SDK and no identifier. That count is
   the share-loop gate (GROWTH §7).
 

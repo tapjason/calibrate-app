@@ -680,9 +680,9 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   A range under 10 answers gets ⬜, as an empty one does: there's no lean to show
   there yet (D58). With every range under 10 there are no squares, and the line
   reads "Score 81, give or take 3".
-  The last line is the App Store link (`@/share/link`, from `APP_STORE_ID`); it gains
-  the campaign token (`ct=share-card-text`) once `APP_STORE_PROVIDER_TOKEN` is set, which
-  it isn't yet. An image share can't carry a link (the share sheet gets a bare PNG), so the
+  The last line is the App Store link (`@/share/link`, from `APP_STORE_ID`); it carries
+  the campaign token (`ct=share-card-text`) now that `APP_STORE_PROVIDER_TOKEN` is set
+  (2026-11-23, in builds after 1.0.0). An image share can't carry a link (the share sheet gets a bare PNG), so the
   name in the card's footer is its only way back to the store.
 - **Which categories it names** (D27, 2026-10-10): the identity and contrast lines
   name only categories past the count gate (20 scored, Tracker or above). Best
