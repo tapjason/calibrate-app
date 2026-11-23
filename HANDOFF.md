@@ -1,7 +1,13 @@
 # Handoff
 
-**Now, 2026-11-22: branch `harness/expo-simulators`, off `master` (`64576ae`), not merged or
-pushed. Wrapping up for the 1.0.0 submission: build 14, tag `submitted-1.0.0`.** Harness and docs only; no app code changed.
+**Now, 2026-11-23: branch `master`. Version 1.0.0 (build 14) passed App Review (submitted
+2026-11-22; Apple's mail: "It is now eligible for distribution") and App Store Connect shows
+"Ready for Distribution" (the owner, 2026-11-23). `harness/expo-simulators` is merged into
+`master` (fast-forward) and pushed with the tag `submitted-1.0.0`, on his words that day:
+"Merge and push the tags, and I will delete the simulator sessoins."** That afternoon the US
+store page loaded and Apple's public lookup didn't list the app yet. Still his: the paywall's
+prices and free month on the App Store install, and deleting sessions `01a201f7`, `01a2043c`
+and `01a204af` on expo.dev. The branch (below, as written 2026-11-22) was harness and docs only; no app code changed.
 - **Expo Simulators is set up** (the owner, 2026-11-21: "adjust the harness to reflect the new
   change"). Expo's cloud iOS Simulator, driven by agents through the Expo MCP server.
   - *Account:* the owner's Expo account has it (`eas simulator:availability` true). eas-cli
@@ -47,6 +53,23 @@ pushed. Wrapping up for the 1.0.0 submission: build 14, tag `submitted-1.0.0`.**
   - From AX2 (run 3): "Today" and "History" lose their descenders under the bar's hairline,
     History's cards split "30%" into "30" over "%", the category chips are cut at the right
     edge, and Log's Save footer wraps to two lines.
+- **App Review demo account, 2026-11-22:** created in Supabase (email-confirmed, a `+review`
+  alias of the owner's dev address; credentials only in App Store Connect), seeded with
+  `scripts/seed-demo-sql.mjs` (160 predictions, 153 answered; dates relative to that day, so
+  re-seed if review slips), Plus granted in RevenueCat, and the Coach returned three cards on
+  the owner's iPhone. Re-seed: the same script with the same user id replaces the demo rows.
+- **The Coach's cards, for a later build** (the owner, 2026-11-22: "the feedback messages can
+  be slightly more personalized? But so far it looks good for the time being"). Seen on the
+  demo account: figures to two decimals ("84.76%", "47.62%", "71.43") where the app rounds
+  everywhere else; a card headed "Health" whose insight is about Mondays (the weakest
+  weekday), so the header doesn't match the body; and generic advice lines ("Consider
+  adjusting your confidence in finance predictions."). A prompt and validator pass
+  (`COACH_AGENT.md`), on Opus, with the §9 fixtures.
+- **Text load, simulator run 4** (session `01a204af`, 6 min; the owner: "focuses on reducing
+  text in non-setting related fields"): ranked cuts in
+  `docs/design/research/text-load-2026-11-22.md`. Most touch decided copy, so they wait on the
+  owner. Found along the way: an open prediction's details promise "a reminder at 7:00 PM"
+  before iOS permission is granted (`PredictionDetails.tsx:158` reads only the app's switches).
 - **Small, for a later build (not text size):** a large gap on the Sign in sheet; on Warm-up
   question 1 the slider sits partly under the footer until scrolled (the usage-count intro
   pushes it down); "Answer it now"'s early note sits about 10 pt above its button.
