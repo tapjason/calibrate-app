@@ -145,7 +145,7 @@ describe('ResolvePrompt on a same-day answer', () => {
     await insertPrediction(samplePending({ created_at: new Date().toISOString() }));
     render(<ResolvePrompt predictionId="p1" />);
     await waitFor(() =>
-      expect(screen.getByTestId('resolve-same-day')).toHaveTextContent(/an answer today won't count/),
+      expect(screen.getByTestId('resolve-same-day')).toHaveTextContent(/an answer today won’t be scored/),
     );
   });
 
@@ -240,7 +240,7 @@ describe('ResolvePrompt announcements', () => {
     render(<ResolvePrompt predictionId="p1" />);
     await waitFor(() => expect(screen.getByTestId('resolve-skip')).toBeTruthy());
     expect(screen.getByTestId('resolve-skip').props.accessibilityLabel).toMatch(
-      /^Can't tell \/ doesn't apply\. It won't count toward your score\. You can still answer it until the end of \w{3}, \w{3} \d{1,2}\.$/,
+      /^Can't tell \/ doesn't apply\. It won’t count toward your score\. You can still answer it until the end of \w{3}, \w{3} \d{1,2}\.$/,
     );
   });
 });
@@ -285,7 +285,7 @@ describe('ResolvePrompt opened from a reminder action', () => {
         'Recorded: it happened',
       );
     });
-    expect(screen.getByTestId('resolve-bucket-line')).toHaveTextContent(/That's your first/);
+    expect(screen.getByTestId('resolve-bucket-line')).toHaveTextContent(/That’s your first/);
     expect(screen.getByTestId('reflection-field')).toBeTruthy();
     expect(screen.queryByText('Did it happen?')).toBeNull();
     expect((await getPrediction('p1'))?.resolved_at).toBe(recorded?.resolved_at);
@@ -437,7 +437,7 @@ describe('ResolvePrompt acknowledgement', () => {
     await waitFor(() => {
       expect(screen.getByTestId('resolve-bucket-line')).toBeTruthy();
     });
-    expect(screen.getByText(holdRanges("That's your first call at 80–100%."))).toBeTruthy();
+    expect(screen.getByText(holdRanges("That’s your first call at 80–100%."))).toBeTruthy();
   });
 
   // Roadmap D50 (blind playtest 2026-11-09b, finding 6).
@@ -588,8 +588,11 @@ describe('ResolvePrompt acknowledgement', () => {
     });
     // And that it isn't final (D60 (f)): the last day it could be answered.
     expect(screen.getByTestId('resolve-skip-note').props.children).toMatch(
-      /^It won't count toward your score\. You can still answer it until /,
+      /^It won’t count toward your score\. You can still answer it until /,
     );
+    // The curly apostrophe, as the rest of Resolve (code review 2026-11-23,
+    // round 2).
+    expect(screen.getByTestId('resolve-skip-note').props.children).not.toMatch(/'/);
   });
 });
 
@@ -818,7 +821,7 @@ describe('ResolvePrompt milestones', () => {
       ),
     );
     expect(screen.getByTestId('milestone-rating_unlocked').props.accessibilityLabel).toMatch(
-      /^Your calibration score is unlocked: \d+ out of 100\. 20 answers in\. Here’s your rating\./,
+      /^Your calibration score is unlocked: \d+ out of 100\. 20 scored answers in\. Here’s your rating\./,
     );
     // Answered while provisional, so it keeps what the number means (blind
     // playtest 2026-11-12e, run 5: a miss here had neither D50 line).
@@ -1217,25 +1220,25 @@ describe('ResolvePrompt reflection draft', () => {
 describe('firstAnswerLine', () => {
   it('says what the stated number means in tens', () => {
     expect(firstAnswerLine(70)).toBe(
-      "That's your first. 70% means right about 7 times in\u00A010. It takes around 20 answers before we can tell how you're doing.",
+      "That’s your first. 70% means right about 7 times in\u00A010. It takes around 20 scored answers before we can tell how you’re doing.",
     );
-    expect(firstAnswerLine(10)).toMatch(/^That's your first\. 10% means it happens about 1 time in\s10\. /);
+    expect(firstAnswerLine(10)).toMatch(/^That’s your first\. 10% means it happens about 1 time in\s10\. /);
   });
 
   it('handles the whole scale, from the slider\u2019s own words', () => {
-    expect(firstAnswerLine(100)).toMatch(/^That's your first\. 100% means right every time\. /);
-    expect(firstAnswerLine(0)).toMatch(/^That's your first\. 0% means it never happens\. /);
+    expect(firstAnswerLine(100)).toMatch(/^That’s your first\. 100% means right every time\. /);
+    expect(firstAnswerLine(0)).toMatch(/^That’s your first\. 0% means it never happens\. /);
     expect(firstAnswerLine(97)).toMatch(/97% means right almost every time\./);
     expect(firstAnswerLine(3)).toMatch(/3% means it happens less than once in\s10\./);
     // The slider's words (playtest 2026-11-04, third round).
-    expect(firstAnswerLine(85)).toMatch(/^That's your first\. 85% means right 8 or 9 times in\s10\. /);
+    expect(firstAnswerLine(85)).toMatch(/^That’s your first\. 85% means right 8 or 9 times in\s10\. /);
     expect(firstAnswerLine(80)).toMatch(/80% means right about 8 times in\s10\./);
     expect(firstAnswerLine(75)).toMatch(/75% means right about 3 times in\s4\./);
     expect(firstAnswerLine(50)).toMatch(/50% means right half the time\./);
     // Under 50, "right" would read the other way round: it says "it happens".
     expect(firstAnswerLine(30)).toMatch(/30% means it happens about 3 times in\s10\./);
     for (const c of [0, 3, 30, 50, 70, 100]) {
-      expect(firstAnswerLine(c)).toMatch(/It takes around 20 answers before we can tell how you're doing\.$/);
+      expect(firstAnswerLine(c)).toMatch(/It takes around 20 scored answers before we can tell how you’re doing\.$/);
     }
   });
 });
@@ -1243,7 +1246,7 @@ describe('firstAnswerLine', () => {
 describe('meaningLine and ratingChangeLine (roadmap D50)', () => {
   it('says what the number means, both ways at once', () => {
     expect(meaningLine(70)).toBe(
-      "70% means right about 7 times in\u00A010. A miss isn't a mistake, and a hit isn't proof.",
+      "70% means right about 7 times in\u00A010. A miss isn’t a mistake, and a hit isn’t proof.",
     );
     expect(meaningLine(80)).toMatch(/^80% means right about 8 times/);
     expect(meaningLine(20)).toMatch(/^20% means it happens about 2 times/);
@@ -1295,7 +1298,7 @@ describe('ResolvePrompt — the same-day rule said once (roadmap D56)', () => {
     await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
     // Answer it now's words (D76).
     expect(screen.getByTestId('resolve-same-day')).toHaveTextContent(
-      "Heads up: an answer today won't count, because you logged it today. Tomorrow it will.",
+      "Heads up: an answer today won’t be scored, because you logged it today. Tomorrow it will.",
     );
   });
 
@@ -1340,7 +1343,7 @@ describe('ResolvePrompt — the same-day rule said once (roadmap D56)', () => {
     render(<ResolvePrompt predictionId="p1" onPredictAgain={jest.fn()} />);
     await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
     expect(screen.getByTestId('resolve-same-day')).toHaveTextContent(
-      "Heads up: an answer today won't count, because you reworded it today. Tomorrow it will.",
+      "Heads up: an answer today won’t be scored, because you reworded it today. Tomorrow it will.",
     );
     fireEvent.press(screen.getByTestId('resolve-yes'));
     await waitFor(() =>

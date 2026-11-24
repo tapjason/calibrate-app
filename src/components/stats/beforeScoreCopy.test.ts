@@ -11,10 +11,10 @@ import {
 describe('plainCountsLine', () => {
   it('says what was said and what happened, with no verdict', () => {
     expect(plainCountsLine({ resolved: 9, happened: 7, mean_stated: 88.3 })).toBe(
-      'You said about 88%, and 7 of 9 scored answers happened. Too early to read.',
+      'You said about 88%, and 7 of 9 scored predictions happened. Too early to read.',
     );
     expect(plainCountsLine({ resolved: 1, happened: 0, mean_stated: 80 })).toBe(
-      'Its one scored answer: you said 80%, and it didn’t happen. Too early to read.',
+      'Its one scored prediction: you said 80%, and it didn’t happen. Too early to read.',
     );
     expect(plainCountsLine({ resolved: 1, happened: 1, mean_stated: 80 })).toMatch(/and it happened\./);
     expect(plainCountsLine({ resolved: 0, happened: 0, mean_stated: 0 })).toBeNull();
@@ -60,12 +60,14 @@ describe('todayEstimateLine', () => {
 describe('firstLookLine', () => {
   it('gives plain counts from 10 scored answers until the rating unlocks', () => {
     expect(firstLookLine({ resolved: 12, happened: 6, mean_stated: 74.6 })).toBe(
-      'First look: you said about 75%, and 6 of 12 happened. Too early to rate.',
+      'First look: you said about 75%, and 6 of your 12 scored predictions happened. Too early to rate.',
     );
     // Counts only, never a lean (D35), however far apart the two are.
     expect(firstLookLine({ resolved: 19, happened: 3, mean_stated: 90 })).toBe(
-      'First look: you said about 90%, and 3 of 19 happened. Too early to rate.',
+      'First look: you said about 90%, and 3 of your 19 scored predictions happened. Too early to rate.',
     );
+    // Predictions happen; answers don't (code review 2026-11-23, round 2).
+    expect(firstLookLine({ resolved: 12, happened: 6, mean_stated: 75 })).not.toMatch(/answers happened/);
     expect(firstLookLine({ resolved: 19, happened: 3, mean_stated: 90 })).not.toMatch(
       /too sure|too cautious|overconfident|underconfident|calibrated/,
     );

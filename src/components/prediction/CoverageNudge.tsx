@@ -40,7 +40,7 @@ export function CoverageNudge({
         Everything lately is above {LOW_END_LABEL}%.
       </Text>
       <Text style={styles.body} testID="coverage-nudge-ask">
-        Try one you think probably won&apos;t happen.
+        Try one you think probably won’t happen.
       </Text>
       <View style={styles.actions}>
         {/* Secondary on purpose: Save is the one primary action on Log

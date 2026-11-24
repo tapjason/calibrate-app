@@ -38,7 +38,7 @@ describe('warmupVerdict', () => {
     // approved words of the voice pass (2026-11-23).
     expect(v?.advice).toBe('You expected about 7 and got 6. Too close to call on ten questions.');
     expect(warmupVerdict(scoreWarmup(run(70, 10, 7)))?.advice).toBe(
-      "You expected about 7 and got 7. Ten questions can't prove it, so your own predictions are the real test.",
+      "You expected about 7 and got 7. Ten questions can’t prove it, so your own predictions are the real test.",
     );
     expect(warmupVerdict(scoreWarmup(TWO))?.title).toBe('On these 2, no clear lean');
   });
@@ -55,7 +55,7 @@ describe('warmupVerdict', () => {
       expect(result.direction).toBe('calibrated');
       const advice = warmupVerdict(result, answers)?.advice;
       expect(advice).toBe(
-        "You expected almost none and got 0. Ten questions can't prove it, so your own predictions are the real test.",
+        "You expected almost none and got 0. Ten questions can’t prove it, so your own predictions are the real test.",
       );
       expect(advice).not.toMatch(/about 0/);
     });

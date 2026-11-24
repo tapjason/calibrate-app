@@ -2,8 +2,8 @@ import { holdRanges, holdTarget } from './holdRanges';
 
 describe('holdRanges (roadmap step 70)', () => {
   it('joins the dash of every numeric range to its numbers', () => {
-    expect(holdRanges("You're overconfident at 80–100%")).toBe(
-      "You're overconfident at 80\u2060–\u2060100%",
+    expect(holdRanges('You’re overconfident at 80–100%')).toBe(
+      'You’re overconfident at 80\u2060–\u2060100%',
     );
     expect(holdRanges('0–20% and 40–60%')).toBe('0\u2060–\u206020% and 40\u2060–\u206060%');
   });

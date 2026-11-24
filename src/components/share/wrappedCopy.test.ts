@@ -240,14 +240,14 @@ describe('wrappedStory allTime', () => {
   const overall = {
     resolved: 148,
     provisional: false,
-    lean: "You're too sure at 80–100% and too cautious at 60–80%",
+    lean: 'You’re too sure at 80–100% and too cautious at 60–80%',
   };
 
   it("sets the whole record's read beside the week's", () => {
     const story = wrappedStory(week(solidWeek), overall);
     expect(story.verdict).toMatch(/^This week, /);
     expect(story.allTime).toBe(
-      "Across all 148 scored answers, you're too sure at 80–100% and too cautious at 60–80%.",
+      'Across all 148 scored answers, you’re too sure at 80–100% and too cautious at 60–80%.',
     );
     expect(wrappedCardSummary(story)).toContain('Across all 148 scored answers');
   });

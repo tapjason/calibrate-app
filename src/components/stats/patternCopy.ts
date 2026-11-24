@@ -79,9 +79,19 @@ export function weekChangeLine(change: WeekChange, giveOrTake: number): string {
       : delta < 0
         ? `Down ${-delta} since last week, from ${answers}`
         : `No change since last week, from ${answers}`;
-  return delta !== 0 && Math.abs(delta) <= giveOrTake
+  return delta !== 0 && weekChangeWithinGiveOrTake(change, giveOrTake)
     ? `${lead}, within its ${GIVE_OR_TAKE}.`
     : `${lead}.`;
+}
+
+/**
+ * Whether the week's change is no more than the rating's give-or-take: what
+ * `weekChangeLine` says "within its give-or-take" for, and what Insights'
+ * short line reads as "About the same as last week." (record audit
+ * 2026-11-23). A change of 0 is within it too.
+ */
+export function weekChangeWithinGiveOrTake(change: WeekChange, giveOrTake: number): boolean {
+  return Math.abs(change.now - change.before) <= giveOrTake;
 }
 
 // "give-or-take" held whole with word joiners: at 375pt it broke at a hyphen.

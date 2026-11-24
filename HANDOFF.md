@@ -1,9 +1,30 @@
 # Handoff
 
-**Now, 2026-11-23: branch `builder/voice-pass`, off `master` (`be1b5c1`), committed, not merged or
-pushed. The voice and text pass (D76, step 212) and the two-choice control at 0 to 100% (D77, step
-213), both the owner's that day.** `check.sh` exit 0: 254 suites, 5,474 tests. JS only, no migration,
+**Now, 2026-11-23: `master`, with `builder/voice-pass` merged in (fast-forward) on the owner's words
+("Merge and review, if you think we are ready for a minor version bump then go ahead with the new
+TestFlight build"), reviewed, not pushed. The voice and text pass (D76, step 212) and the two-choice control at 0 to 100% (D77, step
+213), both the owner's that day.** `check.sh` exit 0: 255 suites, 5,506 tests. JS only, no migration,
 nothing new leaves the phone. Build 15 on TestFlight has none of it.
+- **The review he called** (three rounds; `code-reviewer` and `record-auditor` three times,
+  `policy-auditor` once, all Opus at xhigh): it ends CLEAN, HOLDS and no FAIL, and both say the
+  result may go to an internal TestFlight build.
+  - *Fixed in it:* a category's score was rounded down on Today's and the recap's next-badge line
+    and rounded on Insights (in 1.0.0 too); practice's headline now follows the chart's per-range
+    rule and can't call a record "close to calibrated" that isn't; Insights' short week line reads
+    "About the same as last week." inside the give-or-take; Insights' bar lost its 70 / 85 / 90
+    marks (with no caption they read as tiers for the rating); "scored" is back in four counts and
+    the same-day heads-up says "won't be scored"; VoiceOver hears the two-choice hint in the
+    control's label; the reminder ask names the weekly summary only while the digest is on; test
+    gaps (How scoring works' wiring, large text on the readout).
+  - *Left, by the reviewers' own word not blockers:* "On average you're about 14 points off." can be
+    read as each answer's miss (his approved words); a Warm-up whose errors cancel across 50 reads
+    "no clear lean" over two far-off grey dots (D36 against D77); a practice headline that names one
+    range sits over a pooled line that can point the other way; "Can't tell" and the badge-fall line
+    keep straight apostrophes beside curly ones; "Nothing else." on the reminder ask isn't quite
+    true inside a Plus trial (as in 1.0.0).
+  - *For the App Store submission, from the policy audit:* the review notes need a "Lock after"
+    clause and a what's-new line (about 240 bytes have to come out first); screenshots 01 to 04 show
+    old wording or folded text; both are written up in the listing draft.
 - **D76, his words:** wording that sounds less like AI, "more personality, and hand-holding … less
   fancy words maybe, but not by too much … less text overall. Much of the score calculation based
   explanations do not need to be on the main page next to the score". He approved the sample sheet
@@ -16,12 +37,9 @@ nothing new leaves the phone. Build 15 on TestFlight has none of it.
     sentences sit on top of How scoring works. The furthest-off row unfolds its detail on a tap; the
     chart's key folds behind "How to read this chart".
   - *The main session's calls, his to overturn:* the coverage line keeps "scored" and says "things
-    you thought were unlikely" (not the approved "things you felt sure about"); "Up 2 since last
-    week." stays on the page; the practice chart's key is folded too; the recap card's next-badge
-    row keeps "To reach …".
-  - *For a record audit, if he calls one:* "On average you're about 14 points off." no longer says
-    the average is over ranges; "Up 2 since last week." no longer says "within its give-or-take";
-    "First look … 6 of 12 happened." no longer says "scored".
+    you thought were unlikely" (not the approved "things you felt sure about"); "20 scored answers
+    unlock your score." keeps "scored" where he approved "20 answers"; the practice chart's key is
+    folded too; the recap card's next-badge row keeps "To reach …".
 - **D77, his words**, against the main session's advice (two answers' chances add to 100): "the
   minimum should never be 50%. It should also not default to -%, since that makes no sense in the
   UI". The Warm-up's and practice's control runs 0 to 100; a number under 50 is scored as said, never
@@ -42,8 +60,8 @@ nothing new leaves the phone. Build 15 on TestFlight has none of it.
   lines); `/device-check` rewrites them for the next build.
 - **Who built it:** `core-domain` (Opus, xhigh) for D77's data layer; `mobile-ui` (Opus, xhigh) three
   times (the control and Warm-up, Insights and How scoring works, Today to Resolve); `mobile-ui`
-  (Sonnet) twice for exact follow-ups; a general-purpose agent (Opus) for the docs. No review was
-  called.
+  (Sonnet) twice for exact follow-ups; general-purpose agents (Opus, then Sonnet) for the docs. The review's fixes: `mobile-ui` on Opus
+  twice, Sonnet once.
 - **Left from the plan:** the Warm-up's answer key folded to the misses, its intro, three starter
   ideas, Insights' empty boxes on Day 0 and the Plus card (the rest of the text-load cuts); a pass
   over You, the paywall and the account screens; the next-step line; the reminder promised before

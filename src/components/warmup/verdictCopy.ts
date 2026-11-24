@@ -76,7 +76,7 @@ function noLeanAdvice(meanConfidence: number, right: number, n: number): string 
   const exact = (meanConfidence / 100) * n;
   const counts = `You expected ${expectedWords(exact, n)} and got ${right}.`;
   if (Math.round(exact) === right) {
-    return `${counts} ${Word} ${questions} can't prove it, so your own predictions are the real test.`;
+    return `${counts} ${Word} ${questions} can’t prove it, so your own predictions are the real test.`;
   }
   return `${counts} Too close to call on ${word} ${questions}.`;
 }

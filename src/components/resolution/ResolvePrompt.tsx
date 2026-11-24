@@ -120,7 +120,7 @@ interface ResolvePromptProps {
 export function bucketLine(bucket: BucketStat): string {
   const range = `${bucket.low}–${bucket.high}%`;
   const n = bucket.total_resolved;
-  if (n === 1) return `That's your first call at ${range}.`;
+  if (n === 1) return `That’s your first call at ${range}.`;
   const counts = `At ${range}, ${bucket.resolved_yes} of your ${n} calls happened.`;
   if (n < MIN_BUCKET_N_FOR_VERDICT) return counts;
   const happened = Math.round(bucket.actual_rate * 100);
@@ -136,12 +136,13 @@ export function bucketLine(bucket: BucketStat): string {
  * and No. A first "it happened" otherwise reads as "I was right" (outcome
  * bias, Baron & Hershey 1988), which isn't what 70% means. In D76's words
  * (the owner, 2026-11-23): "70% means right about 7 times in 10. It takes
- * around 20 answers before we can tell how you're doing."
+ * around 20 scored answers before we can tell how you’re doing." "Scored"
+ * since the record audit of 2026-11-23: a same-day answer isn't one.
  */
 export function firstAnswerLine(confidence: number): string {
   return (
-    `That's your first. ${numberMeans(confidence)} ` +
-    `It takes around ${MIN_N_OVERALL} answers before we can tell how you're doing.`
+    `That’s your first. ${numberMeans(confidence)} ` +
+    `It takes around ${MIN_N_OVERALL} scored answers before we can tell how you’re doing.`
   );
 }
 
@@ -170,7 +171,7 @@ function numberMeans(confidence: number): string {
  */
 export function meaningLine(confidence: number): string | null {
   if (confidence <= 0 || confidence >= 100) return null;
-  return `${numberMeans(confidence)} A miss isn't a mistake, and a hit isn't proof.`;
+  return `${numberMeans(confidence)} A miss isn’t a mistake, and a hit isn’t proof.`;
 }
 
 /** Why one answer only nudges the rating: said once per answer run. */
@@ -891,8 +892,8 @@ export function ResolvePrompt({
     resolved_at: new Date().toISOString(),
   });
   const skipNote = skipBy
-    ? `It won't count toward your score. ${endSentence(`You can still answer it until the end of ${formatDay(skipBy)}`)}`
-    : "It won't count toward your score.";
+    ? `It won’t count toward your score. ${endSentence(`You can still answer it until the end of ${formatDay(skipBy)}`)}`
+    : 'It won’t count toward your score.';
 
   if (prediction.status !== 'pending' && prediction.status !== 'skipped') {
     return (

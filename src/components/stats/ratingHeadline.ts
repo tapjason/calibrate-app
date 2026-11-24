@@ -5,7 +5,7 @@
 // shows progress toward the threshold. This keeps that rule in one pure,
 // testable place so every screen renders the provisional state the same way.
 
-import { weekChangeLine } from '@/components/stats/patternCopy';
+import { weekChangeLine, weekChangeWithinGiveOrTake } from '@/components/stats/patternCopy';
 import { localCount } from '@/components/ui/count';
 import type { WeekChange } from '@/store/statsStore';
 import { MIN_N_OVERALL, type PerfectReference, type RatingRange, type UserStat } from '@/types';
@@ -128,16 +128,18 @@ export function perfectShortLine(
 }
 
 /**
- * "Up 2 since last week." The since-last-week line as Insights shows it under
- * the rating (D76): the news only. The full sentence, with the answers behind
+ * "Up 4 since last week." The since-last-week line as Insights shows it under
+ * the rating (D76): the news only. A change within the rating's give-or-take,
+ * or none, reads "About the same as last week." (record audit 2026-11-23: "Up
+ * 2" with no give-or-take beside it read as real movement); only a change
+ * beyond it is told as up or down. The full sentence, with the answers behind
  * it and whether it's within the give-or-take (`weekChangeLine`), is in How
  * scoring works.
  */
-export function weekChangeShortLine(change: WeekChange): string {
+export function weekChangeShortLine(change: WeekChange, giveOrTake: number): string {
+  if (weekChangeWithinGiveOrTake(change, giveOrTake)) return 'About the same as last week.';
   const delta = change.now - change.before;
-  if (delta > 0) return `Up ${delta} since last week.`;
-  if (delta < 0) return `Down ${-delta} since last week.`;
-  return 'No change since last week.';
+  return delta > 0 ? `Up ${delta} since last week.` : `Down ${-delta} since last week.`;
 }
 
 /**

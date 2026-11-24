@@ -8,6 +8,7 @@
 // fewer than PRACTICE_MIN_N answers, and compares a day in counts, as Wrapped
 // and a resolve run do, rather than with a hit rate.
 
+import { chartRead, closeToSaid, rangeLabel, type ChartRead } from '@/components/stats/chartTakeaway';
 import { expectedPhrase } from '@/components/stats/expectedPhrase';
 import { PRACTICE_MIN_N, type PracticeDayTally, type PracticeRecord } from '@/types';
 
@@ -66,12 +67,56 @@ export function practiceDayCopy(tally: PracticeDayTally): { title: string; detai
 const pct = (fraction: number) => `${Math.round(fraction * 100)}%`;
 
 /**
+ * The record's headline. It must agree with the chart under it, which marks
+ * each range by the lean rule, and with the pooled line under it ("29
+ * answered over 12 days: 71% sure on average, right 55% of the time."). In
+ * this order:
+ *  1. A range the lean rule names, over ranges with 10 answers or more
+ *     (`chartRead`, Insights' chart title rule): both sides in Insights' words,
+ *     or the one range.
+ *  2. "Close to calibrated" only when every such range is within 5 points of
+ *     what was said and the pooled answers are too (`closeToSaid`, as the
+ *     recaps' verdict asks): two ranges on the line beside a 95% range of
+ *     nine with four right read "close to calibrated" over "71% sure, right
+ *     55%" (code review 2026-11-23, round 2).
+ *  3. With no range at 10 answers, the pooled lean, by the engine's lean rule
+ *     (`record.direction`).
+ *  4. Otherwise no clear lean.
+ * The pooled answers alone read "close to calibrated" over a too-sure dot and
+ * a too-cautious one (ten at 10% all right, ten at 90% all wrong), and over
+ * "70% sure, right 55%" (record audit 2026-11-23).
+ */
+function practiceHeadline(read: ChartRead | null, record: PracticeRecord): string {
+  if (read?.kind === 'both') {
+    return `In practice, you’re too sure at ${rangeLabel(read.sure)} and too cautious at ${rangeLabel(read.cautious)}`;
+  }
+  if (read?.kind === 'lean') {
+    return `In practice, you run ${read.direction} at ${rangeLabel(read.range)}`;
+  }
+  if (read?.kind === 'calibrated') {
+    const pooledClose = closeToSaid(record.mean_confidence, record.accuracy * 100);
+    if (read.close && pooledClose) {
+      return read.one
+        ? `In practice, you’re close to calibrated at ${rangeLabel(read.shown)}`
+        : 'In practice, you’re close to calibrated';
+    }
+    return 'In practice, no clear lean yet';
+  }
+  if (record.direction === 'overconfident' || record.direction === 'underconfident') {
+    return `In practice, you run ${record.direction}`;
+  }
+  return 'In practice, no clear lean yet';
+}
+
+/**
  * Everything practised so far. Below PRACTICE_MIN_N, counts and how many more
- * it takes; from there, which way the answers lean, with the two numbers.
+ * it takes; from there, which way the answers lean by the chart's rule, with
+ * the two numbers.
  */
 export function practiceRecordCopy(record: PracticeRecord): { headline: string; detail: string } {
   const days = `${record.days} ${record.days === 1 ? 'day' : 'days'}`;
   const answered = `${record.answered} answered over ${days}`;
+  // The engine's floor: no direction, and no bands, below PRACTICE_MIN_N.
   if (record.direction === null) {
     const more = Math.max(0, PRACTICE_MIN_N - record.answered);
     return {
@@ -81,14 +126,8 @@ export function practiceRecordCopy(record: PracticeRecord): { headline: string; 
   }
   const said = `${Math.round(record.mean_confidence)}%`;
   const right = pct(record.accuracy);
-  const headline =
-    record.direction === 'overconfident'
-      ? 'In practice, you run overconfident'
-      : record.direction === 'underconfident'
-        ? 'In practice, you run underconfident'
-        : 'In practice, you’re close to calibrated';
   return {
-    headline,
+    headline: practiceHeadline(chartRead(record.buckets), record),
     detail: `${answered}: ${said} sure on average, right ${right} of the time.`,
   };
 }

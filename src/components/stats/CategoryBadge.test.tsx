@@ -29,9 +29,9 @@ describe('CategoryBadge', () => {
     const counts = { resolved: 9, happened: 7, mean_stated: 90 };
     const view = render(<CategoryBadge stat={stat({ predictions_resolved: 9 })} next={null} counts={counts} />);
     expect(view.getByTestId('category-health-counts')).toHaveTextContent(
-      'You said about 90%, and 7 of 9 scored answers happened. Too early to read.',
+      'You said about 90%, and 7 of 9 scored predictions happened. Too early to read.',
     );
-    expect(view.getByTestId('category-health').props.accessibilityLabel).toMatch(/7 of 9 scored answers happened\./);
+    expect(view.getByTestId('category-health').props.accessibilityLabel).toMatch(/7 of 9 scored predictions happened\./);
     view.rerender(
       <CategoryBadge
         stat={stat({ predictions_resolved: 30, score_is_provisional: false, calibration_score: 80 })}

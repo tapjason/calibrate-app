@@ -190,7 +190,7 @@ describe('CalibrationView chart section', () => {
     );
     // The range's dash is held to its numbers so it never splits (step 70).
     expect(getByTestId('chart-takeaway').props.children).toBe(
-      "You're overconfident at 80\u2060–\u2060100%",
+      'You’re overconfident at 80\u2060–\u2060100%',
     );
     // Roadmap D57: what would have matched, for a range that leans; the
     // counts in D76's words.
@@ -579,14 +579,15 @@ describe('CalibrationView pattern lines', () => {
           actual_rate: 9 / 21,
           direction: 'overconfident',
         }}
-        weekChange={{ before: 85, now: 87, answered: 6 }}
+        weekChange={{ before: 83, now: 87, answered: 6 }}
       />,
     );
-    // D76: the page keeps what was said and what happened, and the news.
+    // D76: the page keeps what was said and what happened, and the news, a
+    // change beyond the give-or-take of 3 (record audit 2026-11-23).
     expect(getByTestId('stats-furthest-off')).toHaveTextContent(
       'Furthest off: Finance. You said about 85%, and 9 of 21 happened.',
     );
-    expect(getByTestId('stats-week-change')).toHaveTextContent('Up 2 since last week.');
+    expect(getByTestId('stats-week-change')).toHaveTextContent('Up 4 since last week.');
   });
 
   // D76: what would have matched unfolds in place under the line, as "More
@@ -617,11 +618,20 @@ describe('CalibrationView pattern lines', () => {
 
     fireEvent.press(toggle);
     expect(getByTestId('stats-furthest-off-toggle').props.accessibilityState).toEqual({ expanded: true });
-    // The open row keeps a name carrying everything it shows.
-    expect(getByTestId('stats-furthest-off-toggle').props.accessibilityLabel).toMatch(
-      /^Furthest off: Finance\..*About 45% would have matched\./,
+    // The open row keeps its first line as its name, and the expanded state
+    // says it is open; the detail is read once, on its own (code review
+    // 2026-11-23: it was in the label and its own Text, so read twice).
+    expect(getByTestId('stats-furthest-off-toggle').props.accessibilityLabel).toBe(
+      'Furthest off: Finance. You said about 85%, and 9 of 21 happened.',
     );
     expect(getByTestId('stats-furthest-off-detail')).toHaveTextContent('About 45% would have matched.');
+    // Not inside the button, and not hidden: a screen reader reaches it.
+    expect(getByTestId('stats-furthest-off-detail').props.accessibilityElementsHidden).toBeUndefined();
+    expect(
+      getByTestId('stats-furthest-off-toggle').findAll(
+        (n: { props: { testID?: string } }) => n.props.testID === 'stats-furthest-off-detail',
+      ),
+    ).toHaveLength(0);
 
     fireEvent.press(getByTestId('stats-furthest-off-toggle'));
     expect(queryByTestId('stats-furthest-off-detail')).toBeNull();
@@ -837,7 +847,7 @@ describe('CalibrationView, what luck alone gives', () => {
       />,
     );
     expect(getByTestId('rating-provisional-first-look')).toHaveTextContent(
-      'First look: you said about 75%, and 6 of 12 happened. Too early to rate.',
+      'First look: you said about 75%, and 6 of your 12 scored predictions happened. Too early to rate.',
     );
   });
 });
@@ -967,7 +977,8 @@ describe('CalibrationView, the lines under the rating in groups (D68, D76)', () 
     expect(screen.getByTestId('stats-perfect')).toHaveTextContent(
       'With 153 answers, that’s about as good as anyone can tell.',
     );
-    expect(screen.getByTestId('stats-week-change')).toHaveTextContent('Up 2 since last week.');
+    // 84 to 86 is within the give-or-take of 3 (record audit 2026-11-23).
+    expect(screen.getByTestId('stats-week-change')).toHaveTextContent('About the same as last week.');
     expect(screen.getByTestId('stats-explain')).toHaveTextContent('What does this mean?');
     // Each in full on top of How scoring works (ratingDetailLines), not here.
     for (const gone of [
@@ -1031,7 +1042,7 @@ describe('CalibrationView, the lines under the rating in groups (D68, D76)', () 
     expect(style('stats-week-change').marginTop).toBe(space.md);
   });
 
-  it('shows the week change the same without a give-or-take', () => {
+  it('shows the week change as news without a give-or-take', () => {
     show({ range: false });
     expect(screen.getByTestId('stats-week-change')).toHaveTextContent('Up 2 since last week.');
     expect(style('stats-week-change').marginTop).toBe(space.md);
@@ -1234,11 +1245,38 @@ describe('CalibrationView — the rating block', () => {
     />
   );
 
-  it('prints no caption under the bar, which still speaks what its marks are', () => {
-    const { queryByTestId, queryByText, getByLabelText } = render(unlocked());
-    expect(queryByTestId('stats-score-bar-caption')).toBeNull();
-    expect(queryByText(/The marks are a category's badge bars/)).toBeNull();
-    expect(getByLabelText(/The marks are a category's badge bars: Forecaster above 70/)).toBeTruthy();
+  // Record audit 2026-11-23: with no caption, playtesters read the 70 / 85 /
+  // 90 marks as tiers for the overall rating. Drawn as Today's bar is, with
+  // its give-or-take band.
+  it('draws the bar without badge marks, their numbers or a caption', () => {
+    const { queryByTestId, queryByText, queryByLabelText, getByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 40, rating_is_provisional: false, calibration_rating: 86 })}
+        calibration={EMPTY_CAL}
+        categoryStats={[]}
+        nextBadges={{}}
+        ratingRange={{ giveOrTake: 3, low: 83, high: 89 }}
+        onExplain={jest.fn()}
+        answeredCount={3}
+      />,
+    );
+    const hidden = { includeHiddenElements: true } as const;
+    for (const t of ['70', '85', '90']) {
+      expect(queryByTestId(`score-bar-label-${t}`, hidden)).toBeNull();
+    }
+    expect(queryByTestId('stats-score-bar-caption', hidden)).toBeNull();
+    expect(queryByText(/badge bars/, hidden)).toBeNull();
+    expect(queryByLabelText(/badge bars/)).toBeNull();
+    expect(getByTestId('stats-score-bar-range', hidden)).toBeTruthy();
+  });
+
+  // Code review 2026-11-23: at large text the words wrap before their chevron
+  // is pushed off the row.
+  it('lets the words of each chevron row shrink before the chevron', () => {
+    const { getByText, getByTestId } = render(unlocked());
+    expect(StyleSheet.flatten(getByText('What does this mean?').props.style).flexShrink).toBe(1);
+    expect(StyleSheet.flatten(getByText('More about your record').props.style).flexShrink).toBe(1);
+    expect(getByTestId('stats-fine-toggle')).toBeTruthy();
   });
 
   it('shows "What does this mean?" as a link with a chevron, and the fold with its own', () => {

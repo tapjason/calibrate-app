@@ -805,8 +805,9 @@ export type Direction = 'overconfident' | 'underconfident' | 'calibrated';
 
 /**
  * The coin flip on a two-choice question: 50%, no idea which is right. What an
- * unreadable Warm-up or practice number falls back to; the same point an unset
- * ConfidenceControl rests on (its own COIN_FLIP, D49). No longer the floor:
+ * unreadable Warm-up or practice number falls back to, and where an unset
+ * ConfidenceControl rests on every screen, Log's too (it reads this constant,
+ * D49). No longer the floor:
  * the owner, 2026-11-23 ("The minimum should never be 50%"), the two-choice
  * control runs 0–100 like Log's.
  */

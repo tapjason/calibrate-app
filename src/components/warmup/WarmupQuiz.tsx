@@ -3,7 +3,7 @@ import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { Button } from '@/components/ui/Button';
 import { ChoiceList } from '@/components/ui/ChoiceList';
-import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
+import { ConfidenceControl, TWO_CHOICE_HINT } from '@/components/ui/ConfidenceControl';
 import { usePinnedFooter } from '@/components/ui/usePinnedFooter';
 import { useScrollReveal } from '@/components/ui/useScrollReveal';
 import { colors, space, type } from '@/constants/theme';
@@ -15,11 +15,10 @@ import {
 } from '@/store/warmupStore';
 
 /**
- * Under the control on every question, as on practice. The scale runs 0–100
- * (the owner, 2026-11-23); 50 is where "no idea" sits on a two-choice question.
+ * Shown on the first questions only (roadmap D60 (g)), after the two-choice
+ * hint (TWO_CHOICE_HINT, shared with practice). Never spoken: the slider is
+ * hidden from VoiceOver, which adjusts the control by swiping.
  */
-export const TWO_CHOICE_HINT = '50% means no idea, a coin flip.';
-/** Said on the first questions only (roadmap D60 (g)). */
 export const WARMUP_TAP_TIP = 'Tap the bar to pick a number.';
 const WARMUP_TAP_TIP_QUESTIONS = 3;
 
@@ -255,14 +254,12 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
               min={MIN_WARMUP_CONFIDENCE}
               max={MAX_WARMUP_CONFIDENCE}
               label="How sure are you?"
+              hint={TWO_CHOICE_HINT}
               // The first three say a tap on the bar sets any number: with ±5
               // alone a question cost 7–9 taps, and a stylus user gave up at
               // question 3 (blind playtest 2026-11-13b, runs 4 and 8; D60).
-              hint={
-                index < WARMUP_TAP_TIP_QUESTIONS
-                  ? `${TWO_CHOICE_HINT} ${WARMUP_TAP_TIP}`
-                  : TWO_CHOICE_HINT
-              }
+              // Shown after the hint, never said: VoiceOver has no bar to tap.
+              tip={index < WARMUP_TAP_TIP_QUESTIONS ? WARMUP_TAP_TIP : undefined}
               idPrefix="warmup-confidence"
             />
           </View>

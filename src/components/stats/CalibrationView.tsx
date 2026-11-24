@@ -302,7 +302,9 @@ export function CalibrationView({
                 <CountUp value={headline.rating} style={styles.rating} testID="rating-value" />
                 <Text style={styles.ratingLabel}>calibration rating</Text>
               </View>
-              <ScoreBar score={headline.rating} range={ratingRange} caption testID="stats-score-bar" />
+              {/* No 70 / 85 / 90 marks, as on Today (record audit 2026-11-23):
+                  unlabelled, they read as tiers for the overall rating. */}
+              <ScoreBar score={headline.rating} range={ratingRange} testID="stats-score-bar" />
               {/* One short line and the way to the rest (D76, the owner: "Much
                   of the score calculation based explanations do not need to be
                   on the main page next to the score"). The full points line,
@@ -319,10 +321,12 @@ export function CalibrationView({
                 </Text>
               )}
               {explain}
-              {/* The news (roadmap D37): nothing free showed change over time. */}
+              {/* The news (roadmap D37): nothing free showed change over time.
+                  Within the give-or-take it is "About the same" (record audit
+                  2026-11-23). */}
               {weekChange && (
                 <Text style={[styles.subtle, styles.groupStart]} testID="stats-week-change">
-                  {weekChangeShortLine(weekChange)}
+                  {weekChangeShortLine(weekChange, giveOrTake)}
                 </Text>
               )}
             </>
@@ -450,12 +454,14 @@ export function CalibrationView({
             accessibilityRole="button"
             accessibilityState={{ expanded: showFurthest }}
             aria-expanded={showFurthest}
-            // The whole visible text in both states, so the row has a name
-            // when it is open too (web accessibility snapshot, 2026-11-23).
-            accessibilityLabel={
-              furthestOffLine(furthestOff, visibleCategoryTitle(furthestOff.category, hideTitles)) +
-              (showFurthest ? ` ${furthestOffDetail(furthestOff, furthestBadge)}` : '')
-            }
+            // The visible first line in both states (web accessibility
+            // snapshot, 2026-11-23); the expanded state says it is open, and
+            // the detail under it is read on its own, not twice (code review
+            // 2026-11-23).
+            accessibilityLabel={furthestOffLine(
+              furthestOff,
+              visibleCategoryTitle(furthestOff.category, hideTitles),
+            )}
             style={styles.patternRow}
             testID="stats-furthest-off-toggle"
           >
@@ -558,9 +564,10 @@ const styles = StyleSheet.create({
     paddingVertical: space.xs,
   },
   // A link that opens a sheet: ink, regular weight beside its chevron, so it
-  // isn't the fold heading's bold.
-  linkText: { ...type.subhead, color: colors.actionText },
-  tableToggleText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
+  // isn't the fold heading's bold. Both shrink before their chevron does, so
+  // large text wraps the words and keeps the chevron on the row.
+  linkText: { ...type.subhead, color: colors.actionText, flexShrink: 1 },
+  tableToggleText: { ...type.subhead, color: colors.actionText, fontWeight: '600', flexShrink: 1 },
   bucket: {
     borderBottomColor: colors.hairline,
     borderBottomWidth: 1,

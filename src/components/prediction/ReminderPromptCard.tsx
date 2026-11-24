@@ -29,21 +29,25 @@ export function nudgeTime(time: { hour: number; minute: number }): string {
  * The in-context ask for notification permission (roadmap step 38). It asks
  * in the person's own time (D38) and names the weekly summary too, since one
  * permission covers both (D76, the voice pass, 2026-11-23: "Want a nudge at
- * 7 PM on the day it's due?" then "Plus a quiet weekly summary. Nothing
- * else."). Only the tap on "Turn on reminders" shows the system alert. Same
- * quiet card as the coverage nudge: sunken, a secondary button, and "Not now"
- * as a real answer.
+ * 7 PM on the day it’s due?" then "Plus a quiet weekly summary. Nothing
+ * else."). The summary only while its switch is on (policy review
+ * 2026-11-23): with Weekly digest off in You, the body is "Nothing else."
+ * Only the tap on "Turn on reminders" shows the system alert. Same quiet card
+ * as the coverage nudge: sunken, a secondary button, and "Not now" as a real
+ * answer.
  */
 export function ReminderPromptCard({ onAllow, onDismiss, busy }: ReminderPromptCardProps) {
   // The person's own time since D38, not always the evening.
   const reminderAt = useSettingsStore((s) => s.dueReminderTime);
+  // The digest's own switch (D31): the card promises only what will be sent.
+  const digestOn = useSettingsStore((s) => s.digestEnabled);
   return (
     <View style={styles.wrap} testID="reminder-prompt">
       <Text style={styles.title} testID="reminder-prompt-title">
-        Want a nudge at {nudgeTime(reminderAt)} on the day it&apos;s due?
+        Want a nudge at {nudgeTime(reminderAt)} on the day it’s due?
       </Text>
       <Text style={styles.body} testID="reminder-prompt-body">
-        Plus a quiet weekly summary. Nothing else.
+        {digestOn ? 'Plus a quiet weekly summary. Nothing else.' : 'Nothing else.'}
       </Text>
       <View style={styles.actions}>
         <Button

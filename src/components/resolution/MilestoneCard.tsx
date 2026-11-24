@@ -26,7 +26,7 @@ export function milestoneCopy(m: Milestone): { title: string; body: string } {
       // points, and perfect calibration itself scores about 85–88. "Rough
       // for now" says it in the owner's words (D76, the voice pass,
       // 2026-11-23); the give-or-take is in How scoring works.
-      const unlocked = `${MIN_N_OVERALL} answers in. Here’s your rating. It’s rough for now and settles as you answer more.`;
+      const unlocked = `${MIN_N_OVERALL} scored answers in. Here’s your rating. It’s rough for now and settles as you answer more.`;
       return {
         title: 'Your calibration score is unlocked',
         // With the badge this answer also earned: only one card shows, and

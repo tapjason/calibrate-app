@@ -32,8 +32,6 @@ interface CalibrationChartProps {
    * Warmup verdict — never on an ordinary visit to Stats.
    */
   animateIn?: boolean;
-  /** A sentence after the key, for a chart whose headline reads the dots together (the Warmup). */
-  captionNote?: string;
   /**
    * Whether the zones are named "Overconfident" and "Underconfident". Left
    * out, they are on the empty chart and once a range has 10 answers (D63).
@@ -150,7 +148,6 @@ const MARK: Record<Direction, string> = {
 export function CalibrationChart({
   buckets,
   animateIn = false,
-  captionNote,
   zoneWords,
 }: CalibrationChartProps) {
   const reduceMotion = useReducedMotion();
@@ -497,7 +494,9 @@ export function CalibrationChart({
         style={styles.keyToggle}
         testID="chart-key-toggle"
       >
-        <Text style={styles.keyToggleText}>{showKey ? 'Hide' : 'How to read this chart'}</Text>
+        {/* "Hide the key", not "Hide": the open toggle's only name (code
+            review 2026-11-23). */}
+        <Text style={styles.keyToggleText}>{showKey ? 'Hide the key' : 'How to read this chart'}</Text>
       </Pressable>
       {showKey && (
       <>
@@ -507,7 +506,7 @@ export function CalibrationChart({
         Across: how sure you said you were. Up: how often it happened. Dashed line:
         perfectly calibrated.
         {buckets.length > 0 &&
-          ' Grey bars: where a perfectly calibrated dot lands 8 times in 10 with that many predictions. A dot inside its bar can\'t be told apart from perfect calibration.'}
+          ' Grey bars: where a perfectly calibrated dot lands 8 times in 10 with that many predictions. A dot inside its bar can’t be told apart from perfect calibration.'}
         {/* Only when one is drawn (roadmap D58): nothing else says why a dot
             is grey. Log's track record and the card's label use the same words. */}
         {/* What the colours mean (D62): the caption named grey only (blind
@@ -517,7 +516,6 @@ export function CalibrationChart({
           ' Orange, below the line: too sure. Blue, above it: too cautious. Green: no clear lean, within luck or under 5 points off.'}
         {buckets.some((b) => b.total_resolved < MIN_N_BAND) &&
           ' A grey dot has fewer than 10 answers, too few to read yet.'}
-        {captionNote ? ` ${captionNote}` : null}
       </Text>
       </>
       )}

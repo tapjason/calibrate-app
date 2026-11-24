@@ -1,5 +1,6 @@
 import type { UserStat } from '@/types';
 
+import { weekChangeLine } from './patternCopy';
 import {
   chartNamesLean,
   perfectLine,
@@ -160,10 +161,35 @@ describe('perfectShortLine (D76)', () => {
 
 // D76: the news alone on Insights; the full sentence is in How scoring works.
 describe('weekChangeShortLine (D76)', () => {
-  it('says the change and nothing more', () => {
-    expect(weekChangeShortLine({ before: 84, now: 86, answered: 6 })).toBe('Up 2 since last week.');
-    expect(weekChangeShortLine({ before: 88, now: 86, answered: 1 })).toBe('Down 2 since last week.');
-    expect(weekChangeShortLine({ before: 86, now: 86, answered: 4 })).toBe('No change since last week.');
+  // Record audit 2026-11-23: only a change beyond the give-or-take is news.
+  it('says the change only when it is beyond the give-or-take', () => {
+    expect(weekChangeShortLine({ before: 84, now: 88, answered: 6 }, 3)).toBe('Up 4 since last week.');
+    expect(weekChangeShortLine({ before: 90, now: 86, answered: 1 }, 3)).toBe('Down 4 since last week.');
+    // No give-or-take known: any change is beyond it.
+    expect(weekChangeShortLine({ before: 84, now: 86, answered: 6 }, 0)).toBe('Up 2 since last week.');
+  });
+
+  it('reads a change within the give-or-take as about the same', () => {
+    expect(weekChangeShortLine({ before: 84, now: 86, answered: 6 }, 3)).toBe('About the same as last week.');
+    expect(weekChangeShortLine({ before: 88, now: 86, answered: 1 }, 3)).toBe('About the same as last week.');
+    // At the give-or-take exactly, as the full sentence says "within" there.
+    expect(weekChangeShortLine({ before: 83, now: 86, answered: 2 }, 3)).toBe('About the same as last week.');
+  });
+
+  it('reads no change as about the same', () => {
+    expect(weekChangeShortLine({ before: 86, now: 86, answered: 4 }, 3)).toBe('About the same as last week.');
+    expect(weekChangeShortLine({ before: 86, now: 86, answered: 4 }, 0)).toBe('About the same as last week.');
+  });
+
+  it('agrees with the full sentence on what is within the give-or-take', () => {
+    for (const giveOrTake of [0, 2, 3, 5]) {
+      for (let delta = -7; delta <= 7; delta += 1) {
+        const change = { before: 80, now: 80 + delta, answered: 5 };
+        const full = weekChangeLine(change, giveOrTake);
+        const short = weekChangeShortLine(change, giveOrTake);
+        expect(short === 'About the same as last week.').toBe(delta === 0 || /within its/.test(full));
+      }
+    }
   });
 });
 

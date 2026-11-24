@@ -41,9 +41,10 @@ interface UnlockProgressProps {
  * One line of words with it (D76, the voice pass, 2026-11-23; it was three:
  * "Your first answer: tomorrow evening" / "0 of 20 scored, 1 on its way" /
  * "20 more scored answers and your score unlocks."). Before the first answer,
- * above the bar: "Your first answer lands tomorrow evening. 20 answers unlock
- * your score." After it, below: "15 more scored answers unlock your score.",
- * with when the next one comes due. The bar draws what's scored and on its way.
+ * above the bar: "Your first answer lands tomorrow evening. 20 scored answers
+ * unlock your score." After it, below: "15 more scored answers unlock your
+ * score.", with when the next one comes due. The bar draws what's scored and
+ * on its way; the count on its way is spoken, not printed.
  */
 export function UnlockProgress({
   resolved,
@@ -59,12 +60,17 @@ export function UnlockProgress({
   const onTheWay = Math.min(pending, total - done);
   const toGo = total - done;
 
-  // Before the first answer the owner's words (D76) say "answers"; after it,
-  // the count is of scored ones, and says so.
-  const unlocks = lead
-    ? `${toGo} ${toGo === 1 ? 'answer unlocks' : 'answers unlock'} your score.`
-    : `${toGo} more scored ${toGo === 1 ? 'answer unlocks' : 'answers unlock'} your score.`;
-  const line = lead ? `${lead} ${unlocks}` : `${unlocks}${nextDue ? ` ${nextDue}` : ''}`;
+  // "Scored" before the first answer too (record audit 2026-11-23): a
+  // same-day answer isn't one, so "20 answers" over-promised.
+  const answers = `${toGo === 1 ? 'answer unlocks' : 'answers unlock'} your score`;
+  const unlocks = lead ? `${toGo} scored ${answers}` : `${toGo} more scored ${answers}`;
+  // The dashed segments, named aloud only (code review 2026-11-23): the bar
+  // draws them, and since D76 no printed words do.
+  const onTheWaySpoken = onTheWay > 0 ? `, ${onTheWay} on the way` : '';
+  const compose = (core: string) =>
+    lead ? `${lead} ${core}.` : `${core}.${nextDue ? ` ${nextDue}` : ''}`;
+  const line = compose(unlocks);
+  const spokenLine = compose(`${unlocks}${onTheWaySpoken}`);
 
   return (
     <View
@@ -72,7 +78,7 @@ export function UnlockProgress({
       testID={testID}
       accessible
       accessibilityRole="progressbar"
-      accessibilityLabel={`Calibrating. ${line}${firstLook ? ` ${firstLook}` : ''}${estimate ? ` ${estimate}` : ''}`}
+      accessibilityLabel={`Calibrating. ${spokenLine}${firstLook ? ` ${firstLook}` : ''}${estimate ? ` ${estimate}` : ''}`}
       accessibilityValue={{ min: 0, max: total, now: done }}
     >
       <Text style={styles.title}>Calibrating</Text>

@@ -783,7 +783,7 @@ Added 2026-09-29 (polish pass):
 Added 2026-09-30 (the last three commits, `7fd1aba`..`d69ba54`):
 
 - [ ] **Rating bar** (once unlocked, Insights): a thin bar under the number
-      with ticks at 70 / 85 / 90 (Today's bar has none since D59). Today adds a one-line read ("You're overconfident
+      with no ticks and no labels (Today's lost them at D59, Insights' in the 2026-11-23 review). Today adds a one-line read ("You're overconfident
       at 80–100%") only when a band has enough resolutions.
 - [ ] **Coverage nudge looks quiet:** a grey inline card, "Start at 25%" as an
       outlined button and "Not now" as text. Save stays the only filled button on Log.
@@ -1051,7 +1051,7 @@ Added 2026-11-13 (step 178, D62, the calls after round 21; a reload is enough):
       delete. With unsaved changes in Edit, the sheet asks first. A day later the button is gone
       (from round 7's build, a delete that day is counted: the 2026-11-19 block).
 - [ ] **Before 20:** at 10–19 scored answers, Today and Insights show "First look: you said
-      about …%, and … of … happened. Too early to rate." (D76's words) Before
+      about …%, and … of your … scored answers happened. Too early to rate." (D76's words, "scored" since the 2026-11-23 review) Before
       the first answer, the practice row reads "While you wait: today's practice".
 - [ ] **Hide the words:** You → "Hide the words" sits on one line with its switch at 375. On, a card
       in an added or renamed category reads "Your own category" with a plain folder symbol,

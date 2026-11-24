@@ -1,7 +1,14 @@
 import * as Haptics from 'expo-haptics';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-import { CONFIDENCE_EMPTY_READOUT, ConfidenceControl, naturalFrequencyFor } from './ConfidenceControl';
+import { DISPLAY_MAX_SCALE, type } from '@/constants/theme';
+
+import {
+  CONFIDENCE_EMPTY_READOUT,
+  ConfidenceControl,
+  naturalFrequencyFor,
+  TWO_CHOICE_HINT,
+} from './ConfidenceControl';
 
 jest.mock('expo-haptics', () => ({
   selectionAsync: jest.fn(async () => undefined),
@@ -282,4 +289,92 @@ describe('ConfidenceControl steps, said aloud (D62)', () => {
     expect(announce).not.toHaveBeenCalled();
     announce.mockRestore();
   });
+});
+
+// Code review 2026-11-23: the hint sat inside the one accessible element, so
+// VoiceOver never read it. Round 2: it is said after the label, not as
+// VoiceOver's hint, which would replace iOS's own "swipe up or down to
+// adjust"; a touch tip shows and is never said.
+describe('ConfidenceControl hint', () => {
+  it('says the hint after the label, and shows it', () => {
+    render(
+      <ConfidenceControl
+        value={null}
+        onChange={jest.fn()}
+        label="How sure are you?"
+        hint={TWO_CHOICE_HINT}
+      />,
+    );
+    expect(TWO_CHOICE_HINT).toBe('50% means no idea, a coin flip.');
+    const adjustable = screen.getByTestId('confidence-adjustable');
+    expect(adjustable.props.accessibilityLabel).toBe(
+      'How sure are you? 50% means no idea, a coin flip.',
+    );
+    expect(adjustable.props.accessibilityHint).toBeUndefined();
+    expect(screen.getByText(TWO_CHOICE_HINT)).toBeTruthy();
+  });
+
+  it('shows a tip after the hint and never says it', () => {
+    render(
+      <ConfidenceControl
+        value={null}
+        onChange={jest.fn()}
+        label="How sure are you?"
+        hint={TWO_CHOICE_HINT}
+        tip="Tap the bar to pick a number."
+      />,
+    );
+    expect(
+      screen.getByText('50% means no idea, a coin flip. Tap the bar to pick a number.'),
+    ).toBeTruthy();
+    const adjustable = screen.getByTestId('confidence-adjustable');
+    expect(adjustable.props.accessibilityLabel).toBe(
+      'How sure are you? 50% means no idea, a coin flip.',
+    );
+    expect(adjustable.props.accessibilityHint).toBeUndefined();
+  });
+
+  it('keeps the plain label when there is no hint (Log)', () => {
+    render(<ConfidenceControl value={70} onChange={jest.fn()} />);
+    const adjustable = screen.getByTestId('confidence-adjustable');
+    expect(adjustable.props.accessibilityLabel).toBe('Confidence');
+    expect(adjustable.props.accessibilityHint).toBeUndefined();
+  });
+});
+
+// Code review 2026-11-23: at large Dynamic Type the block's height follows the
+// cap the texts inside it scale to, so nothing spills out of it.
+describe('ConfidenceControl at large text sizes', () => {
+  const heightOf = () => {
+    const flat = [screen.getByTestId('confidence-readout-block').props.style].flat(Infinity) as Array<
+      Record<string, unknown> | undefined
+    >;
+    return Object.assign({}, ...flat.filter(Boolean)).height as number;
+  };
+
+  for (const fontScale of [2, 3.5]) {
+    it(`caps the block and its texts at ${fontScale}× text`, () => {
+      const dims = jest
+        .spyOn(require('react-native/Libraries/Utilities/useWindowDimensions'), 'default')
+        .mockReturnValue({ width: 390, height: 844, scale: 3, fontScale });
+      try {
+        const scale = Math.min(fontScale, DISPLAY_MAX_SCALE);
+        expect(scale).toBe(DISPLAY_MAX_SCALE);
+        const expected = (type.readout.lineHeight + type.subhead.lineHeight) * scale;
+
+        const { rerender } = render(<ConfidenceControl value={null} onChange={jest.fn()} />);
+        expect(heightOf()).toBeCloseTo(expected, 5);
+        const empty = screen.getByTestId('confidence-readout');
+        expect(empty).toHaveTextContent(CONFIDENCE_EMPTY_READOUT);
+        expect(empty.props.maxFontSizeMultiplier).toBe(DISPLAY_MAX_SCALE);
+
+        rerender(<ConfidenceControl value={70} onChange={jest.fn()} />);
+        expect(heightOf()).toBeCloseTo(expected, 5);
+        expect(screen.getByTestId('confidence-readout').props.maxFontSizeMultiplier).toBe(DISPLAY_MAX_SCALE);
+        expect(screen.getByTestId('confidence-gloss').props.maxFontSizeMultiplier).toBe(DISPLAY_MAX_SCALE);
+      } finally {
+        dims.mockRestore();
+      }
+    });
+  }
 });

@@ -3,7 +3,7 @@ import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { ChoiceList } from '@/components/ui/ChoiceList';
-import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
+import { ConfidenceControl, TWO_CHOICE_HINT } from '@/components/ui/ConfidenceControl';
 import { colors, space, type } from '@/constants/theme';
 import {
   MAX_PRACTICE_CONFIDENCE,
@@ -118,7 +118,7 @@ export function PracticeQuiz({ day, slot, reveal }: PracticeQuizProps) {
         max={MAX_PRACTICE_CONFIDENCE}
         label="How sure are you?"
         // The Warm-up's line without its tap tip (voice pass, 2026-11-23).
-        hint="50% means no idea, a coin flip."
+        hint={TWO_CHOICE_HINT}
         idPrefix="practice-confidence"
       />
 

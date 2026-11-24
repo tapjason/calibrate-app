@@ -6,6 +6,7 @@ import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
 import { colors, DISPLAY_MAX_SCALE, space, tabularNums, type } from '@/constants/theme';
+import { TWO_CHOICE_COIN_FLIP } from '@/types';
 
 interface ConfidenceControlProps {
   /**
@@ -19,21 +20,38 @@ interface ConfidenceControlProps {
   max?: number;
   /** Visible and spoken label. */
   label?: string;
-  /** Optional line under the readout, e.g. the Warmup's coin-flip note. */
+  /**
+   * Optional line under the readout, the two-choice coin-flip note
+   * (TWO_CHOICE_HINT): shown, and said after the label, since the one
+   * accessible element would otherwise keep it from VoiceOver. Not
+   * VoiceOver's hint, which would replace iOS's own "swipe up or down to
+   * adjust" (code review 2026-11-23, round 2).
+   */
   hint?: string;
+  /**
+   * A touch tip printed after the hint and never said (the Warm-up's "Tap the
+   * bar to pick a number."): the slider is hidden from VoiceOver, so the tip
+   * would be wrong there.
+   */
+  tip?: string;
   /** Prefix for every testID inside: `${prefix}-adjustable`, `-increment`, … */
   idPrefix?: string;
 }
 
 const STEP = 5;
-/** Where an unset control rests and the first ±5 steps from (roadmap D49). */
-const COIN_FLIP = 50;
 /**
  * What the readout says before a number is set (the owner, 2026-11-23: a
  * default of "—%" "makes no sense in the UI"). Still empty, still no preset
  * (D13): Next and Save wait for a number.
  */
 export const CONFIDENCE_EMPTY_READOUT = 'Slide to set';
+
+/**
+ * Under the control on every Warm-up and practice question. The scale runs
+ * 0–100 (the owner, 2026-11-23); 50 is where "no idea" sits on a two-choice
+ * question. One string for both screens (code review 2026-11-23).
+ */
+export const TWO_CHOICE_HINT = '50% means no idea, a coin flip.';
 
 /**
  * Below this width, or above this text scale, the ±5 buttons drop to their own
@@ -88,6 +106,7 @@ export function ConfidenceControl({
   max = 100,
   label = 'Confidence',
   hint,
+  tip,
   idPrefix = 'confidence',
 }: ConfidenceControlProps) {
   // The latest value, so a slide's change and its completion arriving in the
@@ -120,7 +139,8 @@ export function ConfidenceControl({
   // two-choice scales, so a coin flip cost five taps and 70% one, and a tester
   // took 70 "because it was one tap" (blind playtest 2026-11-09b, finding 5).
   // Any number is still one tap on the track.
-  const middle = Math.min(max, Math.max(min, COIN_FLIP));
+  // Where an unset control rests and the first ±5 steps from (roadmap D49).
+  const middle = Math.min(max, Math.max(min, TWO_CHOICE_COIN_FLIP));
   const from = value ?? middle;
   // From the latest value, not the one this render drew: two taps landing
   // before the next render both stepped from it, and moved once (playtest
@@ -163,11 +183,16 @@ export function ConfidenceControl({
     </View>
   );
 
+  // The hint is said with the label ("How sure are you? 50% means no idea, a
+  // coin flip."); the tip only shows.
+  const spokenLabel = hint ? `${label} ${hint}` : label;
+  const printedHint = [hint, tip].filter(Boolean).join(' ');
+
   return (
     <View
       testID={`${idPrefix}-adjustable`}
       {...adjustableProps({
-        label,
+        label: spokenLabel,
         value,
         min,
         max,
@@ -231,7 +256,7 @@ export function ConfidenceControl({
           <View style={[styles.steppersInline, { minHeight: readoutLine }]}>{steppers}</View>
         )}
       </View>
-      {hint && <Text style={styles.hint}>{hint}</Text>}
+      {printedHint ? <Text style={styles.hint}>{printedHint}</Text> : null}
 
       <View aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <Slider

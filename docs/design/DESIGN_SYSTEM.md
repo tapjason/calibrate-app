@@ -404,16 +404,15 @@ The four tabs are *Today*, *Insights*, *History* and *You*, and Log is a sheet (
   at its Badges section (§7.17), not Share: two blind testers expected an
   explanation.
 - **Unlocked** (D33): everything left-aligned. Under the identity, the gauge
-  (`ScoreBar`): a 4pt `emphasis` track, an ink fill notched at 70 / 85 / 90 in the
-  canvas colour, and a 3 × 20pt ink needle at the score, read like an instrument's
+  (`ScoreBar`): a 4pt `emphasis` track, an ink fill with no notches or marks (the 70 / 85 / 90
+  notches and their labels went from Today at step 173 and from Insights in the review of
+  2026-11-23), and a 3 × 20pt ink needle at the score, read like an instrument's
   scale. Under it the receipt: the rating in `readout` (48pt, `textPrimary`, tabular)
   with "calibration rating" beside it on its baseline. Then the one-line read from the
   engine's direction of error ("You're overconfident at 80–100%") with a 10pt dot in
   that direction's mark colour beside the words, the one place a hue appears in the
   hero. On Insights the receipt comes first (the chart is that screen's hero). A
-  month-over-month delta only when both months are non-provisional. The 70 label is
-  centred on its tick; 85 sits left of its tick and 90 right of its own, because centred
-  they ran together as "8590" at 320pt (roadmap step 52).
+  month-over-month delta only when both months are non-provisional.
 - **Provisional:** never put the countdown in the hero slot (baseline 04/05 do —
   "20" reads as a score of 20). Show a **20-segment ring or bar** (20 per category too, D46):
   filled = resolved, hatched = pending "on their way", hollow = to go. Pending predictions
@@ -427,7 +426,7 @@ The four tabs are *Today*, *Insights*, *History* and *You*, and Log is a sheet (
 - **The first answer leads** (D30, 2026-10-10): on Today, until anything has resolved,
   the block's one line sits above the bar in `headline`, naming the evening the first
   reminder comes and then what unlocks the score (D76): "Your first answer lands tomorrow
-  evening. 20 answers unlock your score." ("…lands Friday evening." within a week, "…lands
+  evening. 20 scored answers unlock your score." ("…lands Friday evening." within a week, "…lands
   on Fri, Oct 16." beyond, "Your first answer is ready." when one is due). The bar
   follows, with nothing under it. The newcomer read Day 0 as "come back in a week, then
   20 more"; the nearest thing now comes first.
@@ -444,13 +443,14 @@ The four tabs are *Today*, *Insights*, *History* and *You*, and Log is a sheet (
   error, so percentiles would sit below a calibrated user's own score.
 - **The lines under the rating on Insights** (D68, step 196; cut by D76, 2026-11-23: "Much
   of the score calculation based explanations do not need to be on the main page next to
-  the score"): after the marks caption, which stays with the bar, one short line in
+  the score"): under the bar (no marks and no caption since the review of 2026-11-23), one short line in
   `subhead` ink, "On average you're about 14 points off." ("Your numbers match what
   happened." at 100); under it, only where the full perfect-calibration line would say
   "can't be told apart", "With 20 answers, that's about as good as anyone can tell.";
   then **What does this mean?** (`actionText` subhead, semibold), which opens How scoring
-  works with the person's own lines on top (§7.17). Then, 12 below, the news: "Up 2 since
-  last week." ("Down 3 since last week.", "No change since last week."); then the count
+  works with the person's own lines on top (§7.17). Then, 12 below, the news: "About the same as
+  last week." when the change is zero or within the rating's give-or-take, else "Up 4 since
+  last week." or "Down 3 since last week."; then the count
   ("153 scored, 9-day streak"); then "More about your record". All but the lead stay
   `footnote` in `textSecondary`; groups 12 apart and 4 within, margins on the lines
   themselves, no wrapper, so VoiceOver's order and stops hold. The full points line, the
@@ -491,7 +491,7 @@ The four tabs are *Today*, *Insights*, *History* and *You*, and Log is a sheet (
   A full month, Triple digits, A full year, Two full years… Static until the
   celebration is built (§6.2).
 
-- **The bar's caption is spoken only** (D76, 2026-11-23): Insights' bar keeps its 70 / 85 / 90 marks; what they are is in the bar's accessibility label and under Badges in How scoring works, not printed under the bar. "What does this mean?" is a link row: regular weight, `actionText`, a trailing `chevron.right`.
+- **No bar has marks or a caption** (D76, 2026-11-23, then the review the same day): D76 took the printed caption off Insights' bar and left its 70 / 85 / 90 marks with a spoken one; the review removed the marks and the spoken caption too, since unlabelled marks read as tiers for the overall rating. The badge bars are under Badges in How scoring works. "What does this mean?" is a link row: regular weight, `actionText`, a trailing `chevron.right`.
 
 
 ### 7.2 Calibration chart (`CalibrationChart`)
@@ -527,8 +527,9 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    and a tap unfolds under it, in `textSecondary`, what would have matched ("About 45%
    would have matched.", what happened to the nearest 5) and how it fits the badge.
    **Since last week** (D37): a quiet line under "What does this mean?", once the
-   rating is unlocked a week ago and now and something was answered since: "Up 2
-   since last week." (D76; "Up 2 since last week, from 6 answers given since then,
+   rating is unlocked a week ago and now and something was answered since: "About the
+   same as last week." within the rating's give-or-take, "Up 4 since last week." beyond it
+   (the review of 2026-11-23's rule; D76; "Up 2 since last week, from 6 answers given since then,
    within its give-or-take." in How scoring works).
 2. **Regions labelled in place:** below the diagonal lightly warm-tinted, labelled
    *Overconfident*; above lightly cool-tinted, *Underconfident*; the diagonal labelled
@@ -577,7 +578,7 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
 
 Error bars with caps are banned — lay readers treat the caps as hard limits.
 
-- **The key is folded** (D76, 2026-11-23): the chart's key sits behind "How to read this chart" ("Hide" when open), closed to start, on Insights, the Warm-up result and the practice record. Its words and their conditions are unchanged, and the toggle sits outside the chart's image element so VoiceOver can reach it.
+- **The key is folded** (D76, 2026-11-23): the chart's key sits behind "How to read this chart" ("Hide the key" when open), closed to start, on Insights, the Warm-up result and the practice record. Its words and their conditions are unchanged, and the toggle sits outside the chart's image element so VoiceOver can reach it.
 
 
 ### 7.3 Confidence input (Log and Warmup)
@@ -600,7 +601,10 @@ small ±5 buttons).
   Warmup and practice all run 0–100 in steps of 5. On a two-choice question a number
   under 50 is the stated chance the picked answer is right, taken as said and never
   flipped; the hint under the control reads "50% means no idea, a coin flip." (the
-  Warmup adds "Tap the bar to pick a number." on its first three questions).
+  Warmup adds "Tap the bar to pick a number." on its first three questions). VoiceOver
+  says the hint with the label ("How sure are you? 50% means no idea, a coin flip."), not
+  as an `accessibilityHint`, which would replace iOS's own "swipe up or down to adjust";
+  the tap tip is printed and never spoken, since the slider is hidden from VoiceOver.
 - **Starts empty** (roadmap D13, built as step 54): the readout's slot says "Slide to
   set" (`title3`, `textSecondary`, centred in a slot held at the number's line height,
   so setting a number doesn't shift the layout; D77, 2026-11-23: it was "—%" with "not
@@ -1219,7 +1223,8 @@ the same thing, no instructions, title-style titles without ending punctuation.
   is required for your app to function"). Once there is an open prediction, Today shows
   a quiet sunken card, "Want a nudge at 7 PM on the day it's due?" (the person's own
   reminder time, D38) over "Plus a quiet weekly summary. Nothing else." (D76; one
-  permission covers both, and it no longer names the first day), with a secondary **Turn on reminders** (which shows the alert) and
+  permission covers both, and it no longer names the first day; the summary only while
+  Weekly digest is on in You, else "Nothing else.", the review of 2026-11-23), with a secondary **Turn on reminders** (which shows the alert) and
   **Not now**. The first "Not now" holds the card until 06:00 the next morning, so a
   Day-0 refusal doesn't cost the first prediction's Day-1 reminder; from the second,
   a week (D19, step 108). You's Notifications group adds **Allow
@@ -1561,7 +1566,7 @@ sheet with the round ×:
   due until Fri, Oct 16. Know already? Go ahead." (D76) with
   **Answer now** and **Not yet**. Early answers count like any other. **On the day it
   was logged** the line says the rule once, with what to do (D56, step 169; D76's
-  words): "Heads up: an answer today won't count, because you logged it today. Tomorrow
+  words): "Heads up: an answer today won’t be scored, because you logged it today. Tomorrow
   it will. For something you do every day, log the next one the evening before." ("…
   because you reworded it today…" after a rewording, without the advice).
 - A prediction that's due skips this sheet and opens Resolve, as before: the evening

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
+import { holdRanges } from '@/components/ui/holdRanges';
 import { AnswerKeyRow } from '@/components/warmup/AnswerKeyRow';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePracticeStore } from '@/store/practiceStore';
@@ -62,8 +63,10 @@ export function PracticeResult({ day, children }: PracticeResultProps) {
         <Text style={styles.eyebrow} accessibilityRole="header">
           Your practice so far
         </Text>
+        {/* It names ranges by the chart's rule now (record audit
+            2026-11-23), held whole at a line break as Insights' title is. */}
         <Text style={styles.recordHeadline} testID="practice-record-headline">
-          {recordCopy.headline}
+          {holdRanges(recordCopy.headline)}
         </Text>
         <Text style={styles.recordDetail} testID="practice-record-detail">
           {recordCopy.detail}

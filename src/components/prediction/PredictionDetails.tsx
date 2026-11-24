@@ -332,7 +332,7 @@ export function PredictionDetails({
   // In D76's words (the voice pass, 2026-11-23). The same-day note is
   // Resolve's too (`sameDayHeadsUp`), which it skips when opened from here.
   const earlyText = !sameDayNow
-    ? `It's not due until ${dueOn}. Know already? Go ahead.`
+    ? `It’s not due until ${dueOn}. Know already? Go ahead.`
     : reworded
       ? sameDayHeadsUp(true)
       : `${sameDayHeadsUp(false)}${

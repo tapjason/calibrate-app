@@ -95,13 +95,36 @@ describe('ReminderPromptCard words', () => {
     useSettingsStore.setState({ dueReminderTime: { hour: 19, minute: 0 } });
     const { unmount } = render(<ReminderPromptCard onAllow={jest.fn()} onDismiss={jest.fn()} />);
     expect(screen.getByTestId('reminder-prompt-title')).toHaveTextContent(
-      /^Want a nudge at 7\sPM on the day it's due\?$/,
+      /^Want a nudge at 7\sPM on the day it’s due\?$/,
     );
     expect(screen.getByTestId('reminder-prompt-body')).toHaveTextContent(
       'Plus a quiet weekly summary. Nothing else.',
     );
     expect(screen.queryByText(/starting/)).toBeNull();
     unmount();
+  });
+
+  // Policy review 2026-11-23: the summary is named only while it will be sent.
+  it('names the weekly summary only while the digest is on', () => {
+    __setDeviceLocaleForTests('en-US');
+    __setPhoneClockForTests(true);
+    const before = useSettingsStore.getState().digestEnabled;
+    try {
+      useSettingsStore.setState({ digestEnabled: true });
+      const on = render(<ReminderPromptCard onAllow={jest.fn()} onDismiss={jest.fn()} />);
+      expect(screen.getByTestId('reminder-prompt-body')).toHaveTextContent(
+        'Plus a quiet weekly summary. Nothing else.',
+      );
+      on.unmount();
+
+      useSettingsStore.setState({ digestEnabled: false });
+      const off = render(<ReminderPromptCard onAllow={jest.fn()} onDismiss={jest.fn()} />);
+      expect(screen.getByTestId('reminder-prompt-body')).toHaveTextContent('Nothing else.');
+      expect(screen.queryByText(/weekly summary/)).toBeNull();
+      off.unmount();
+    } finally {
+      useSettingsStore.setState({ digestEnabled: before });
+    }
   });
 
   it('keeps the minutes off the hour, and on a 24-hour clock', () => {

@@ -792,7 +792,7 @@ describe('PredictionDetails (roadmap D25)', () => {
     // Roadmap D56: said once, here, and without the early line beside it, in
     // D76's words.
     expect(screen.getByTestId('details-early-text')).toHaveTextContent(
-      "Heads up: an answer today won't count, because you logged it today. Tomorrow it will.",
+      "Heads up: an answer today won’t be scored, because you logged it today. Tomorrow it will.",
     );
     expect(screen.getByTestId('details-early')).not.toHaveTextContent(/Go ahead/);
     // The habit tip only on a repeat (D62): this one is a one-off.
@@ -813,7 +813,7 @@ describe('PredictionDetails (roadmap D25)', () => {
     await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
     fireEvent.press(screen.getByTestId('details-answer'));
     expect(screen.getByTestId('details-early-text')).toHaveTextContent(
-      "Heads up: an answer today won't count, because you logged it today. Tomorrow it will. For something you do every day, log the next one the evening before.",
+      "Heads up: an answer today won’t be scored, because you logged it today. Tomorrow it will. For something you do every day, log the next one the evening before.",
     );
   });
 
@@ -835,11 +835,12 @@ describe('PredictionDetails (roadmap D25)', () => {
     await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
 
     fireEvent.press(screen.getByTestId('details-answer'));
-    // D76: "It's not due until Fri, Nov 28. Know already? Go ahead."
+    // D76: "It’s not due until Fri, Nov 28. Know already? Go ahead."
     expect(screen.getByTestId('details-early-text')).toHaveTextContent(
-      /^It's not due until .+\. Know already\? Go ahead\.$/,
+      /^It’s not due until .+\. Know already\? Go ahead\.$/,
     );
-    expect(screen.getByTestId('details-early')).not.toHaveTextContent(/won't count/);
+    // Not logged today, so no same-day "Heads up".
+    expect(screen.getByTestId('details-early')).not.toHaveTextContent(/Heads up/);
     expect(onAnswer).not.toHaveBeenCalled();
     fireEvent.press(screen.getByTestId('details-answer-now'));
     expect(onAnswer).toHaveBeenCalledWith('p1', { warned: false });
@@ -1146,7 +1147,7 @@ describe('PredictionDetails, D56 edges (code review 2026-11-10)', () => {
     await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
     fireEvent.press(screen.getByTestId('details-answer'));
     expect(screen.getByTestId('details-early-text')).toHaveTextContent(
-      "Heads up: an answer today won't count, because you reworded it today. Tomorrow it will.",
+      "Heads up: an answer today won’t be scored, because you reworded it today. Tomorrow it will.",
     );
     expect(screen.getByTestId('details-early')).not.toHaveTextContent(/evening before/);
   });

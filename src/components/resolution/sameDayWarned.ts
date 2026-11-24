@@ -7,10 +7,11 @@
  * The warning itself, before a same-day answer (roadmap D41): Answer it now's
  * confirmation and Resolve's own note say it in the same words (D76, the voice
  * pass, 2026-11-23). A prediction reworded on a later day than it was logged
- * says so (D45).
+ * says so (D45). "Won't be scored", not "won't count" (record audit
+ * 2026-11-23): a same-day answer still keeps the streak.
  */
 export function sameDayHeadsUp(reworded: boolean): string {
-  return `Heads up: an answer today won't count, because you ${reworded ? 'reworded' : 'logged'} it today. Tomorrow it will.`;
+  return `Heads up: an answer today won’t be scored, because you ${reworded ? 'reworded' : 'logged'} it today. Tomorrow it will.`;
 }
 
 /** "2026-11-10": the local calendar day, with no spaces to encode. */

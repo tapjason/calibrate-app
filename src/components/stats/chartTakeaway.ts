@@ -1,6 +1,6 @@
 // Presentation helper: the sentence above the calibration chart.
 //
-// DESIGN_SYSTEM §7.2: the chart's title is its takeaway ("You're
+// DESIGN_SYSTEM §7.2: the chart's title is its takeaway ("You’re
 // overconfident at 80–100%"), and the subtitle says it in natural frequencies
 // ("You called 12 things 80–100% likely. 7 happened.", worded for D76). People
 // read a sentence before they read a plot.
@@ -55,10 +55,10 @@ function called(b: BucketStat): string {
   return `You called ${n} ${n === 1 ? 'thing' : 'things'} ${rangeLabel(b)} likely.`;
 }
 
-/** "7 happened", "All 3 happened", and for one, "It happened" or "It didn't happen". */
+/** "7 happened", "All 3 happened", and for one, "It happened" or "It didn’t happen". */
 function happenedWords(b: BucketStat): string {
   const n = b.total_resolved;
-  if (n === 1) return b.resolved_yes === 1 ? 'It happened' : "It didn't happen";
+  if (n === 1) return b.resolved_yes === 1 ? 'It happened' : 'It didn’t happen';
   return b.resolved_yes === n ? `All ${n} happened` : `${b.resolved_yes} happened`;
 }
 
@@ -137,7 +137,57 @@ export function headlineRange<T extends Pick<BucketStat, 'bucket_error' | 'direc
 }
 
 /**
- * The chart's read when it has one ("You're too sure at 80–100%"), or null
+ * What a chart's read says, before it is worded: both sides, the one range
+ * the lean rule names, or inside luck everywhere (`close` when every range is
+ * within 5 points of what was said). Over ranges with MIN_BUCKET_N_FOR_VERDICT
+ * answers or more; null when none has that many. Insights' chart title and
+ * practice's headline both word this one read, so neither says "calibrated"
+ * over a dot the rule colours (record audit 2026-11-23).
+ */
+export type ChartRead =
+  | { kind: 'both'; sure: BucketStat; cautious: BucketStat }
+  | { kind: 'lean'; range: BucketStat; direction: 'overconfident' | 'underconfident' }
+  | {
+      kind: 'calibrated';
+      /** Every range within 5 whole points of what was said. */
+      close: boolean;
+      /** The range the read is about: the furthest off when not close. */
+      shown: BucketStat;
+      /** Only one range has enough answers. */
+      one: boolean;
+    };
+
+export function chartRead(buckets: readonly BucketStat[]): ChartRead | null {
+  const solid = buckets.filter((b) => b.total_resolved >= MIN_BUCKET_N_FOR_VERDICT);
+  if (solid.length === 0) return null;
+
+  const sides = bothSides(solid);
+  if (sides) return { kind: 'both', ...sides };
+
+  // The biggest lean among the well-evidenced buckets is the story; without
+  // one, the biggest gap, inside its luck range.
+  const worst = headlineRange(solid);
+  if (worst.direction !== 'calibrated') {
+    return { kind: 'lean', range: worst, direction: worst.direction };
+  }
+
+  // Inside luck. "Well calibrated" only within 5 points; a bigger gap luck
+  // still allows is "no clear lean", which claims less (roadmap D57: "well
+  // calibrated" over 12 of 21 at about 66% read as a contradiction, blind
+  // playtest 2026-11-10, runs 6 and 7). The expected count says how far.
+  // Every range, not only the widest raw gap: rounded to whole percents, a
+  // range with a smaller raw gap can still be 5 apart (record audit
+  // 2026-11-10). The subtitle then names the range furthest off in whole
+  // percents, the one that made it "no clear lean".
+  const gap = (b: BucketStat) =>
+    Math.abs(Math.round(b.stated_confidence_mean) - Math.round(b.actual_rate * 100));
+  const close = solid.every((b) => closeToSaid(b.stated_confidence_mean, b.actual_rate * 100));
+  const shown = close ? worst : solid.reduce((a, b) => (gap(b) > gap(a) ? b : a));
+  return { kind: 'calibrated', close, shown, one: solid.length === 1 };
+}
+
+/**
+ * The chart's read when it has one ("You’re too sure at 80–100%"), or null
  * while the rating is provisional or no band has enough in it. The week's
  * recap sets its own read beside this one (2026-11-03).
  */
@@ -146,15 +196,14 @@ export function chartVerdict(
   ratingProvisional: boolean,
 ): ChartTakeaway | null {
   if (ratingProvisional || buckets.length === 0) return null;
-  const solid = buckets.filter((b) => b.total_resolved >= MIN_BUCKET_N_FOR_VERDICT);
-  if (solid.length === 0) return null;
+  const read = chartRead(buckets);
+  if (!read) return null;
 
-  const sides = bothSides(solid);
-  if (sides) {
-    const { sure, cautious } = sides;
+  if (read.kind === 'both') {
+    const { sure, cautious } = read;
     // What would have matched, one figure per side (roadmap D57).
     return {
-      title: `You're too sure at ${rangeLabel(sure)} and too cautious at ${rangeLabel(cautious)}`,
+      title: `You’re too sure at ${rangeLabel(sure)} and too cautious at ${rangeLabel(cautious)}`,
       lean: 'both',
       subtitle:
         `${counted(sure)}; ${matched(sure)}. ` +
@@ -162,48 +211,33 @@ export function chartVerdict(
     };
   }
 
-  // The biggest lean among the well-evidenced buckets is the story; without
-  // one, the biggest gap, inside its luck range.
-  const worst = headlineRange(solid);
-
-  if (worst.direction === 'calibrated') {
-    // Inside luck. "Well calibrated" only within 5 points; a bigger gap luck
-    // still allows is "no clear lean", which claims less (roadmap D57: "well
-    // calibrated" over 12 of 21 at about 66% read as a contradiction, blind
-    // playtest 2026-11-10, runs 6 and 7). The expected count says how far.
-    // Every range, not only the widest raw gap: rounded to whole percents, a
-    // range with a smaller raw gap can still be 5 apart (record audit
-    // 2026-11-10). The subtitle then names the range furthest off in whole
-    // percents, the one that made it "no clear lean".
-    const gap = (b: BucketStat) =>
-      Math.abs(Math.round(b.stated_confidence_mean) - Math.round(b.actual_rate * 100));
-    const close = solid.every((b) => closeToSaid(b.stated_confidence_mean, b.actual_rate * 100));
-    const shown = close ? worst : solid.reduce((a, b) => (gap(b) > gap(a) ? b : a));
-    const one = solid.length === 1;
+  if (read.kind === 'calibrated') {
+    const { close, shown, one } = read;
     // "Overall" (D62): beside Furthest off naming a category that leans, a
     // bare "no clear lean" read as a contradiction (record audit of step
     // 173). The chart is every category together; a category can still lean.
     return {
       title: close
         ? one
-          ? `You're well calibrated at ${rangeLabel(worst)}`
-          : "You're well calibrated overall"
+          ? `You’re well calibrated at ${rangeLabel(shown)}`
+          : 'You’re well calibrated overall'
         : one
           ? `No clear lean at ${rangeLabel(shown)}`
           : 'No clear lean overall yet',
-      // "You called 21 things 60–80% likely. 12 happened, and you'd expect
+      // "You called 21 things 60–80% likely. 12 happened, and you’d expect
       // about 14." (D76)
-      subtitle: `${called(shown)} ${happenedWords(shown)}, and you'd expect ${expectedPhrase(shown.expected_yes)}.`,
+      subtitle: `${called(shown)} ${happenedWords(shown)}, and you’d expect ${expectedPhrase(shown.expected_yes)}.`,
       lean: 'calibrated',
     };
   }
 
   // A lean, and what would have matched (roadmap D57, the category line's
   // sentence for a range).
+  const worst = read.range;
   return {
-    title: `You're ${worst.direction} at ${rangeLabel(worst)}`,
+    title: `You’re ${read.direction} at ${rangeLabel(worst)}`,
     subtitle: `${naturalFrequency(worst)} You said about\u00A0${Math.round(worst.stated_confidence_mean)}%; ${matched(worst)}.`,
-    lean: worst.direction,
+    lean: read.direction,
   };
 }
 

@@ -15,14 +15,32 @@ describe('UnlockProgress', () => {
         testID="progress"
       />,
     );
+    // "Scored" (record audit 2026-11-23): a same-day answer isn't one.
     expect(screen.getByTestId('progress-lead')).toHaveTextContent(
-      'Your first answer lands tomorrow evening. 20 answers unlock your score.',
+      'Your first answer lands tomorrow evening. 20 scored answers unlock your score.',
     );
     expect(screen.queryByTestId('progress-line')).toBeNull();
-    expect(screen.queryByText(/of 20 scored|on its way/)).toBeNull();
+    expect(screen.queryByText(/of 20 scored|on its way|on the way/)).toBeNull();
+    // The dashed segment is named aloud only (code review 2026-11-23).
     expect(screen.getByTestId('progress').props.accessibilityLabel).toBe(
-      'Calibrating. Your first answer lands tomorrow evening. 20 answers unlock your score.',
+      'Calibrating. Your first answer lands tomorrow evening. 20 scored answers unlock your score, 1 on the way.',
     );
+  });
+
+  it('says "scored" in every variant of the first-answer lead', () => {
+    for (const lead of [
+      'Your first answer lands Friday evening.',
+      'Your first answer lands on Fri, Dec 4.',
+      'Your first answer is ready.',
+    ]) {
+      const view = render(
+        <UnlockProgress resolved={0} pending={1} total={20} lead={lead} testID="progress" />,
+      );
+      expect(screen.getByTestId('progress-lead')).toHaveTextContent(
+        `${lead} 20 scored answers unlock your score.`,
+      );
+      view.unmount();
+    }
   });
 
   // Roadmap D53 (blind playtest 2026-11-09b, finding 2).
@@ -47,16 +65,28 @@ describe('UnlockProgress', () => {
     expect(screen.getByTestId('progress-line')).toHaveTextContent(
       '16 more scored answers unlock your score. The next one comes due Thu, Nov 26.',
     );
+    expect(screen.queryByText(/on the way|on its way/)).toBeNull();
     expect(screen.getByTestId('progress').props.accessibilityLabel).toBe(
-      'Calibrating. 16 more scored answers unlock your score. The next one comes due Thu, Nov 26.',
+      'Calibrating. 16 more scored answers unlock your score, 2 on the way. The next one comes due Thu, Nov 26.',
     );
     expect(screen.getByTestId('progress').props.accessibilityValue).toEqual({ min: 0, max: 20, now: 4 });
   });
 
-  it('counts the last one in the singular', () => {
+  it('counts the last one in the singular, and says nothing on the way when none is', () => {
     render(<UnlockProgress resolved={19} pending={0} total={20} testID="progress" />);
     expect(screen.getByTestId('progress-line')).toHaveTextContent(
       '1 more scored answer unlocks your score.',
+    );
+    expect(screen.getByTestId('progress').props.accessibilityLabel).toBe(
+      'Calibrating. 1 more scored answer unlocks your score.',
+    );
+  });
+
+  it('speaks only as many on the way as the bar draws', () => {
+    // 18 scored and 5 open: the bar has room for 2 dashed segments.
+    render(<UnlockProgress resolved={18} pending={5} total={20} testID="progress" />);
+    expect(screen.getByTestId('progress').props.accessibilityLabel).toBe(
+      'Calibrating. 2 more scored answers unlock your score, 2 on the way.',
     );
   });
 });

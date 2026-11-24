@@ -1,4 +1,4 @@
-import { sameDayWarned, warnedKey } from './sameDayWarned';
+import { sameDayHeadsUp, sameDayWarned, warnedKey } from './sameDayWarned';
 
 // Roadmap D56: Resolve skips its same-day note only straight after Answer it
 // now's confirmation said it, on the same local day.
@@ -23,5 +23,19 @@ describe('sameDayWarned', () => {
     expect(sameDayWarned('', now)).toBe(false);
     expect(sameDayWarned('%E0%A4%A', now)).toBe(false);
     expect(sameDayWarned('Tue Nov 10 2026', now)).toBe(false);
+  });
+});
+
+// Record audit 2026-11-23: "won't be scored", not "won't count", since a
+// same-day answer still keeps the streak; the same for a rewording.
+describe('sameDayHeadsUp', () => {
+  it('says the answer won’t be scored, logged or reworded', () => {
+    expect(sameDayHeadsUp(false)).toBe(
+      'Heads up: an answer today won’t be scored, because you logged it today. Tomorrow it will.',
+    );
+    expect(sameDayHeadsUp(true)).toBe(
+      'Heads up: an answer today won’t be scored, because you reworded it today. Tomorrow it will.',
+    );
+    expect(sameDayHeadsUp(false)).not.toMatch(/count/);
   });
 });

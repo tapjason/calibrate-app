@@ -1,7 +1,7 @@
 import { computeCalibrationPoints, type CalibrationPoint } from '@/engine/calibration';
 import type { BucketStat, Direction } from '@/types';
 
-import { chartTakeaway, closeToSaid, headlineRange, naturalFrequency } from './chartTakeaway';
+import { chartRead, chartTakeaway, closeToSaid, headlineRange, naturalFrequency } from './chartTakeaway';
 
 function bucket(
   low: number,
@@ -35,7 +35,7 @@ describe('naturalFrequency', () => {
       'You called 3 things 60–80% likely. All 3 happened.',
     );
     expect(naturalFrequency(bucket(40, 1, 0, 'calibrated'))).toBe(
-      "You called 1 thing 40–60% likely. It didn't happen.",
+      "You called 1 thing 40–60% likely. It didn’t happen.",
     );
     expect(naturalFrequency(bucket(40, 1, 1, 'calibrated'))).toBe(
       'You called 1 thing 40–60% likely. It happened.',
@@ -77,7 +77,7 @@ describe('chartTakeaway', () => {
       ],
       false,
     );
-    expect(t.title).toBe("You're overconfident at 80–100%");
+    expect(t.title).toBe('You’re overconfident at 80–100%');
     // Roadmap D57: what would have matched, as the category line says it.
     expect(t.subtitle).toBe(
       'You called 12 things 80–100% likely. 7 happened. You said about\u00A090%; about\u00A060% would have matched.',
@@ -89,7 +89,7 @@ describe('chartTakeaway', () => {
       [bucket(60, 12, 8, 'calibrated', 0.03), bucket(80, 10, 9, 'calibrated', 0.02)],
       false,
     );
-    expect(t.title).toBe("You're well calibrated overall");
+    expect(t.title).toBe('You’re well calibrated overall');
   });
 });
 
@@ -104,7 +104,7 @@ describe('chartTakeaway, both sides', () => {
       false,
     );
     expect(t).toEqual({
-      title: "You're too sure at 80–100% and too cautious at 60–80%",
+      title: 'You’re too sure at 80–100% and too cautious at 60–80%',
       subtitle:
         'Of 20 things you called 80–100% likely, 8 happened; about\u00A040% would have matched. ' +
         'Of 55 at 60–80%, 42 happened; about\u00A075% would have matched.',
@@ -135,7 +135,7 @@ describe('chartTakeaway, a lean outranks a bigger gap inside luck', () => {
     expect(mid.bucket_error).toBeGreaterThan(top.bucket_error);
 
     expect(chartTakeaway(buckets, false)).toEqual({
-      title: "You're overconfident at 80–100%",
+      title: 'You’re overconfident at 80–100%',
       subtitle:
         'You called 60 things 80–100% likely. 45 happened. You said about\u00A088%; about\u00A075% would have matched.',
       lean: 'overconfident',
@@ -184,15 +184,15 @@ describe('chartTakeaway, inside luck (roadmap D57)', () => {
     const t = read(calls(66, 21, 12)); // 57% against 66%, inside 52–81%
     expect(t).toEqual({
       title: 'No clear lean at 60–80%',
-      subtitle: "You called 21 things 60–80% likely. 12 happened, and you'd expect about\u00A014.",
+      subtitle: "You called 21 things 60–80% likely. 12 happened, and you’d expect about\u00A014.",
       lean: 'calibrated',
     });
   });
 
   it('keeps "well calibrated" within 5 points', () => {
     expect(read(calls(70, 20, 14))).toEqual({
-      title: "You're well calibrated at 60–80%",
-      subtitle: "You called 20 things 60–80% likely. 14 happened, and you'd expect about\u00A014.",
+      title: 'You’re well calibrated at 60–80%',
+      subtitle: "You called 20 things 60–80% likely. 14 happened, and you’d expect about\u00A014.",
       lean: 'calibrated',
     });
   });
@@ -206,7 +206,7 @@ describe('chartTakeaway, inside luck (roadmap D57)', () => {
   });
 
   it('speaks for every range when there are several and none leans', () => {
-    expect(read([...calls(70, 20, 14), ...calls(88, 20, 18)]).title).toBe("You're well calibrated overall");
+    expect(read([...calls(70, 20, 14), ...calls(88, 20, 18)]).title).toBe('You’re well calibrated overall');
     expect(read([...calls(66, 21, 12), ...calls(88, 20, 18)]).title).toBe(
       'No clear lean overall yet',
     );
@@ -227,7 +227,7 @@ describe('chartTakeaway, inside luck (roadmap D57)', () => {
     expect(buckets.every((b) => b.direction === 'calibrated')).toBe(true);
     expect(chartTakeaway(buckets, false)).toEqual({
       title: 'No clear lean overall yet',
-      subtitle: "You called 50 things 80–100% likely. 38 happened, and you'd expect about\u00A040.",
+      subtitle: "You called 50 things 80–100% likely. 38 happened, and you’d expect about\u00A040.",
       lean: 'calibrated',
     });
   });
@@ -236,5 +236,29 @@ describe('chartTakeaway, inside luck (roadmap D57)', () => {
     expect(closeToSaid(70, 65.4)).toBe(false); // 70 against 65: 5 apart
     expect(closeToSaid(70, 65.6)).toBe(true); // 70 against 66
     expect(closeToSaid(69.6, 65.4)).toBe(false);
+  });
+});
+
+// Record audit 2026-11-23: the chart title's read, before its words, shared
+// with practice's headline so the two follow one rule.
+describe('chartRead', () => {
+  it('reads nothing while no range has 10 answers', () => {
+    expect(chartRead([bucket(60, 9, 2, 'overconfident', 0.5)])).toBeNull();
+  });
+
+  it('names both sides, then the leaning range, then luck', () => {
+    const sure = bucket(80, 10, 0, 'overconfident', 0.9);
+    const cautious = bucket(0, 10, 10, 'underconfident', 0.9);
+    expect(chartRead([sure, cautious])).toEqual({ kind: 'both', sure, cautious });
+    const onLine = bucket(60, 20, 14, 'calibrated', 0);
+    expect(chartRead([sure, onLine])).toEqual({ kind: 'lean', range: sure, direction: 'overconfident' });
+    expect(chartRead([onLine])).toEqual({ kind: 'calibrated', close: true, shown: onLine, one: true });
+  });
+
+  it('is not close when a range inside luck is 5 points or more off', () => {
+    // 70% said, 55% happened, inside luck at 20.
+    const off = { ...bucket(60, 20, 11, 'calibrated', 0.15), stated_confidence_mean: 70 };
+    const onLine = bucket(20, 10, 3, 'calibrated', 0);
+    expect(chartRead([off, onLine])).toEqual({ kind: 'calibrated', close: false, shown: off, one: false });
   });
 });

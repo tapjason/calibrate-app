@@ -30,7 +30,7 @@ export interface BadgeProgress {
   /**
    * Today's words (D76, the voice pass, 2026-11-23), a full sentence or two:
    * "3 more scored answers to your first badge in health.", "Forecaster in
-   * work needs a score that clears 70 with room to spare. You're at 64." The
+   * work needs a score that clears 70 with room to spare. You’re at 64." The
    * low-end rule and the give-or-take are behind the line's tap, at Badges.
    */
   line: string;
@@ -143,15 +143,17 @@ export function nextBadgeProgress(
     const badgeLabel = BADGE_META[next.badge].label;
     const spread = giveOrTake[stat.category] ?? 0;
     // One rule, said one way (blind playtest 2026-11-04): the score with its
-    // give-or-take, since the low end is what has to clear the bar.
-    const now = Math.floor(stat.calibration_score);
+    // give-or-take, since the low end is what has to clear the bar. Rounded as
+    // Insights' badge row rounds it (CategoryBadge), so a 64.8 reads 65 in
+    // both places (record audit 2026-11-23).
+    const now = Math.round(stat.calibration_score);
     return {
       category: stat.category,
       badge: next.badge,
       badgeLabel,
       // Today (D76): "with room to spare" carries the low end; the rule and
       // the give-or-take are at Badges, where the line's tap goes.
-      line: `${badgeLabel} in ${categoryLabel(stat.category)} needs a score that clears ${next.needScore} with room to spare. You're at ${now}.`,
+      line: `${badgeLabel} in ${categoryLabel(stat.category)} needs a score that clears ${next.needScore} with room to spare. You’re at ${now}.`,
       text: `To reach ${badgeLabel} in ${categoryLabel(stat.category)}: a score above ${next.needScore} at its low end (now ${now}${spread > 0 ? `, give or take ${spread}` : ''})`,
       progress: null,
     };

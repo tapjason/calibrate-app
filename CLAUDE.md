@@ -261,7 +261,7 @@ thing due tomorrow and answered tomorrow still counts.
 **Said once, with what to do** (decided 2026-11-10, D56; blind playtest
 2026-11-10, run 2: a daily walk was "not scored" three times per tick). Before a
 same-day answer the rule is said once, on "Answer it now": "Heads up: an answer today
-won't count, because you logged it today. Tomorrow it will. For something you do every
+won’t be scored, because you logged it today. Tomorrow it will. For something you do every
 day, log the next one the evening before." (that last sentence only when the same words
 were answered before, D62: it reached a one-off maths test; the words D76's). Resolve's
 own note says the same first two sentences (`sameDayHeadsUp`), no longer that the streak
@@ -326,7 +326,9 @@ does (D49, D77).
 **The two-choice scale runs 0 to 100%** (decided 2026-11-23 by the owner, D77: "the
 minimum should never be 50%"), in steps of 5 like Log's, here and in practice. A number
 under 50 is taken as said, the stated chance the picked answer is right, and never
-flipped to the other answer; under the control, "50% means no idea, a coin flip." On this
+flipped to the other answer; under the control, "50% means no idea, a coin flip.", which VoiceOver says with the label
+("How sure are you? 50% means no idea, a coin flip."; no `accessibilityHint`, and the tap tip is
+printed, never spoken). On this
 scale opposite errors cancel more easily (five at 10% all right and five at 90% all wrong
 read "no clear lean"). Answers kept from before run 50–100 and read as ever; no Warm-up or
 practice number leaves the phone.
@@ -358,7 +360,7 @@ practice number leaves the phone.
 - The first prediction is due Tomorrow, as every new one is (D55), with starter ideas that
   resolve by then, so the first real result lands on Day 1. That first yes/no answer says
   what the number means, the same for Yes and No ("70% means right about 7 times in 10.
-  It takes around 20 answers before we can tell how you're doing.", D76; under 50, "30%
+  It takes around 20 scored answers before we can tell how you’re doing.", D76, "scored" after the review of 2026-11-23; under 50, "30%
   means it happens about 3 times in 10.").
 - The Day-0 card shares the counts as an invitation: "5 of 10 right. I was 77% sure.
   How sure are you?"
@@ -524,20 +526,27 @@ See the authoritative section above.
 ### 5. Stats & Insight Module
 - Overall calibration rating (0–100), or provisional-progress state: the bar and one
   line (D76). Until the first answer, it leads with when it comes ("Your first answer
-  lands tomorrow evening. 20 answers unlock your score.", D30); after it, "15 more scored
-  answers unlock your score." with when the next one comes due
+  lands tomorrow evening. 20 scored answers unlock your score.", D30; "scored" since the
+  review of 2026-11-23); after it, "15 more scored answers unlock your score." with when the
+  next one comes due. The answer that unlocks it says "20 scored answers in. Here’s your
+  rating. It’s rough for now and settles as you answer more."
 - What the rating means in points (D59): "Range by range, what you said averaged about
   14 points away from how often those things happened, each range counting by how many
   answers it holds.", 100 minus the rounded rating. On Insights it reads "On average
   you're about 14 points off." (D76). Today's rating and Insights' "What does this mean?"
-  open How scoring works with the full line on top. Today's bar carries no 70 / 85 / 90
-  marks (Insights keeps them; D54’s caption
-  is spoken, not printed, since D76)
+  open How scoring works with the full line on top. No rating bar carries the 70 / 85 / 90
+  marks: Today's lost them at D54's playtests, and Insights' lost them in the review of
+  2026-11-23 (unlabelled, they read as tiers for the overall rating once D76 took D54's
+  caption off the page), so there is no caption to speak either. The badge bars are in How
+  scoring works, at Badges
 - **Insights' rating keeps the number, the bar, one short line and "What does this
   mean?"** (decided 2026-11-23 by the owner, D76: "Much of the score calculation based
   explanations do not need to be on the main page next to the score"). In groups (D68):
   the points line in larger ink, the perfect-calibration line's short form under it where
-  it applies, and the link; then "Up 2 since last week." as news; then the count. The
+  it applies, and the link; then the short since-last-week line as news, "About the same as last week." when the
+  change is zero or within the rating's give-or-take and "Up 4 since last week." / "Down 4
+  since last week." only beyond it (the review of 2026-11-23: "Up 2" with no give-or-take
+  beside it read as real movement); then the count. The
   give-or-take stays as the bar's band and in the rating's spoken label. The full points
   line, the perfect-calibration line with every ending, the give-or-take ("Give or take 5
   points with this many predictions.") and the full since-last-week line sit in that order
@@ -557,8 +566,9 @@ See the authoritative section above.
   page keeps only the "can't be told apart" case, short: "With 20 answers, that's about as
   good as anyone can tell." (D76)
 - **A first look before 20** (D62): from 10 scored answers until the rating unlocks,
-  Today and Insights add "First look: you said about 75%, and 6 of 12 happened. Too early
-  to rate." (D76). Counts, never a lean
+  Today and Insights add "First look: you said about 75%, and 6 of your 12 scored predictions
+  happened. Too early to rate." (D76; "scored" in the line itself, and "predictions"
+  since they happen where answers don't, since the review of 2026-11-23). Counts, never a lean
 - **The fine print, folded** (D62): the Brier line, the Can't tell count (D57's line at
   zero too) and the same-day, deleted and moved counts sit under "More about your
   record" on Insights, one tap away ("Show less" folds it again)
@@ -573,9 +583,10 @@ See the authoritative section above.
   have matched.", and how it fits that category's badge, D59: "That gap is already in its
   score, 80, which still clears Forecaster's 70 at its low end.", D76); the chart's title
   naming both sides when there are both ("You're too sure at 80–100% and too cautious at
-  60–80%"); and "since last week" under the rating once it's unlocked at both ends ("Up 2
-  since last week."; in full in How scoring works, "Up 2 since last week, from 6 answers
-  given since then, within its give-or-take.", D76). The Plus card shows one Coach-style card on the person's own
+  60–80%"); and "since last week" under the rating once it's unlocked at both ends ("About
+  the same as last week." within its give-or-take, "Up 4 since last week." beyond it; in
+  full in How scoring works, "Up 2 since last week, from 6 answers given since then,
+  within its give-or-take.", D76). The Plus card shows one Coach-style card on the person's own
   numbers as a sample, written by the app and labelled so (Coach itself needs Plus
   and a sign-in).
 - **Plain counts on the chart** (D57), by the same rule. The title names a range that
@@ -589,7 +600,7 @@ See the authoritative section above.
   tell." when there are none, from the first answer (D59).
 - Per-category breakdown with badge levels, and each category's own score once it is
   past `MIN_N_CATEGORY` (D28); before that, the count to go and its plain counts ("You
-  said about 90%, and 7 of 9 scored answers happened. Too early to read.", D53, D76),
+  said about 90%, and 7 of 9 scored predictions happened. Too early to read.", D53, D76),
   never a lean
 - While the rating is calibrating, when it could unlock at the recent pace ("At your
   recent pace, about 3 weeks (around Nov 30).", D53; on Today only when it's three weeks
@@ -604,8 +615,8 @@ See the authoritative section above.
   total would have earned one, that the answers are spread over N categories (D59), and
   Today names the closest badge ("13 more scored answers to your first badge in finance.":
   the first, not "Tracker", since at 20 a category can go straight to Forecaster; short on
-  score, "Forecaster in work needs a score that clears 70 with room to spare. You're at
-  64.", D76; the recap card keeps "To reach …", since on a shared card a line led by the
+  score, "Forecaster in work needs a score that clears 70 with room to spare. You’re at
+  64.", D76, the score rounded as Insights' badge row rounds it, so 64.8 reads 65 in both; the recap card keeps "To reach …", since on a shared card a line led by the
   tier reads as a claim). Tapping the streak row on Today opens How scoring works at Your streak.
   Tapping the identity line on Today explains the tiers (How scoring works, at Badges)
   rather than opening Share.
@@ -717,7 +728,10 @@ Nothing that produces a shareable artifact is ever paywalled.
   the question instead of recording, with the current words and Resolve's note (a
   delivered reminder outlives a reschedule).
 - **Weekly digest** — fires Sunday at 18:00 local, or on the day and time the person
-  picks (D38), and summarizes open and upcoming predictions
+  picks (D38), and summarizes open and upcoming predictions. The reminder ask's body
+  ("Want a nudge at 7 PM on the day it’s due?") names the weekly summary ("Plus a quiet
+  weekly summary. Nothing else.") only while the Weekly digest switch is on; off, it reads
+  "Nothing else."
 - **Trial ending** — 10:00 local two days before a free trial renews, with the
   renewal date and the store's price, and no offer (D16). Cancelled when the trial is
   cancelled or over, or notifications are off.
@@ -758,7 +772,13 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
   score (the evidence for transfer is mixed).
 - The day's answers land together, with the Warmup's answer key, and "2 of 3 right.
   You expected about 2." The practice record says which way it leans only from 20
-  answers (the same floor as the rating), and draws its chart from there.
+  answers (the same floor as the rating), and draws its chart from there. Its headline
+  follows the chart's per-range rule (the review of 2026-11-23): it names the ranges
+  ("In practice, you run overconfident at 80–100%"; both sides as "In practice, you’re too
+  sure at 80–100% and too cautious at 0–20%"), "close to calibrated" only when every range
+  with 10 answers is within 5 points and the pooled read is close too, the pooled lean
+  ("In practice, you run overconfident") when no range has 10, and otherwise "In practice,
+  no clear lean yet".
 - On Today as one row under the streak, from the first logged prediction on (not on
   Day 0, where the next thing is the first real prediction). Before the first answer
   it reads "While you wait: today's practice" (D62). Erase clears it.

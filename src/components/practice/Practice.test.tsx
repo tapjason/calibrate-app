@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { holdRanges } from '@/components/ui/holdRanges';
 import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
 import { usePracticeStore } from '@/store/practiceStore';
@@ -136,6 +137,19 @@ describe('PracticeQuiz', () => {
       { slot: 0, confidence: 40, correct: true },
     ]);
   });
+
+  // Code review 2026-11-23, round 2: VoiceOver hears what 50% means with the
+  // label, and no custom hint replaces iOS's own "swipe up or down to adjust".
+  it('says what 50% means with the label, with no custom hint', () => {
+    render(<PracticeQuiz day={today()} slot={0} />);
+    const adjustable = screen.getByTestId('practice-confidence-adjustable');
+    expect(adjustable.props.accessibilityLabel).toBe(
+      'How sure are you? 50% means no idea, a coin flip.',
+    );
+    expect(adjustable.props.accessibilityHint).toBeUndefined();
+    // No tap tip on practice.
+    expect(screen.queryByText(/Tap the bar/)).toBeNull();
+  });
 });
 
 describe('PracticeResult', () => {
@@ -169,8 +183,9 @@ describe('PracticeResult', () => {
     usePracticeStore.setState({ answers: past });
     await answerToday(90);
     render(<PracticeResult day={today()} />);
+    // By the chart's rule (record audit 2026-11-23): the range it names.
     expect(screen.getByTestId('practice-record-headline')).toHaveTextContent(
-      'In practice, you run overconfident',
+      holdRanges('In practice, you run overconfident at 80–100%'),
     );
   });
 });

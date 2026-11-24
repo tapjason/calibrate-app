@@ -95,10 +95,25 @@ describe('nextBadgeProgress', () => {
       category: 'work',
       badge: 'forecaster',
       badgeLabel: 'Forecaster',
-      text: 'To reach Forecaster in work: a score above 70 at its low end (now 64)',
-      line: "Forecaster in work needs a score that clears 70 with room to spare. You're at 64.",
+      text: 'To reach Forecaster in work: a score above 70 at its low end (now 65)',
+      line: "Forecaster in work needs a score that clears 70 with room to spare. You’re at 65.",
       progress: null,
     });
+  });
+
+  // Record audit 2026-11-23: Math.floor said 64 here while Insights' badge row
+  // said 65 for the same 64.8.
+  it('prints the score as Insights badge row does, rounded', () => {
+    for (const score of [64.8, 64.5, 64.2, 87.4]) {
+      const s = stat('work', 25, score);
+      const target = { work: { badge: 'forecaster' as const, needResolved: 20, needScore: 90 } };
+      const p = nextBadgeProgress([s], target);
+      const shown = String(Math.round(score));
+      expect(p?.line).toBe(
+        `Forecaster in work needs a score that clears 90 with room to spare. You’re at ${shown}.`,
+      );
+      expect(p?.text).toContain(`(now ${shown})`);
+    }
   });
 
   it('never prints a provisional score', () => {
@@ -137,7 +152,7 @@ describe("nextBadgeProgress, Today's line", () => {
     const stats = [{ ...stat('health', 60, 87.4), badge_level: 'forecaster' as const }];
     const next = { health: { badge: 'sharp' as const, needResolved: 50, needScore: 85 } };
     expect(nextBadgeProgress(stats, next, { health: 4 })?.line).toBe(
-      "Sharp in health needs a score that clears 85 with room to spare. You're at 87.",
+      "Sharp in health needs a score that clears 85 with room to spare. You’re at 87.",
     );
   });
 });

@@ -17,12 +17,12 @@ describe('CoverageNudge', () => {
   });
 
   // D76 (the voice pass, 2026-11-23): "Everything lately is above 40%. Try
-  // one you think probably won't happen."
+  // one you think probably won’t happen."
   it('says the fact, then the ask', () => {
     render(<CoverageNudge suggestedConfidence={25} onAccept={jest.fn()} onDismiss={jest.fn()} />);
     expect(screen.getByTestId('coverage-nudge-fact')).toHaveTextContent('Everything lately is above 40%.');
     expect(screen.getByTestId('coverage-nudge-ask')).toHaveTextContent(
-      "Try one you think probably won't happen.",
+      "Try one you think probably won’t happen.",
     );
   });
 

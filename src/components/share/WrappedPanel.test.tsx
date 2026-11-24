@@ -252,7 +252,7 @@ describe('WrappedPanel', () => {
     render(<WrappedPanel span="week" />);
 
     expect(screen.getByTestId('wrapped-all-time')).toHaveTextContent(
-      holdRanges("Across all 148 scored answers, you're too sure at 80–100% and too cautious at 60–80%."),
+      holdRanges('Across all 148 scored answers, you’re too sure at 80–100% and too cautious at 60–80%.'),
     );
   });
 

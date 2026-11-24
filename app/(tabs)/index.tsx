@@ -277,7 +277,7 @@ export default function TodayScreen() {
           style={({ pressed }) => [styles.ratingTap, pressed && styles.pressed]}
           testID="home-rating-group"
         >
-          <ScoreBar score={headline.rating} marks={false} testID="home-score-bar" />
+          <ScoreBar score={headline.rating} testID="home-score-bar" />
           {/* Number and label as one stop for a screen reader (roadmap step 43). */}
           <View style={styles.receipt}>
             <CountUp value={headline.rating} style={styles.ratingNumber} testID="home-rating" />

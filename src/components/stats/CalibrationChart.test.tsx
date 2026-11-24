@@ -497,9 +497,11 @@ describe('CalibrationChart chance capsules', () => {
     const drawn = render(<CalibrationChart buckets={[bucket({ low: 60 })]} />);
     fireEvent.press(drawn.getByTestId('chart-key-toggle'));
     expect(drawn.getByTestId('chart-caption')).toHaveTextContent(/Grey bars: where a perfectly calibrated dot lands/);
-    // Inside the bar is "can't be told apart", not "as close as luck allows"
-    // (blind playtest 2026-11-05, run 3).
-    expect(drawn.getByTestId('chart-caption')).toHaveTextContent(/can't be told apart from perfect calibration\. /);
+    // Inside the bar is "can’t be told apart", not "as close as luck allows"
+    // (blind playtest 2026-11-05, run 3). The curly apostrophe, as the rest of
+    // the page (code review 2026-11-23, round 2).
+    expect(drawn.getByTestId('chart-caption')).toHaveTextContent(/can’t be told apart from perfect calibration\. /);
+    expect(drawn.getByTestId('chart-caption')).not.toHaveTextContent(/'/);
     // What the colours mean, once a dot has 10 (D62).
     expect(drawn.getByTestId('chart-caption')).toHaveTextContent(
       /Orange, below the line: too sure\. Blue, above it: too cautious\. Green: no clear lean, within luck or under 5 points off\./,
@@ -537,7 +539,9 @@ describe('xTickLabel', () => {
     fireEvent.press(toggle);
     expect(view.getByTestId('chart-caption')).toHaveTextContent(/Dashed line: perfectly calibrated/);
     expect(view.getByTestId('chart-key-toggle').props.accessibilityState).toEqual({ expanded: true });
-    expect(view.getByText('Hide')).toBeTruthy();
+    // Named for what it hides (code review 2026-11-23: "Hide" alone).
+    expect(view.getByText('Hide the key')).toBeTruthy();
+    expect(view.queryByText('Hide')).toBeNull();
     fireEvent.press(view.getByTestId('chart-key-toggle'));
     expect(view.queryByTestId('chart-caption')).toBeNull();
   });

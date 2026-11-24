@@ -1,13 +1,14 @@
 import { AccessibilityInfo, ScrollView } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { TWO_CHOICE_HINT } from '@/components/ui/ConfidenceControl';
 import { space } from '@/constants/theme';
 import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { WarmupQuestion } from '@/types';
 
-import { TWO_CHOICE_HINT, WARMUP_TAP_TIP, WarmupQuiz } from './WarmupQuiz';
+import { WARMUP_TAP_TIP, WarmupQuiz } from './WarmupQuiz';
 
 const QUESTIONS: readonly WarmupQuestion[] = [
   {
@@ -76,6 +77,22 @@ describe('WarmupQuiz', () => {
     // What 50% means stays on every question.
     expect(screen.getByText(TWO_CHOICE_HINT)).toBeTruthy();
     expect(TWO_CHOICE_HINT).toBe('50% means no idea, a coin flip.');
+  });
+
+  // Code review 2026-11-23, round 2: VoiceOver hears what 50% means with the
+  // label, never the tap tip (the slider is hidden from it), and no custom
+  // hint replaces iOS's own "swipe up or down to adjust".
+  it('says what 50% means with the label on question 1, and not the tap tip', () => {
+    render(<WarmupQuiz />);
+    const adjustable = screen.getByTestId('warmup-confidence-adjustable');
+    expect(adjustable.props.accessibilityLabel).toBe(
+      'How sure are you? 50% means no idea, a coin flip.',
+    );
+    expect(adjustable.props.accessibilityHint).toBeUndefined();
+    // The tip still shows.
+    expect(
+      screen.getByText('50% means no idea, a coin flip. Tap the bar to pick a number.'),
+    ).toBeTruthy();
   });
 
   // Roadmap step 44: Next swaps the question while focus stays on the button.
