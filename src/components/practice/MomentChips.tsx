@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { chosenProps } from '@/components/ui/chosen';
-import { colors, radius, space, type } from '@/constants/theme';
+import { OptionChip } from '@/components/ui/OptionChip';
+import { space } from '@/constants/theme';
 import { PRACTICE_REMINDER_MOMENTS, reminderTimeLabel } from '@/notifications/practiceReminder';
 import type { PracticeReminderTime } from '@/store/settingsStore';
 
@@ -34,8 +34,8 @@ const same = (a: PracticeReminderTime | null, b: PracticeReminderTime) =>
 /**
  * The practice reminder's choices as moments in a day, each with its time
  * ("With coffee" over "8:00 AM"): a cue to attach the habit to, not just a
- * clock reading (roadmap step 89). A radio group; the selection is the
- * outline and a weight change as well as the tint (§0.5).
+ * clock reading (roadmap step 89). A radio group of `OptionChip`s; the
+ * selection is the outline and a weight change as well as the tint (§0.5).
  */
 export function MomentChips({
   selected,
@@ -56,7 +56,7 @@ export function MomentChips({
   return (
     <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel="Practice reminder" testID={testID}>
       {withOff && (
-        <Chip
+        <OptionChip
           title="Off"
           active={!picking && selected === null}
           disabled={disabled}
@@ -67,7 +67,7 @@ export function MomentChips({
         />
       )}
       {PRACTICE_REMINDER_MOMENTS.map((m) => (
-        <Chip
+        <OptionChip
           key={m.id}
           title={m.label}
           subtitle={reminderTimeLabel(m)}
@@ -80,7 +80,7 @@ export function MomentChips({
         />
       ))}
       {onPickTime && (
-        <Chip
+        <OptionChip
           title={ownTime ? 'Your time' : 'Pick a time'}
           subtitle={ownTime ? reminderTimeLabel(ownTime) : undefined}
           active={picking || custom}
@@ -95,82 +95,6 @@ export function MomentChips({
   );
 }
 
-function Chip({
-  title,
-  subtitle,
-  active,
-  disabled,
-  half,
-  onSunken,
-  onPress,
-  testID,
-}: {
-  title: string;
-  subtitle?: string;
-  active: boolean;
-  disabled?: boolean;
-  /** Two to a row, for four choices. */
-  half?: boolean;
-  onSunken: boolean;
-  onPress: () => void;
-  testID: string;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="radio"
-      accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
-      {...chosenProps('radio', active, !!disabled)}
-      style={({ pressed }) => [
-        styles.chip,
-        half && styles.half,
-        onSunken && styles.chipOnSunken,
-        active && styles.chipActive,
-        // A chosen chip keeps an ink fill while pressed: the sunken press
-        // under its white label read 1.2:1 (step 195).
-        pressed && (active ? styles.chipActivePressed : styles.chipPressed),
-      ]}
-      testID={testID}
-    >
-      <Text style={[styles.title, active && styles.titleActive]}>{title}</Text>
-      {subtitle && <Text style={[styles.subtitle, active && styles.subtitleActive]}>{subtitle}</Text>}
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  // Growing to share the row: three moments fit one line on a 375pt card;
-  // with Off as well (You), `half` sets them two and two rather than ragged.
-  chip: {
-    backgroundColor: colors.surface,
-    borderColor: colors.controlBorder,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    flexGrow: 1,
-    justifyContent: 'center',
-    minHeight: 48,
-    minWidth: 64,
-    paddingHorizontal: space.sm,
-    paddingVertical: space.sm,
-  },
-  // The thicker edge takes its extra point from the padding, so nothing shifts.
-  // Ink fill and a white label when chosen (roadmap D33).
-  chipActive: {
-    backgroundColor: colors.action,
-    borderColor: colors.action,
-    borderWidth: 2,
-    paddingHorizontal: space.sm - 1,
-    paddingVertical: space.sm - 1,
-  },
-  chipPressed: { backgroundColor: colors.surfaceSunken },
-  chipActivePressed: { backgroundColor: colors.actionPressed, borderColor: colors.actionPressed },
-  // On a sunken card: 4.66:1 there in light, 4.92:1 in dark (theme.test.ts).
-  chipOnSunken: { borderColor: colors.textTertiary },
-  half: { flexBasis: '40%' },
-  title: { ...type.subhead, color: colors.textPrimary, fontWeight: '500' },
-  titleActive: { color: colors.onAction, fontWeight: '700' },
-  subtitle: { ...type.caption, color: colors.textSecondary },
-  subtitleActive: { color: colors.onAction },
 });

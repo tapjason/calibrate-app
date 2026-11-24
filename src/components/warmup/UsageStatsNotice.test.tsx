@@ -5,6 +5,7 @@ import { __setDeviceLocaleForTests } from '@/constants/locale';
 import { colors, type } from '@/constants/theme';
 import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
+import { __setLockDepsForTests } from '@/lock/appLock';
 import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { __resetLockStoreForTests, useLockStore } from '@/store/lockStore';
@@ -135,6 +136,46 @@ describe('UsageStatsNotice', () => {
     await waitFor(() => expect(useSettingsStore.getState().usageNoticeShownAt).not.toBeNull());
     expect(usageCountsMayGoUp()).toBe(true);
     await waitFor(() => expect(saved).toHaveLength(1));
+  });
+
+  // D75: a launch into the background inside "Lock after"'s window opens
+  // unlocked under the lock's cover, until the return decides whether to lock.
+  // Drawn there, it hasn't been seen yet either.
+  it('waits for the cover to come off when drawn open behind it', async () => {
+    useLockStore.setState({ locked: false, covered: true });
+    render(<UsageStatsNotice />);
+    await act(async () => {});
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
+    expect(usageCountsMayGoUp()).toBe(false);
+    expect(saved).toHaveLength(0);
+
+    act(() => useLockStore.setState({ covered: false }));
+    await waitFor(() => expect(useSettingsStore.getState().usageNoticeShownAt).not.toBeNull());
+    expect(usageCountsMayGoUp()).toBe(true);
+    await waitFor(() => expect(saved).toHaveLength(1));
+  });
+
+  // With the lock off the cover never goes up, whatever the app's phase, so
+  // a guest's line is stamped at once, exactly as before.
+  it('stamps at once with the lock off, even after the app went inactive and to the background', async () => {
+    __setLockDepsForTests({
+      getEnrolledLevelAsync: async () => 3,
+      supportedAuthenticationTypesAsync: async () => [2],
+      authenticateAsync: async () => ({ success: true }),
+    });
+    try {
+      useSettingsStore.setState({ appLock: false });
+      useLockStore.getState().appPhaseChanged('inactive');
+      expect(useLockStore.getState().covered).toBe(false);
+      useLockStore.getState().appPhaseChanged('background');
+      expect(useLockStore.getState().covered).toBe(false);
+      render(<UsageStatsNotice />);
+      await waitFor(() => expect(useSettingsStore.getState().usageNoticeShownAt).not.toBeNull());
+      expect(usageCountsMayGoUp()).toBe(true);
+      await waitFor(() => expect(saved).toHaveLength(1));
+    } finally {
+      __setLockDepsForTests(undefined);
+    }
   });
 });
 

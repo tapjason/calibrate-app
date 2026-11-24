@@ -161,9 +161,12 @@ describe('AppLockGate', () => {
 // The gate is what tells the store where the app is: without its listener
 // nothing would lock on the way out or uncover on the way back.
 describe('AppLockGate and the app going in and out of the foreground', () => {
+  // With "Lock after" Immediately (D75), which locks on every trip away as
+  // the lock did before it; within the default 5 minutes a return opens
+  // straight in (src/store/lockStore.test.ts).
   it('follows iOS: covers on inactive, locks on background, waits for Unlock on return', async () => {
     const add = jest.spyOn(AppState, 'addEventListener');
-    useSettingsStore.setState({ appLock: true });
+    useSettingsStore.setState({ appLock: true, appLockGraceMinutes: 0 });
     render(<AppLockGate />);
     const change = add.mock.calls.filter(([type]) => type === 'change').pop();
     expect(change).toBeDefined();

@@ -1,8 +1,11 @@
 // When the app locks and what opens it (roadmap D64, step 180). Since D74
 // (the owner, 2026-11-21) only a tap on Unlock asks the phone: nothing asks
-// by itself at launch or on a return from the background.
+// by itself at launch or on a return from the background. Since D75 (the
+// owner, 2026-11-23) a return within "Lock after" of leaving opens straight
+// in; Immediately (0) locks on every trip to the background, as before.
 
 import { __setLockDepsForTests, type LockDeps } from '@/lock/appLock';
+import type { LockGraceMinutes } from '@/types';
 
 import {
   __resetLockStoreForTests,
@@ -11,7 +14,7 @@ import {
   UNLOCK_REASON,
   useLockStore,
 } from './lockStore';
-import { __setPersistenceForTests, useSettingsStore } from './settingsStore';
+import { __setPersistenceForTests, useSettingsStore, type StoredSettings } from './settingsStore';
 
 type Result = { success: boolean; error?: string };
 
@@ -63,7 +66,10 @@ afterEach(() => {
 });
 
 const lock = () => useLockStore.getState();
+/** The lock on, with "Lock after" at its default, 5 minutes. */
 const on = () => useSettingsStore.setState({ appLock: true });
+/** The lock on, locking the moment the app goes away: the lock screen itself. */
+const onImmediately = () => useSettingsStore.setState({ appLock: true, appLockGraceMinutes: 0 });
 
 describe('lockStore: at launch', () => {
   it('stays open when the person never chose a lock', async () => {
@@ -212,9 +218,10 @@ describe('lockStore: in and out of the foreground', () => {
     expect(lock().locked).toBe(false);
   });
 
-  // D74: switching back opens on the lock screen, not on Face ID.
-  it('locks on the background, and on return uncovers and waits for Unlock', async () => {
-    on();
+  // D74: switching back opens on the lock screen, not on Face ID. With "Lock
+  // after" Immediately (D75), as every trip away did before it.
+  it('with Lock after Immediately, locks on the background, and on return uncovers and waits for Unlock', async () => {
+    onImmediately();
     lock().appPhaseChanged('inactive');
     lock().appPhaseChanged('background');
     expect(lock().locked).toBe(true);
@@ -541,5 +548,426 @@ describe('lockStore: the edges', () => {
     expect(useSettingsStore.getState().appLock).toBe(false);
     expect(lock().locked).toBe(false);
     expect(lock().covered).toBe(false);
+  });
+});
+
+// Roadmap D75 (the owner, 2026-11-23): "users should not have to unlock the
+// phone if they are already opening the app ... Only if they step away."
+// Fake time throughout: Date.now is the test's clock.
+describe('lockStore: Lock after (D75)', () => {
+  const T0 = Date.parse('2026-11-23T10:00:00.000Z');
+  const MIN = 60_000;
+  const iso = (ms: number) => new Date(ms).toISOString();
+  let clock: number;
+  const advance = (ms: number) => {
+    clock += ms;
+  };
+  /** Let every write the store started finish. */
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+  /** A settings record on "disk": what was stored, and every write. */
+  function record(
+    initial: Partial<StoredSettings> | null = null,
+    options: { loadThrows?: boolean; saveThrows?: boolean } = {},
+  ) {
+    let stored = initial;
+    const saved: StoredSettings[] = [];
+    __setPersistenceForTests({
+      load: async () => {
+        if (options.loadThrows) throw new Error('read failed');
+        return stored;
+      },
+      save: async (next) => {
+        if (options.saveThrows) throw new Error('write failed');
+        saved.push(next);
+        stored = next;
+      },
+    });
+    return { saved, stored: () => stored };
+  }
+
+  /** Launch as app/_layout.tsx does: the settings, then arm. */
+  async function launch(initial: Partial<StoredSettings> | null, options?: { loadThrows?: boolean }) {
+    const rec = record(initial, options);
+    await useSettingsStore.getState().hydrate();
+    lock().arm();
+    return rec;
+  }
+
+  const withGrace = (grace: LockGraceMinutes) =>
+    useSettingsStore.setState({ appLock: true, appLockGraceMinutes: grace });
+
+  beforeEach(() => {
+    clock = T0;
+    jest.spyOn(Date, 'now').mockImplementation(() => clock);
+  });
+
+  describe('a trip away while open', () => {
+    it('with the default 5 minutes, covers without locking, and a return inside opens straight in', async () => {
+      const rec = record();
+      on();
+      lock().appPhaseChanged('inactive');
+      lock().appPhaseChanged('background');
+      expect(lock().covered).toBe(true);
+      expect(lock().locked).toBe(false);
+      await flush();
+      // Kept on the phone, so a restart counts the same time away.
+      expect(rec.stored()?.appLockAwaySince).toBe(iso(T0));
+
+      advance(4 * MIN);
+      lock().appPhaseChanged('inactive');
+      expect(lock().covered).toBe(true);
+      lock().appPhaseChanged('active');
+      expect(lock().covered).toBe(false);
+      expect(lock().locked).toBe(false);
+      expect(lock().lockSeq).toBe(0);
+      await flush();
+      expect(authenticateAsync).not.toHaveBeenCalled();
+      // The trip is over: forgotten.
+      expect(rec.stored()?.appLockAwaySince).toBeNull();
+    });
+
+    it('a return outside locks, in the same update that takes the cover off', async () => {
+      const rec = record();
+      on();
+      lock().appPhaseChanged('inactive');
+      lock().appPhaseChanged('background');
+      await flush();
+
+      const seen: Array<{ locked: boolean; covered: boolean }> = [];
+      const unsubscribe = useLockStore.subscribe((s) => {
+        seen.push({ locked: s.locked, covered: s.covered });
+      });
+      advance(5 * MIN + 1);
+      lock().appPhaseChanged('inactive');
+      lock().appPhaseChanged('active');
+      unsubscribe();
+
+      // Never uncovered and open on the way: the content never showed.
+      expect(seen.some((s) => !s.locked && !s.covered)).toBe(false);
+      expect(seen[seen.length - 1]).toEqual({ locked: true, covered: false });
+      expect(lock().lockSeq).toBe(1);
+      expect(lock().checking).toBe(false);
+      await flush();
+      // Waits for Unlock (D74), and the time away is forgotten.
+      expect(authenticateAsync).not.toHaveBeenCalled();
+      expect(rec.stored()?.appLockAwaySince).toBeNull();
+      await lock().unlock();
+      expect(lock().locked).toBe(false);
+    });
+
+    it.each<LockGraceMinutes>([1, 5, 15])(
+      'with %i minutes, back exactly at the limit opens, and 1 ms over locks',
+      async (grace) => {
+        record();
+        withGrace(grace);
+        lock().appPhaseChanged('background');
+        advance(grace * MIN);
+        lock().appPhaseChanged('active');
+        expect(lock().locked).toBe(false);
+
+        lock().appPhaseChanged('background');
+        advance(grace * MIN + 1);
+        lock().appPhaseChanged('active');
+        expect(lock().locked).toBe(true);
+      },
+    );
+
+    it('times the trip from when the app went to the background, not from inactive', async () => {
+      const rec = record();
+      on();
+      lock().appPhaseChanged('inactive');
+      await flush();
+      expect(rec.saved).toHaveLength(0);
+      advance(3 * MIN);
+      lock().appPhaseChanged('background');
+      await flush();
+      expect(rec.stored()?.appLockAwaySince).toBe(iso(T0 + 3 * MIN));
+      advance(5 * MIN);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(false);
+    });
+
+    it('inactive alone covers and never locks, however long it lasts', () => {
+      record();
+      on();
+      lock().appPhaseChanged('inactive');
+      advance(60 * MIN);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(false);
+      expect(lock().covered).toBe(false);
+    });
+
+    it('a second background with no return between keeps the time the trip began', async () => {
+      record();
+      on();
+      lock().appPhaseChanged('background');
+      advance(4 * MIN);
+      lock().appPhaseChanged('background');
+      expect(lock().covered).toBe(true);
+      advance(2 * MIN);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(true);
+    });
+
+    it('a time away clocked in the future (the clock moved back) locks', () => {
+      record();
+      on();
+      lock().appPhaseChanged('background');
+      advance(-1);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(true);
+    });
+
+    it('a write of the time away that fails locks the return', async () => {
+      record(null, { saveThrows: true });
+      on();
+      lock().appPhaseChanged('background');
+      await flush();
+      advance(MIN);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(true);
+    });
+
+    it('decides a return once: a second active only uncovers', () => {
+      record();
+      on();
+      lock().appPhaseChanged('background');
+      advance(6 * MIN);
+      lock().appPhaseChanged('active');
+      expect(lock().lockSeq).toBe(1);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(true);
+      expect(lock().lockSeq).toBe(1);
+    });
+  });
+
+  describe('Immediately (0)', () => {
+    it('locks the moment the app goes to the background, as before, and remembers no time away', async () => {
+      const rec = record();
+      onImmediately();
+      lock().appPhaseChanged('inactive');
+      expect(lock().locked).toBe(false);
+      lock().appPhaseChanged('background');
+      expect(lock().locked).toBe(true);
+      expect(lock().lockSeq).toBe(1);
+      await flush();
+      expect(rec.saved.every((s) => s.appLockAwaySince === null)).toBe(true);
+      // Back at once: still locked, waiting for Unlock.
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(true);
+      expect(lock().covered).toBe(false);
+      await lock().unlock();
+      expect(lock().locked).toBe(false);
+    });
+
+    it('locks at launch even with a time away a moment ago', async () => {
+      await launch({ appLock: true, appLockGraceMinutes: 0, appLockAwaySince: iso(T0) });
+      expect(lock().locked).toBe(true);
+    });
+  });
+
+  describe('a lock already up', () => {
+    it.each<LockGraceMinutes>([0, 1, 5, 15])(
+      'with %i minutes, stays up across a trip away and back, and remembers no time away',
+      async (grace) => {
+        const rec = record();
+        withGrace(grace);
+        lock().arm();
+        expect(lock().locked).toBe(true);
+        lock().appPhaseChanged('active');
+        lock().appPhaseChanged('inactive');
+        lock().appPhaseChanged('background');
+        await flush();
+        advance(1);
+        lock().appPhaseChanged('active');
+        expect(lock().locked).toBe(true);
+        await flush();
+        expect(authenticateAsync).not.toHaveBeenCalled();
+        // Never written or refreshed while locked.
+        expect(rec.saved.every((s) => s.appLockAwaySince === null)).toBe(true);
+        expect(useSettingsStore.getState().appLockAwaySince).toBeNull();
+      },
+    );
+
+    it('going away while locked does not refresh an earlier time away', async () => {
+      // A trip that locked on return: what it kept is forgotten, never renewed.
+      const rec = record();
+      on();
+      lock().appPhaseChanged('background');
+      advance(10 * MIN);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(true);
+      await flush();
+      lock().appPhaseChanged('background');
+      await flush();
+      expect(rec.stored()?.appLockAwaySince).toBeNull();
+      // Even a launch a moment later locks.
+      advance(1);
+      __resetLockStoreForTests();
+      await launch(rec.stored());
+      expect(lock().locked).toBe(true);
+    });
+  });
+
+  describe('at launch', () => {
+    it('opens inside the window after a restart, and forgets the time away once in front', async () => {
+      const rec = await launch({ appLock: true, appLockAwaySince: iso(T0 - 4 * MIN) });
+      expect(lock().locked).toBe(false);
+      expect(lock().covered).toBe(false);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(false);
+      await flush();
+      expect(rec.stored()?.appLockAwaySince).toBeNull();
+      expect(authenticateAsync).not.toHaveBeenCalled();
+    });
+
+    it('opens exactly at the limit, and locks 1 ms over', async () => {
+      await launch({ appLock: true, appLockGraceMinutes: 5, appLockAwaySince: iso(T0 - 5 * MIN) });
+      expect(lock().locked).toBe(false);
+
+      __resetLockStoreForTests();
+      const rec = await launch({ appLock: true, appLockGraceMinutes: 5, appLockAwaySince: iso(T0 - 5 * MIN - 1) });
+      expect(lock().locked).toBe(true);
+      expect(lock().lockSeq).toBe(1);
+      await flush();
+      expect(rec.stored()?.appLockAwaySince).toBeNull();
+    });
+
+    it('uses 5 minutes for a lock turned on before D75, and for a stored grace that is not a choice', async () => {
+      await launch({ appLock: true, appLockAwaySince: iso(T0 - 4 * MIN) });
+      expect(lock().locked).toBe(false);
+
+      __resetLockStoreForTests();
+      await launch({
+        appLock: true,
+        appLockGraceMinutes: 7 as unknown as LockGraceMinutes,
+        appLockAwaySince: iso(T0 - 4 * MIN),
+      });
+      expect(useSettingsStore.getState().appLockGraceMinutes).toBe(5);
+      expect(lock().locked).toBe(false);
+    });
+
+    it.each<[string, Partial<StoredSettings>]>([
+      ['no time away', { appLock: true }],
+      ['a time away that does not read', { appLock: true, appLockAwaySince: 'a minute ago' }],
+      ['a time away in the future', { appLock: true, appLockAwaySince: iso(T0 + 1) }],
+    ])('locks with %s', async (_label, stored) => {
+      await launch(stored);
+      expect(lock().locked).toBe(true);
+    });
+
+    it('locks when the settings record cannot be read', async () => {
+      await launch({ appLock: true, appLockAwaySince: iso(T0 - MIN) }, { loadThrows: true });
+      expect(useSettingsStore.getState().loadFailed).toBe(true);
+      expect(lock().locked).toBe(true);
+    });
+
+    // Never seen in this app, but a launch into the background must not
+    // restart the clock: the trip still began when the app last went away.
+    it('a launch that opened, then went to the background before coming to the front, keeps the trip’s start', async () => {
+      await launch({ appLock: true, appLockAwaySince: iso(T0 - 4 * MIN) });
+      expect(lock().locked).toBe(false);
+      lock().appPhaseChanged('background');
+      advance(2 * MIN);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(true);
+    });
+
+    it('never locks with the lock off, whatever is kept', async () => {
+      await launch({ appLock: false, appLockGraceMinutes: 0, appLockAwaySince: iso(T0 - 60 * MIN) });
+      expect(lock().locked).toBe(false);
+    });
+  });
+
+  describe('with the lock off', () => {
+    it.each<LockGraceMinutes>([0, 1, 5, 15])('never locks or covers with %i minutes, and keeps no time away', async (grace) => {
+      const rec = record();
+      useSettingsStore.setState({ appLock: false, appLockGraceMinutes: grace });
+      lock().arm();
+      lock().appPhaseChanged('inactive');
+      lock().appPhaseChanged('background');
+      expect(lock().locked).toBe(false);
+      expect(lock().covered).toBe(false);
+      advance(60 * MIN);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(false);
+      await flush();
+      expect(rec.saved).toHaveLength(0);
+    });
+
+    it('on a build without the module, never locks with any grace', () => {
+      record();
+      __setLockDepsForTests(null);
+      withGrace(5);
+      lock().appPhaseChanged('background');
+      advance(60 * MIN);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(false);
+      expect(lock().covered).toBe(false);
+    });
+  });
+
+  describe('the switch and the setting', () => {
+    it('turning the lock off and on again forgets an old time away, so it cannot open a launch', async () => {
+      const rec = record();
+      useSettingsStore.setState({ appLock: true, appLockAwaySince: iso(T0 - MIN) });
+      expect(await lock().setEnabled(false)).toBe('changed');
+      expect(rec.saved.at(-1)).toMatchObject({ appLock: false, appLockAwaySince: null });
+      expect(await lock().setEnabled(true)).toBe('changed');
+      expect(rec.saved.at(-1)).toMatchObject({ appLock: true, appLockAwaySince: null });
+      // Turning it on leaves the app open, as before.
+      expect(lock().locked).toBe(false);
+
+      __resetLockStoreForTests();
+      await launch(rec.stored());
+      expect(lock().locked).toBe(true);
+    });
+
+    it('a trip under way when the lock is turned off is dropped', async () => {
+      record();
+      on();
+      const finishers = heldPrompts();
+      const change = lock().setEnabled(false);
+      await settle();
+      // "Turn off the app lock" is up when the app goes away.
+      lock().appPhaseChanged('background');
+      expect(lock().covered).toBe(true);
+      finishers[0]({ success: true });
+      expect(await change).toBe('changed');
+      expect(lock().covered).toBe(false);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(false);
+      expect(useSettingsStore.getState().appLockAwaySince).toBeNull();
+    });
+
+    it('changing Lock after neither locks nor opens the app now, and asks nothing', async () => {
+      const rec = record();
+      on();
+      await useSettingsStore.getState().setAppLockGraceMinutes(0);
+      expect(lock().locked).toBe(false);
+      expect(rec.saved.at(-1)?.appLockGraceMinutes).toBe(0);
+
+      lock().arm();
+      expect(lock().locked).toBe(true);
+      await useSettingsStore.getState().setAppLockGraceMinutes(15);
+      expect(lock().locked).toBe(true);
+      expect(authenticateAsync).not.toHaveBeenCalled();
+    });
+
+    it('a new Lock after applies to the next trip away', () => {
+      record();
+      on();
+      lock().appPhaseChanged('background');
+      advance(2 * MIN);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(false);
+
+      useSettingsStore.setState({ appLockGraceMinutes: 1 });
+      lock().appPhaseChanged('background');
+      advance(2 * MIN);
+      lock().appPhaseChanged('active');
+      expect(lock().locked).toBe(true);
+    });
   });
 });

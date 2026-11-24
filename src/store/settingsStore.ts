@@ -31,7 +31,15 @@ import {
   usageStatsStartOff,
   type PhoneRegions,
 } from '@/engine/usageStats';
-import { CATEGORIES, isCategory, type Category } from '@/types';
+import {
+  CATEGORIES,
+  DEFAULT_LOCK_GRACE_MINUTES,
+  isCategory,
+  isLockGraceMinutes,
+  isStoredInstant,
+  type Category,
+  type LockGraceMinutes,
+} from '@/types';
 
 export interface StoredSettings {
   notificationsEnabled: boolean;
@@ -104,14 +112,36 @@ export interface StoredSettings {
    */
   hideTitles: boolean;
   /**
-   * Whether the app locks when it opens and when it goes to the background,
-   * with Face ID or the passcode asked when Unlock is tapped (roadmap D64,
-   * step 180; D74). Off by default. "Hide the words" is a curtain: one tap
-   * opens a card (the top privacy finding of blind playtests 2026-11-13e and
-   * 2026-11-14). The choice is kept here; whether the app is locked right now
-   * is `lockStore`'s, and never stored.
+   * Whether the app locks at launch and on a return after the "Lock after"
+   * time away (`appLockGraceMinutes`, D75), with Face ID or the passcode asked
+   * when Unlock is tapped (roadmap D64, step 180; D74). Off by default. "Hide
+   * the words" is a curtain: one tap opens a card (the top privacy finding of
+   * blind playtests 2026-11-13e and 2026-11-14). The choice is kept here;
+   * whether the app is locked right now is `lockStore`'s, and never stored.
+   * Changing it forgets `appLockAwaySince` (`setAppLock`).
    */
   appLock: boolean;
+  /**
+   * "Lock after" (roadmap D75, the owner, 2026-11-23): how many minutes the
+   * app may be away before coming back locks it, one of `LOCK_GRACE_MINUTES`
+   * (0 is Immediately, every trip away locks, as before D75). 5 by default,
+   * also for someone whose lock was on before D75; anything stored that isn't
+   * one of the choices reads as 5. A setting like the others: on this phone
+   * only, kept by sign-out and by Erase. While the record can't be read it
+   * reads as 0, its private side, like the lock itself (`hydrate`).
+   */
+  appLockGraceMinutes: LockGraceMinutes;
+  /**
+   * When the app last went to the background while the lock was on and open
+   * (D75), as an ISO instant, or null. Like the cooldowns below, a memory,
+   * not a preference: kept on the phone so a return after the app was ended
+   * in the background still counts its time away (`lockStore.arm`). Written
+   * by the lock store only on a trip to the background while unlocked, and
+   * forgotten on the return, whenever the lock comes up and whenever the lock
+   * is turned on or off. Never synced. Anything stored that isn't an instant
+   * reads as null, which locks.
+   */
+  appLockAwaySince: string | null;
   /**
    * Chosen share-card theme id (src/constants/cardThemes.ts). Cosmetic only —
    * an id the user is not entitled to resolves back to the free theme at
@@ -287,8 +317,26 @@ interface SettingsState extends StoredSettings {
   setStreakShown: (shown: boolean) => Promise<void>;
   setReminderWords: (shown: boolean) => Promise<void>;
   setHideTitles: (hidden: boolean) => Promise<void>;
-  /** Store the lock choice. The check that allows it is `lockStore`'s. */
+  /**
+   * Store the lock choice. The check that allows it is `lockStore`'s. Either
+   * way it forgets the stored time away (D75), in the same write, so a time
+   * from before the lock was turned off and on again can't open it.
+   */
   setAppLock: (on: boolean) => Promise<void>;
+  /**
+   * "Lock after" (D75): the person's choice in You. No check with the phone
+   * (the person is already in the open app, and the switch itself still
+   * checks both ways), and it neither locks nor opens the app now. Anything
+   * that isn't one of `LOCK_GRACE_MINUTES` stores the default, 5.
+   */
+  setAppLockGraceMinutes: (minutes: LockGraceMinutes) => Promise<void>;
+  /**
+   * The lock store's memory of when the app went away (D75), or null to
+   * forget it. Anything that isn't an instant stores null. Resolves as a
+   * change's write does (`save`): false only when the write didn't land.
+   * Never throws.
+   */
+  setAppLockAwaySince: (at: string | null) => Promise<boolean>;
   setCardThemeId: (id: string) => Promise<void>;
   setCardFormat: (format: CardShape) => Promise<void>;
   setCardHiddenCategories: (hidden: readonly Category[]) => Promise<void>;
@@ -361,6 +409,8 @@ const DEFAULTS: HeldSettings = {
   reminderWords: false,
   hideTitles: false,
   appLock: false,
+  appLockGraceMinutes: DEFAULT_LOCK_GRACE_MINUTES,
+  appLockAwaySince: null,
   cardThemeId: DEFAULT_THEME.id,
   cardFormat: 'post',
   cardHiddenCategories: [],
@@ -435,6 +485,7 @@ type SettingsChange = (current: StoredSettings) => Partial<StoredSettings>;
  *                Continue on the lock screen of a phone with no passcode
  *                (lockStore.continueWithoutLock). Both are the person's
  *                choice of this very setting.
+ *                setAppLockGraceMinutes: "Lock after" in You (D75).
  *                setPracticeReminder: choosePracticeReminder, from You or
  *                from the practice sheet's offer; the person picks the time.
  *   automatic  everything else. Held in memory only while the record can't
@@ -442,6 +493,9 @@ type SettingsChange = (current: StoredSettings) => Partial<StoredSettings>;
  *                markCoverageNudgeShown, markRatingAsked, setStreakMomentDay
  *                (a cooldown's or a moment's memory; setStreakMomentDay is
  *                also cleared at Erase and account deletion);
+ *                setAppLockAwaySince (when the app went away, the lock
+ *                store's memory, D75. Held, it can't open the lock: launch
+ *                locks while the record can't be read, `lockStore.arm`);
  *                markUsageNoticeShown, forgetUsageNoticeShown (when the line
  *                about usage counts was first shown, D69 (b): stamped when it
  *                is drawn, forgotten at Erase and account deletion. Held, it
@@ -623,6 +677,14 @@ function fromStored(stored: Partial<StoredSettings>): HeldSettings {
       typeof stored.reminderWords === 'boolean' ? stored.reminderWords : DEFAULTS.reminderWords,
     hideTitles: typeof stored.hideTitles === 'boolean' ? stored.hideTitles : DEFAULTS.hideTitles,
     appLock: typeof stored.appLock === 'boolean' ? stored.appLock : DEFAULTS.appLock,
+    // Anything that isn't one of the choices reads as the default (D75).
+    appLockGraceMinutes: isLockGraceMinutes(stored.appLockGraceMinutes)
+      ? stored.appLockGraceMinutes
+      : DEFAULTS.appLockGraceMinutes,
+    // Anything that isn't an instant reads as none, which locks (D75).
+    appLockAwaySince: isStoredInstant(stored.appLockAwaySince)
+      ? stored.appLockAwaySince
+      : DEFAULTS.appLockAwaySince,
     cardThemeId: stored.cardThemeId ?? DEFAULTS.cardThemeId,
     cardFormat: validShape(stored.cardFormat) ?? DEFAULTS.cardFormat,
     cardHiddenCategories:
@@ -755,6 +817,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
         //     (lockStore.arm: Face ID or the passcode opens it; a build without
         //     the module never locks), and turning it off is the usual check
         //     with the phone;
+        //   - "Lock after" Immediately (D75), with no time away remembered:
+        //     every trip to the background locks until the record reads or
+        //     the person picks another time in You;
         //   - "Hide the words" on: a card opens with a tap, as always;
         //   - the words off reminders (already the default): no words and no
         //     Happened / Didn't on the lock screen;
@@ -774,6 +839,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
         set({
           loadFailed: true,
           appLock: true,
+          appLockGraceMinutes: 0,
+          appLockAwaySince: null,
           hideTitles: true,
           reminderWords: false,
           analyticsEnabled: false,
@@ -864,8 +931,23 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     },
 
     setAppLock: async (on) => {
-      change(() => ({ appLock: on }));
+      // The time away goes with it, in the same write (D75).
+      change(() => ({ appLock: on, appLockAwaySince: null }));
       await save('explicit');
+    },
+
+    setAppLockGraceMinutes: async (minutes) => {
+      const appLockGraceMinutes = isLockGraceMinutes(minutes)
+        ? minutes
+        : DEFAULTS.appLockGraceMinutes;
+      change(() => ({ appLockGraceMinutes }));
+      await save('explicit');
+    },
+
+    setAppLockAwaySince: async (at) => {
+      const appLockAwaySince = isStoredInstant(at) ? at : null;
+      change(() => ({ appLockAwaySince }));
+      return save('automatic');
     },
 
     setAiRefineEnabled: async (enabled) => {
@@ -1083,6 +1165,8 @@ function settingsValues(state: StoredSettings): Omit<StoredSettings, 'analyticsC
     reminderWords: state.reminderWords,
     hideTitles: state.hideTitles,
     appLock: state.appLock,
+    appLockGraceMinutes: state.appLockGraceMinutes,
+    appLockAwaySince: state.appLockAwaySince,
     cardThemeId: state.cardThemeId,
     cardFormat: state.cardFormat,
     cardHiddenCategories: state.cardHiddenCategories,

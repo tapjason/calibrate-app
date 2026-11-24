@@ -52,15 +52,20 @@ export const WARMUP_USAGE_OFF_NOTE = `${APP_NAME} can send a few usage counts, w
 export function UsageStatsNotice() {
   const markShown = useSettingsStore((s) => s.markUsageNoticeShown);
   const locked = useLockStore((s) => s.locked);
+  // The lock's cover (D64): up while the app isn't in front with the lock on,
+  // and, since "Lock after" (D75), through a launch into the background inside
+  // its window, before the return decides whether to lock. Never up with the
+  // lock off.
+  const covered = useLockStore((s) => s.covered);
   const localOnly = useAgeStore((s) => s.localOnly);
   const settled = useAgeStore((s) => s.settled);
 
   // Once seen: on the first frame, or at the unlock if it was drawn under the
-  // lock screen, and only once uploads may start. The store keeps the first
-  // stamp, so this writes once.
+  // lock screen or its cover, and only once uploads may start. The store
+  // keeps the first stamp, so this writes once.
   useEffect(() => {
-    if (!locked && settled && !localOnly) void markShown();
-  }, [locked, settled, localOnly, markShown]);
+    if (!locked && !covered && settled && !localOnly) void markShown();
+  }, [locked, covered, settled, localOnly, markShown]);
 
   if (localOnly) return null;
 

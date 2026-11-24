@@ -1,6 +1,33 @@
 # Handoff
 
-**Now, 2026-11-23: branch `builder/share-campaign-token`, off `master` (`2aaa769`), committed,
+**Now, 2026-11-23: branch `builder/lock-after`, off `builder/share-campaign-token` (`316428d`),
+committed, not merged or pushed. 1.0.0 is on the App Store; both branches are for 1.0.1.**
+- **"Lock after", D75, step 211** (the owner: "users should not have to unlock the phone if they
+  are already opening the app … Only if they step away"; asked, he chose the "Lock after"
+  choice): the app lock locks only after the person has been away longer than Immediately, 1, 5
+  or 15 minutes, 5 to start, at launch and on coming back alike; the Unlock tap (D74) is
+  unchanged. `CLAUDE.md` (the app-lock bullet), `UI_ROADMAP.md` D75, `DESIGN_SYSTEM.md` §7.25 and
+  `BUILT_LOG.md` 211 have the rule and what was built. `core-domain` then `mobile-ui`, both on
+  Opus at xhigh; `check.sh` exit 0, 254 suites, 5,411 tests. JS only.
+  - *Not run on any device:* the row in You (two chips to a row at 320 and 375, Dynamic Type,
+    light and dark; the web build can't show it, the lock isn't supported there), VoiceOver on
+    the group, a return inside and outside the time, a restart after the app is killed in the
+    background (the write has to land in iOS's background window; if it doesn't, it locks), the
+    cover in the app switcher, and Apple's age-range sheet waiting for the cover. For
+    `/device-check` on the next TestFlight build.
+  - *No review was called.* It touches the lock and two consent-adjacent readers (the age check
+    at launch, the Warm-up's usage line), so `code-reviewer` and `policy-auditor` fit if he
+    calls one before 1.0.1.
+  - *Seen once:* `predictionStore.test.ts` "an answer from another phone moved here…" failed
+    in one full run (`moved: 0`) and passed alone and in every other run; unrelated to the lock.
+- **OpenAI spend** (the owner, 2026-11-23): he set the organization's spend limit to $20. The
+  Coach's own caps are per user (4 a minute, 25 a day, 400 output tokens, numbers-only input);
+  usage tiers aren't worth chasing until `coach` logs show OpenAI's own 429s.
+- **His name on the store page:** the Developer, Seller and App Privacy lines show his full legal
+  name from the Apple Developer account; only Apple Developer Support can change it. The repo's
+  pages say "Jason Zou".
+
+**Before it, 2026-11-23: branch `builder/share-campaign-token`, off `master` (`2aaa769`), committed,
 not merged or pushed.** The share campaign token is on (GROWTH §0 step 1): the owner made the
 first campaign link in App Store Connect (`pt=129758335`, campaign `share-card-text`) and
 `APP_STORE_PROVIDER_TOKEN` is set from it, so a text share's link is

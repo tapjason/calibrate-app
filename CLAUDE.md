@@ -600,10 +600,14 @@ See the authoritative section above.
   categories not shown". Opening a card shows everything. For a phone someone else picks
   up (reminders have their own switch, D60).
 - **The app can be locked** (D64): a switch in You under "Hide the words", off by default,
-  named for what the phone has ("Lock with Face ID"). On, the app is locked at launch and
-  each time it comes back from the background, and the iPhone checks Face ID, or the
-  passcode as the way in, when the person taps Unlock: never by itself (D74, the owner,
-  2026-11-21). The app is covered by the launch page (its mark and name, D66) in the app
+  named for what the phone has ("Lock with Face ID"). On, the app locks once the person has been away from it longer than **"Lock after"**
+  says (D75, the owner, 2026-11-23: Immediately, 1, 5 or 15 minutes, 5 to start; a choice
+  under the switch), at launch and on coming back alike; "Immediately" locks at every
+  launch and return, as it did until D75. Time away is counted from when the app left the
+  front while unlocked (`lockOnReturn`, `src/engine/lockGrace.ts`; kept on the phone, so a
+  restart inside the time opens too), and anything unreadable locks. A lock that is up
+  opens only on Unlock: the iPhone checks Face ID, or the passcode as the way in, when the
+  person taps it, never by itself (D74, the owner, 2026-11-21). The app is covered by the launch page (its mark and name, D66) in the app
   switcher.
   The phone checks before the switch moves either way. A check that fails keeps it locked;
   only a phone with no passcode left opens, saying so and turning the lock off. Nothing

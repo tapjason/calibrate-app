@@ -412,8 +412,8 @@ The optional lock (roadmap D64, `expo-local-authentication`) asks iOS to check
 Face ID, Touch ID or the device passcode (`LAPolicy.deviceOwnerAuthentication`).
 The app receives a pass or a failure with its reason (cancelled, no passcode
 set), and reads which of these the phone has set up, to name the switch. No
-face or fingerprint data, no passcode. Whether the lock is on is one device-local setting, not
-synced and not sent to analytics. Info.plist carries
+face or fingerprint data, no passcode. Whether the lock is on, how long away before it locks ("Lock after", D75) and when the app
+last left the front are device-local values, not synced and not sent to analytics. Info.plist carries
 `NSFaceIDUsageDescription` ("Fairly Sure uses Face ID to unlock the app when
 you turn on its lock."), set by the package's config plugin in `app.json`.
 Nothing to declare on the App Privacy form for it.

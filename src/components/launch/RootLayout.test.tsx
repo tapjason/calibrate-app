@@ -4,16 +4,18 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { ensureAgeBucket, hydrateAgeGate, recheckAgeBucketIfDue } from '@/age/ageRange';
 import { initLocalOnly } from '@/age/localOnly';
 import { flushEvents } from '@/analytics/flush';
+import { useLaunchSplash } from '@/components/launch/useLaunchSplash';
 import { sweepExportFiles } from '@/export/file';
+import { __setLockDepsForTests } from '@/lock/appLock';
 import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import { syncForUser, useAuthStore } from '@/store/authStore';
 import { useCategoryStore } from '@/store/categoryStore';
-import { useLockStore } from '@/store/lockStore';
+import { __resetLockStoreForTests, useLockStore } from '@/store/lockStore';
 import { useLogDraftStore } from '@/store/logDraftStore';
 import { usePracticeStore } from '@/store/practiceStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useResolveRunStore } from '@/store/resolveRunStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
 
@@ -101,6 +103,7 @@ const hydrateAge = hydrateAgeGate as jest.Mock;
 const ensureAge = ensureAgeBucket as jest.Mock;
 const recheckAge = recheckAgeBucketIfDue as jest.Mock;
 const initRule = initLocalOnly as jest.Mock;
+const splash = useLaunchSplash as jest.Mock;
 
 let appStateHandlers: Array<(next: AppStateStatus) => void>;
 
@@ -323,5 +326,111 @@ describe('the root layout: the under-13 rule (D70)', () => {
     useAgeStore.setState({ localOnly: false, settled: false });
     await launch();
     expect(flush).not.toHaveBeenCalled();
+  });
+});
+
+// D75: with "Lock after" above Immediately, whether a return locks is decided
+// when the lock store hears the app is in front. The layout's listener is
+// added before AppLockGate's, so it tells the store itself before reading the
+// lock: otherwise a return about to lock read as open, and Apple's age-range
+// sheet could open as the lock went up. AppLockGate is mocked away here, so
+// the background call below stands in for its listener on the way out.
+describe('the root layout: a return after "Lock after" (D75)', () => {
+  const T0 = Date.parse('2026-11-23T12:00:00.000Z');
+  const MIN = 60_000;
+  let clock: number;
+
+  beforeEach(() => {
+    __setPersistenceForTests({ load: async () => null, save: async () => {} });
+    __setLockDepsForTests({
+      getEnrolledLevelAsync: async () => 3,
+      supportedAuthenticationTypesAsync: async () => [2],
+      authenticateAsync: async () => ({ success: true }),
+    });
+    __resetLockStoreForTests();
+  });
+
+  afterEach(() => {
+    __setLockDepsForTests(undefined);
+    __setPersistenceForTests(null);
+    act(() => __resetLockStoreForTests());
+  });
+
+  /** Launched open with the lock on at 5 minutes, then away from T0. */
+  async function launchAndLeave() {
+    seed();
+    await launch();
+    recheckAge.mockClear();
+    clock = T0;
+    jest.spyOn(Date, 'now').mockImplementation(() => clock);
+    act(() => useSettingsStore.setState({ appLock: true, appLockGraceMinutes: 5 }));
+    await act(async () => {
+      useLockStore.getState().appPhaseChanged('background');
+    });
+    expect(useLockStore.getState().locked).toBe(false);
+  }
+
+  it('asks nothing of Apple on a return that locks', async () => {
+    await launchAndLeave();
+    clock = T0 + 6 * MIN;
+    foreground();
+    expect(useLockStore.getState().locked).toBe(true);
+    expect(recheckAge).not.toHaveBeenCalled();
+    // The foreground's other work still runs.
+    expect(sync).toHaveBeenCalledWith(GUEST);
+  });
+
+  it('checks for a re-ask on a return inside the window, which opens straight in', async () => {
+    await launchAndLeave();
+    clock = T0 + 4 * MIN;
+    foreground();
+    expect(useLockStore.getState().locked).toBe(false);
+    expect(useLockStore.getState().covered).toBe(false);
+    // From the listener, and again from the launch effect as the cover comes
+    // off: `recheckAgeBucketIfDue` asks at most once a day and joins a re-ask
+    // already running, so the second call asks nothing.
+    expect(recheckAge).toHaveBeenCalled();
+  });
+
+  // A launch into the background inside the window opens unlocked, under the
+  // cover, until the return decides. Apple's sheet waits for the cover to go.
+  it('asks Apple at launch only once the cover is off, not while open behind it', async () => {
+    seed();
+    useLockStore.setState({ locked: false, covered: true });
+    await launch();
+    // The first screen is decided: the splash has been told it can go.
+    await waitFor(() => expect(splash).toHaveBeenLastCalledWith(true));
+    await act(async () => {});
+    expect(ensureAge).not.toHaveBeenCalled();
+    expect(recheckAge).not.toHaveBeenCalled();
+
+    act(() => useLockStore.setState({ covered: false }));
+    await waitFor(() => expect(ensureAge).toHaveBeenCalledTimes(1));
+    expect(recheckAge).toHaveBeenCalledTimes(1);
+  });
+
+  // With the lock off the cover never goes up, so the launch asks and a
+  // return checks exactly as before.
+  it('with the lock off, nothing covers and the asks are as before', async () => {
+    seed();
+    act(() => useSettingsStore.setState({ appLock: false, appLockGraceMinutes: 5 }));
+    await launch();
+    await waitFor(() => expect(ensureAge).toHaveBeenCalledTimes(1));
+    expect(recheckAge).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      useLockStore.getState().appPhaseChanged('inactive');
+    });
+    expect(useLockStore.getState().covered).toBe(false);
+    await act(async () => {
+      useLockStore.getState().appPhaseChanged('background');
+    });
+    expect(useLockStore.getState().covered).toBe(false);
+    foreground();
+    expect(useLockStore.getState().locked).toBe(false);
+    expect(useLockStore.getState().covered).toBe(false);
+    // One more check from the return's listener, and no second launch ask.
+    expect(ensureAge).toHaveBeenCalledTimes(1);
+    expect(recheckAge).toHaveBeenCalledTimes(2);
   });
 });

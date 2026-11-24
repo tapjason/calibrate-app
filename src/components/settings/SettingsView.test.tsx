@@ -127,6 +127,8 @@ describe('SettingsView', () => {
         reminderWords: false,
         hideTitles: false,
         appLock: false,
+        appLockGraceMinutes: 5,
+        appLockAwaySince: null,
         cardThemeId: 'midnight',
         cardFormat: 'post',
         cardHiddenCategories: [],

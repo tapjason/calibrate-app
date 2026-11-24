@@ -457,6 +457,47 @@ export interface AgeBucket {
  */
 export const LOCAL_ONLY_BELOW_AGE = 13;
 
+// ---- The app lock's "Lock after" (roadmap D75) ----
+
+/**
+ * How long the app may be away before coming back locks it, in minutes, as
+ * the "Lock after" choice under the lock switch in You offers it (roadmap D75,
+ * the owner, 2026-11-23: "users should not have to unlock the phone if they
+ * are already opening the app ... Only if they step away"). 0 is Immediately:
+ * every trip to the background locks, as before D75. In the order You lists
+ * them.
+ */
+export const LOCK_GRACE_MINUTES = [0, 1, 5, 15] as const;
+
+/** One of the "Lock after" choices, in minutes. */
+export type LockGraceMinutes = (typeof LOCK_GRACE_MINUTES)[number];
+
+/**
+ * The "Lock after" choice until the person picks one: 5 minutes away. Also for
+ * someone who turned the lock on before D75, whose stored settings have none.
+ */
+export const DEFAULT_LOCK_GRACE_MINUTES: LockGraceMinutes = 5;
+
+/** Whether `value` is one of the "Lock after" choices. Anything else is not. */
+export function isLockGraceMinutes(value: unknown): value is LockGraceMinutes {
+  return (LOCK_GRACE_MINUTES as readonly unknown[]).includes(value);
+}
+
+/** What decides whether a return to the app, or a launch, opens on the lock (D75). */
+export interface LockReturnInput {
+  /** The "Lock after" choice. */
+  graceMinutes: LockGraceMinutes;
+  /**
+   * When the app last went to the background while the lock was on and open,
+   * as an ISO instant (`isStoredInstant`), or null for none.
+   */
+  awaySince: string | null;
+  /** The wall clock now, in milliseconds since the epoch (`Date.now()`). */
+  now: number;
+  /** Whether the lock is already up. */
+  alreadyLocked: boolean;
+}
+
 // ---- Coach agent (Plus). Authoritative shapes: COACH_AGENT.md §4 and §6. ----
 
 /**
@@ -1035,6 +1076,13 @@ export type NextBadge = (
  * and one with an uncovered day since its last counted day reads 0.
  */
 export type ComputeStreak = (predictions: Prediction[], opts?: { now?: Date }) => number;
+
+/**
+ * Whether the app should be locked when it comes back to the front, or at
+ * launch (roadmap D75). True to lock. Fails closed: anything it can't read
+ * locks.
+ */
+export type LockOnReturn = (input: LockReturnInput) => boolean;
 
 // ---- DB: predictions (L2) ----
 

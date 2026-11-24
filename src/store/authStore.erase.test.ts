@@ -138,6 +138,8 @@ async function launch(stored: Session | null): Promise<void> {
  */
 const RECORD: Partial<StoredSettings> = {
   notificationsEnabled: false,
+  // "Lock after" (D75): a setting like the others, kept by all three.
+  appLockGraceMinutes: 15,
   cardHiddenCategories: ['work'],
   streakMomentDay: 'Thu Nov 19 2026',
   usageNoticeShownAt: '2026-11-01T09:00:00.000Z',
@@ -259,8 +261,9 @@ describe('guest Erase takes everything on the phone', () => {
   it('resets the card choices, the streak moment and the usage line, and keeps every other setting', async () => {
     guest();
     await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
-    expect(useSettingsStore.getState()).toMatchObject({ ...RESET, notificationsEnabled: false });
-    expect(saves[saves.length - 1]).toMatchObject({ ...RESET, notificationsEnabled: false });
+    const kept = { notificationsEnabled: false, appLockGraceMinutes: 15 };
+    expect(useSettingsStore.getState()).toMatchObject({ ...RESET, ...kept });
+    expect(saves[saves.length - 1]).toMatchObject({ ...RESET, ...kept });
   });
 });
 
@@ -272,8 +275,9 @@ describe('the settings when the account’s rows leave', () => {
     server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
 
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
-    expect(useSettingsStore.getState()).toMatchObject({ ...RESET, notificationsEnabled: false });
-    expect(saves[saves.length - 1]).toMatchObject({ ...RESET, notificationsEnabled: false });
+    const kept = { notificationsEnabled: false, appLockGraceMinutes: 15 };
+    expect(useSettingsStore.getState()).toMatchObject({ ...RESET, ...kept });
+    expect(saves[saves.length - 1]).toMatchObject({ ...RESET, ...kept });
   });
 
   it('a deletion the server refused writes no settings', async () => {

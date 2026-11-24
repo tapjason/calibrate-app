@@ -156,6 +156,8 @@ describe('settingsStore: setters persist', () => {
       reminderWords: false,
       hideTitles: false,
       appLock: false,
+      appLockGraceMinutes: 5,
+      appLockAwaySince: null,
       cardThemeId: 'midnight',
       cardFormat: 'post',
       cardHiddenCategories: [],
@@ -193,6 +195,8 @@ describe('settingsStore: setters persist', () => {
       reminderWords: false,
       hideTitles: false,
       appLock: false,
+      appLockGraceMinutes: 5,
+      appLockAwaySince: null,
       cardThemeId: 'midnight',
       cardFormat: 'post',
       cardHiddenCategories: [],
@@ -412,6 +416,139 @@ describe('settingsStore: the app lock', () => {
     expect(useSettingsStore.getState().appLock).toBe(true);
     expect(useSettingsStore.getState().loadFailed).toBe(true);
     jest.restoreAllMocks();
+  });
+});
+
+// Roadmap D75 (the owner, 2026-11-23): "Lock after", and when the app went
+// away, kept on the phone so a restart counts the time away the same.
+describe('settingsStore: Lock after (D75)', () => {
+  const AWAY = '2026-11-23T10:00:00.000Z';
+
+  it('is 5 minutes by default, also for a record from before D75 with the lock on', async () => {
+    __setPersistenceForTests(makeFakePersistence({ appLock: true }).persistence);
+    expect(useSettingsStore.getState().appLockGraceMinutes).toBe(5);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState()).toMatchObject({ appLock: true, appLockGraceMinutes: 5 });
+  });
+
+  it.each([0, 1, 5, 15])('stores %i minutes and reads it back after a restart', async (minutes) => {
+    const fake = makeFakePersistence();
+    __setPersistenceForTests(fake.persistence);
+    await useSettingsStore.getState().setAppLockGraceMinutes(minutes as 0 | 1 | 5 | 15);
+    expect(useSettingsStore.getState().appLockGraceMinutes).toBe(minutes);
+    expect(fake.saved.at(-1)?.appLockGraceMinutes).toBe(minutes);
+
+    __setPersistenceForTests(makeFakePersistence(fake.saved.at(-1)!).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().appLockGraceMinutes).toBe(minutes);
+  });
+
+  it.each([7, 2, -1, 1.5, '5', null, true, { minutes: 5 }])(
+    'reads a stored %p, which is not a choice, as 5',
+    async (value) => {
+      __setPersistenceForTests(
+        makeFakePersistence({ appLockGraceMinutes: value } as unknown as Partial<StoredSettings>).persistence,
+      );
+      await useSettingsStore.getState().hydrate();
+      expect(useSettingsStore.getState().appLockGraceMinutes).toBe(5);
+    },
+  );
+
+  it('stores 5 when asked to store something that is not a choice', async () => {
+    const fake = makeFakePersistence();
+    __setPersistenceForTests(fake.persistence);
+    await useSettingsStore.getState().setAppLockGraceMinutes(15);
+    await useSettingsStore.getState().setAppLockGraceMinutes(3 as unknown as 5);
+    expect(useSettingsStore.getState().appLockGraceMinutes).toBe(5);
+    expect(fake.saved.at(-1)?.appLockGraceMinutes).toBe(5);
+  });
+
+  it('reads as Immediately, with no time away, while the record cannot be read', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    jest.spyOn(AppState, 'addEventListener').mockImplementation(
+      () => ({ remove: () => undefined }) as unknown as ReturnType<typeof AppState.addEventListener>,
+    );
+    try {
+      __setPersistenceForTests(
+        makeFakePersistence({ appLockGraceMinutes: 15, appLockAwaySince: AWAY }, { loadThrows: true })
+          .persistence,
+      );
+      await useSettingsStore.getState().hydrate();
+      expect(useSettingsStore.getState()).toMatchObject({
+        loadFailed: true,
+        appLock: true,
+        appLockGraceMinutes: 0,
+        appLockAwaySince: null,
+      });
+    } finally {
+      jest.restoreAllMocks();
+    }
+  });
+
+  it('keeps when the app went away, and reads it back', async () => {
+    const fake = makeFakePersistence();
+    __setPersistenceForTests(fake.persistence);
+    await expect(useSettingsStore.getState().setAppLockAwaySince(AWAY)).resolves.toBe(true);
+    expect(useSettingsStore.getState().appLockAwaySince).toBe(AWAY);
+    expect(fake.saved.at(-1)?.appLockAwaySince).toBe(AWAY);
+
+    __setPersistenceForTests(makeFakePersistence(fake.saved.at(-1)!).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().appLockAwaySince).toBe(AWAY);
+
+    await expect(useSettingsStore.getState().setAppLockAwaySince(null)).resolves.toBe(true);
+    expect(useSettingsStore.getState().appLockAwaySince).toBeNull();
+  });
+
+  it.each(['yesterday', '2026-11-23', '2026-11-23T10:00:00', 1_700_000_000_000, true, {}])(
+    'reads a stored time away of %p, which is not an instant, as none',
+    async (value) => {
+      __setPersistenceForTests(
+        makeFakePersistence({ appLockAwaySince: value } as unknown as Partial<StoredSettings>).persistence,
+      );
+      await useSettingsStore.getState().hydrate();
+      expect(useSettingsStore.getState().appLockAwaySince).toBeNull();
+    },
+  );
+
+  it('stores none when asked to keep a time away that is not an instant', async () => {
+    const fake = makeFakePersistence();
+    __setPersistenceForTests(fake.persistence);
+    await useSettingsStore.getState().setAppLockAwaySince(AWAY);
+    await useSettingsStore.getState().setAppLockAwaySince('soon');
+    expect(fake.saved.at(-1)?.appLockAwaySince).toBeNull();
+  });
+
+  it('says when keeping the time away did not land', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      __setPersistenceForTests(makeFakePersistence(null, { saveThrows: true }).persistence);
+      await expect(useSettingsStore.getState().setAppLockAwaySince(AWAY)).resolves.toBe(false);
+    } finally {
+      jest.restoreAllMocks();
+    }
+  });
+
+  it('turning the lock on or off forgets the time away, in the same write', async () => {
+    const fake = makeFakePersistence({ appLock: true, appLockAwaySince: AWAY });
+    __setPersistenceForTests(fake.persistence);
+    await useSettingsStore.getState().hydrate();
+    await useSettingsStore.getState().setAppLock(false);
+    expect(fake.saved).toHaveLength(1);
+    expect(fake.saved[0]).toMatchObject({ appLock: false, appLockAwaySince: null });
+
+    await useSettingsStore.getState().setAppLockAwaySince(AWAY);
+    await useSettingsStore.getState().setAppLock(true);
+    expect(fake.saved.at(-1)).toMatchObject({ appLock: true, appLockAwaySince: null });
+    expect(useSettingsStore.getState().appLockAwaySince).toBeNull();
+  });
+
+  it('resetToDefaults puts it back to 5, with no time away', async () => {
+    const fake = makeFakePersistence({ appLockGraceMinutes: 15, appLockAwaySince: AWAY });
+    __setPersistenceForTests(fake.persistence);
+    await useSettingsStore.getState().hydrate();
+    await useSettingsStore.getState().resetToDefaults();
+    expect(fake.saved.at(-1)).toMatchObject({ appLockGraceMinutes: 5, appLockAwaySince: null });
   });
 });
 
@@ -929,6 +1066,14 @@ describe('settingsStore: what is stored while the record cannot be read', () => 
     ['setCardHiddenCategories', (s) => s.setCardHiddenCategories(['work']), { cardHiddenCategories: ['work'] }],
     ['markUsageNoticeShown', (s) => s.markUsageNoticeShown(), {}],
     [
+      'setAppLockAwaySince',
+      async (s) => {
+        // Held, which counts as done (`save`).
+        await expect(s.setAppLockAwaySince('2026-11-23T10:00:00.000Z')).resolves.toBe(true);
+      },
+      { appLockAwaySince: '2026-11-23T10:00:00.000Z' },
+    ],
+    [
       'forgetUsageNoticeShown',
       async (s) => {
         // Held, which counts as done (`save`): Erase reports only a write that failed.
@@ -968,6 +1113,7 @@ describe('settingsStore: what is stored while the record cannot be read', () => 
     ['setReminderWords', (s) => s.setReminderWords(true), { reminderWords: true }],
     ['setHideTitles', (s) => s.setHideTitles(false), { hideTitles: false }],
     ['setAppLock', (s) => s.setAppLock(false), { appLock: false }],
+    ['setAppLockGraceMinutes', (s) => s.setAppLockGraceMinutes(15), { appLockGraceMinutes: 15 }],
     [
       'setPracticeReminder',
       (s) => s.setPracticeReminder({ hour: 8, minute: 0 }),

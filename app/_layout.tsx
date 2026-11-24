@@ -236,15 +236,24 @@ export default function RootLayout() {
   // `recheckAgeBucketIfDue`: silent, Apple answers from its cache; nothing
   // before the launch's own ask is done). With no band (declined, not
   // available) the next launch asks instead.
+  //
+  // Nor under the lock's cover: since "Lock after" (D75) a launch into the
+  // background inside its window opens unlocked and covered, and whether the
+  // return locks is decided only once the app is in front. So this waits for
+  // the cover to come off too, as it does for the unlock. With the lock off
+  // the cover is never up, so nothing changes. When the cover comes off on a
+  // later return this runs again, which asks nothing new: `ensureAgeBucket`
+  // keeps its one ask per launch, and the re-ask waits a day.
   const locked = useLockStore((s) => s.locked);
+  const covered = useLockStore((s) => s.covered);
   useEffect(() => {
-    if (!launched || locked) return;
+    if (!launched || locked || covered) return;
     void ensureAgeBucket().catch((e) => {
       // eslint-disable-next-line no-console
       console.warn('[age] check failed:', e);
     });
     void recheckAgeBucketIfDue();
-  }, [launched, locked]);
+  }, [launched, locked, covered]);
 
   // Foreground sync. Sign-in already triggers one sweep via authStore; this
   // catches every subsequent return to the app so other devices' writes
@@ -253,6 +262,14 @@ export default function RootLayout() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
       if (next !== 'active') return;
+      // The lock decides this return first (D75): with "Lock after" above
+      // Immediately, whether coming back locks is settled only when the store
+      // hears the app is in front, and AppLockGate's own listener is added
+      // after this one, so it tells the store too late for the read below. A
+      // return that is about to lock would still read as open here. The
+      // store decides a return once; AppLockGate's call after this one only
+      // uncovers (lockStore, `appPhaseChanged`).
+      useLockStore.getState().appPhaseChanged(next);
       // Apple's age-range ask, again after a day or more in a long run (D70,
       // call 5), while the rule applies or a band of 13 or over is known, for
       // a guest too. Not under the app lock: Apple's sheet

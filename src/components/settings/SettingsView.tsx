@@ -24,6 +24,7 @@ import { askToConfirm } from '@/components/ui/askToConfirm';
 import { localCount } from '@/components/ui/count';
 import { endSentence } from '@/components/ui/sentence';
 import { Icon } from '@/components/ui/Icon';
+import { OptionChip } from '@/components/ui/OptionChip';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import {
   APP_NAME,
@@ -58,6 +59,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useLockStore } from '@/store/lockStore';
 import { selectUsageStatsOn, useSettingsStore, type PracticeReminderTime } from '@/store/settingsStore';
+import { isLockGraceMinutes, LOCK_GRACE_MINUTES, type LockGraceMinutes } from '@/types';
 
 /**
  * The You tab (roadmap D3): settings as a grouped inset list (DESIGN_SYSTEM
@@ -377,14 +379,47 @@ export function appLockLabel(method: LockMethod): string {
 export const APP_LOCK_FAILED = 'That didn’t go through, so nothing changed.';
 
 /**
- * What the lock switch says under its name. It says what the lock leaves out,
- * as "Hide the words" does: a reminder is on the lock screen, outside the app
- * (policy audit of step 180). Exported for tests.
+ * "Lock after" as the lock store reads it (D75): a value that isn't one of
+ * the choices is Immediately, the side that locks.
+ */
+function graceOf(minutes: LockGraceMinutes): LockGraceMinutes {
+  return isLockGraceMinutes(minutes) ? minutes : 0;
+}
+
+/** Holds a count to its unit, so "15 minutes" never breaks at 320pt (§8). */
+const NBSP = ' ';
+
+/**
+ * A "Lock after" choice in words (roadmap D75), as its chip shows it and the
+ * lines use it: "Immediately", "1 minute", "5 minutes", "15 minutes", each
+ * count held to its unit by a no-break space. Exported for tests.
+ */
+export function lockAfterLabel(minutes: LockGraceMinutes): string {
+  const grace = graceOf(minutes);
+  if (grace === 0) return 'Immediately';
+  return `${grace}${NBSP}${grace === 1 ? 'minute' : 'minutes'}`;
+}
+
+/** The line under "Lock after", following the choice (D75). Exported for tests. */
+export function lockAfterLine(minutes: LockGraceMinutes): string {
+  const grace = graceOf(minutes);
+  return grace === 0
+    ? 'It locks every time you leave it.'
+    : `Come back within ${lockAfterLabel(grace)} and it opens without asking.`;
+}
+
+/**
+ * What the lock switch says under its name. Its first sentence follows "Lock
+ * after" (D75), so it says when the lock comes up. It says what the lock
+ * leaves out, as "Hide the words" does: a reminder is on the lock screen,
+ * outside the app (policy audit of step 180). Exported for tests.
  */
 export function appLockLine(
   support: LockSupport,
   method: LockMethod,
   failed: boolean,
+  /** "Lock after" (D75): how long the app may be away before coming back locks it. */
+  graceMinutes: LockGraceMinutes,
   /** The passcode page's name in iOS Settings, which follows the phone's hardware. */
   page = 'Face ID & Passcode',
 ): string {
@@ -393,7 +428,12 @@ export function appLockLine(
   }
   const unlock =
     method === 'your passcode' ? 'your iPhone passcode' : `${method} or your iPhone passcode`;
-  const line = `Locks ${APP_NAME} each time it opens or comes back to the front, and covers it in the app switcher. Unlock opens it with ${unlock}. For a phone someone else picks up. Reminders aren’t covered: while this is on they have no Happened or Didn’t, and their words have their own switch under Notifications.`;
+  const grace = graceOf(graceMinutes);
+  const when =
+    grace === 0
+      ? `Locks ${APP_NAME} each time it opens or comes back to the front, and covers it in the app switcher.`
+      : `Locks ${APP_NAME} once you’ve been away from it for more than ${lockAfterLabel(grace)}, and covers it in the app switcher.`;
+  const line = `${when} Unlock opens it with ${unlock}. For a phone someone else picks up. Reminders aren’t covered: while this is on they have no Happened or Didn’t, and their words have their own switch under Notifications.`;
   return failed ? `${APP_LOCK_FAILED} ${line}` : line;
 }
 
@@ -403,10 +443,12 @@ export function appLockLine(
  * privacy finding of both). The iPhone checks before the switch moves either
  * way, so the person who turns it on can open it, and nobody else turns it
  * off. Nothing on a build or platform that can't lock; rechecked on return
- * to the app, since a passcode is set in iOS Settings.
+ * to the app, since a passcode is set in iOS Settings. Under it, while the
+ * lock is on and the phone can keep it, "Lock after" (D75).
  */
 function AppLockRow() {
   const appLock = useSettingsStore((s) => s.appLock);
+  const grace = useSettingsStore((s) => s.appLockGraceMinutes);
   const setEnabled = useLockStore((s) => s.setEnabled);
   const [support, setSupport] = useState<LockSupport | null>(null);
   const [method, setMethod] = useState<LockMethod>('your passcode');
@@ -455,13 +497,65 @@ function AppLockRow() {
   };
 
   return (
-    <ToggleRow
-      label={appLockLabel(method)}
-      description={appLockLine(support, method, failed, page)}
-      value={appLock}
-      onValueChange={(v) => void change(v)}
-      testID="toggle-app-lock"
-    />
+    <>
+      <ToggleRow
+        label={appLockLabel(method)}
+        description={appLockLine(support, method, failed, grace, page)}
+        value={appLock}
+        onValueChange={(v) => void change(v)}
+        testID="toggle-app-lock"
+      />
+      {appLock && support === 'ready' && <LockAfterRow />}
+    </>
+  );
+}
+
+/**
+ * "Lock after" (roadmap D75, the owner, 2026-11-23): how long the app may be
+ * away before coming back locks it; sooner opens straight in, after a restart
+ * too. A stacked row under the lock switch, its label and one line over four
+ * chips two to a row, as the practice reminder's moments are (§7.21). The
+ * line follows the choice. Changing it asks nothing of the phone (decided):
+ * it neither locks nor opens the app now, only the next trip away.
+ */
+function LockAfterRow() {
+  const grace = useSettingsStore((s) => s.appLockGraceMinutes);
+  const setGrace = useSettingsStore((s) => s.setAppLockGraceMinutes);
+  const [busy, setBusy] = useState(false);
+  const choose = async (minutes: LockGraceMinutes) => {
+    if (busy || minutes === grace) return;
+    setBusy(true);
+    try {
+      await setGrace(minutes);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <View style={styles.stacked} testID="settings-lock-after-row">
+      <Text style={styles.rowLabel}>Lock after</Text>
+      <Text style={styles.rowDescription} testID="settings-lock-after-line">
+        {lockAfterLine(grace)}
+      </Text>
+      <View
+        style={[styles.chips, styles.chipRow]}
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Lock after"
+        testID="settings-lock-after"
+      >
+        {LOCK_GRACE_MINUTES.map((minutes) => (
+          <OptionChip
+            key={minutes}
+            title={lockAfterLabel(minutes)}
+            active={minutes === grace}
+            disabled={busy}
+            half
+            onPress={() => void choose(minutes)}
+            testID={`lock-after-${minutes}`}
+          />
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -1078,6 +1172,8 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
   },
   chips: { marginTop: space.md },
+  // "Lock after"'s chips, wrapping as the practice reminder's moments do.
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   permission: {
     borderBottomColor: colors.hairline,
     borderBottomWidth: StyleSheet.hairlineWidth,

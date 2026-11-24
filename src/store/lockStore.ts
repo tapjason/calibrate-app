@@ -1,8 +1,27 @@
-// Whether the app is locked right now (roadmap D64, step 180; D74). The
-// choice to lock at all is a setting (`settingsStore.appLock`); this is the
-// state of one run of the app, and none of it is stored.
+// Whether the app is locked right now (roadmap D64, step 180; D74; D75). The
+// choice to lock at all is a setting (`settingsStore.appLock`), and so is how
+// long the app may be away first (`settingsStore.appLockGraceMinutes`, "Lock
+// after"); this is the state of one run of the app. The one thing kept on the
+// phone is when the app went away (`settingsStore.appLockAwaySince`), so a
+// restart counts the time away the same.
 //
-// When it locks: at launch, and each time the app goes to the background.
+// When it locks (D75, the owner, 2026-11-23: "users should not have to unlock
+// the phone if they are already opening the app ... Only if they step away"):
+//   - At launch, unless the app went to the background open, with the lock
+//     on, no more than the "Lock after" time ago (`arm`).
+//   - On a return from the background, by the same rule, decided the moment
+//     the app is back in front (`lockOnReturn`, src/engine/lockGrace.ts).
+//     Until then the app is covered, so the app switcher never shows it, and
+//     the cover comes off in the same update that puts the lock up, so nothing
+//     shows for a frame that shouldn't.
+//   - With "Lock after" Immediately (0), the moment the app goes to the
+//     background, exactly as before D75.
+// Every doubt locks: no time away remembered, one that doesn't read, one in
+// the future (the clock moved back), a write of it that failed, a settings
+// record that couldn't be read. A lock already up stays up whatever the
+// time: going away and back never opens it, and going away while locked
+// remembers nothing.
+//
 // Never on "inactive" alone: the app switcher, Notification Center, a system
 // alert and iOS's own Face ID prompt all pass through it, and locking there
 // would lock again the moment the prompt closed. Inactive only covers the
@@ -13,9 +32,9 @@
 // owner, after living with it on the iPhone (2026-11-21): "there should be a
 // more manual confirmation coming out of locking the app, the face ID should
 // not be instant especially if the user is switching back." So at launch and
-// on every return the lock screen waits with its line and Unlock, and Face ID
-// or the passcode is asked only when Unlock is tapped. The switch in You
-// still asks at once (`setEnabled`): that is the person's own tap.
+// on every return that locks, the lock screen waits with its line and Unlock,
+// and Face ID or the passcode is asked only when Unlock is tapped. The switch
+// in You still asks at once (`setEnabled`): that is the person's own tap.
 //
 // Nor does a prompt that didn't pass reopen itself: one that came back on
 // every cancel would be a loop with no way out. The next prompt is always the
@@ -23,6 +42,7 @@
 
 import { create } from 'zustand';
 
+import { lockOnReturn } from '@/engine/lockGrace';
 import {
   abandonCheck,
   checkLock,
@@ -31,6 +51,7 @@ import {
   lockSupported,
   type LockMethod,
 } from '@/lock/appLock';
+import { isLockGraceMinutes } from '@/types';
 
 import { useSettingsStore } from './settingsStore';
 
@@ -72,9 +93,17 @@ interface LockState {
   notice: 'no_passcode' | 'failed' | null;
   /** How this phone unlocks, for the words; null until read. */
   method: LockMethod | null;
-  /** At launch, once the settings are read: lock if the person chose to. */
+  /**
+   * At launch, once the settings are read: lock if the person chose to,
+   * unless the app went away open no more than "Lock after" ago (D75).
+   * Synchronous: the time away is read with the settings.
+   */
   arm: () => void;
-  /** The app moved between front, switcher and background. Never asks the phone. */
+  /**
+   * The app moved between front, switcher and background. Never asks the
+   * phone. A return from the background is decided here (D75); calling it
+   * again with 'active' only uncovers, so a second listener can call it first.
+   */
   appPhaseChanged: (next: AppPhase) => void;
   /** A tap on Unlock: ask the phone. Passing opens the app. */
   unlock: () => Promise<void>;
@@ -89,6 +118,63 @@ function lockOn(): boolean {
   return useSettingsStore.getState().appLock && lockSupported();
 }
 
+/**
+ * "Lock after", in minutes. One that isn't a choice reads as 0, Immediately:
+ * the side that locks.
+ */
+function graceMinutes(): number {
+  const grace = useSettingsStore.getState().appLockGraceMinutes;
+  return isLockGraceMinutes(grace) ? grace : 0;
+}
+
+/**
+ * A trip away while the lock is on and open (D75): from the moment the app
+ * went to the background until it is next in front. `failed` once the write
+ * of `since` to the phone didn't land, which makes the return lock.
+ */
+interface Trip {
+  since: string;
+  failed: boolean;
+}
+
+/** The trip under way, or null. In memory: the phone's copy is for a restart. */
+let trip: Trip | null = null;
+
+/** Keep the trip's start on the phone. A write that fails or throws marks it. */
+function rememberAway(t: Trip): void {
+  void (async () => {
+    let landed = false;
+    try {
+      landed = await useSettingsStore.getState().setAppLockAwaySince(t.since);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[lock] could not keep when the app went away:', e instanceof Error ? e.message : 'unknown error');
+    }
+    if (!landed) t.failed = true;
+  })();
+}
+
+/**
+ * Forget the time away kept on the phone, if there is one: the trip is over,
+ * or the lock came up. Never throws.
+ */
+function forgetAway(): void {
+  void (async () => {
+    try {
+      if (useSettingsStore.getState().appLockAwaySince === null) return;
+      await useSettingsStore.getState().setAppLockAwaySince(null);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[lock] could not forget when the app went away:', e instanceof Error ? e.message : 'unknown error');
+    }
+  })();
+}
+
+/** Read how this phone unlocks, for the lock screen's words. */
+function readMethod(): void {
+  void lockMethod().then((method) => useLockStore.setState({ method }));
+}
+
 export const useLockStore = create<LockState>((set, get) => ({
   locked: false,
   covered: false,
@@ -99,9 +185,27 @@ export const useLockStore = create<LockState>((set, get) => ({
 
   arm: () => {
     if (!lockOn()) return;
-    // Locked, and nothing asked: the lock screen waits for Unlock (D74).
-    set((s) => ({ locked: true, notice: null, lockSeq: s.lockSeq + 1 }));
-    void lockMethod().then((method) => set({ method }));
+    readMethod();
+    const settings = useSettingsStore.getState();
+    // A record that couldn't be read says nothing about the time away.
+    const awaySince = settings.loadFailed ? null : settings.appLockAwaySince;
+    const lockNow = lockOnReturn({
+      graceMinutes: settings.appLockGraceMinutes,
+      awaySince,
+      now: Date.now(),
+      alreadyLocked: get().locked,
+    });
+    if (lockNow || awaySince === null) {
+      trip = null;
+      // Locked, and nothing asked: the lock screen waits for Unlock (D74).
+      set((s) => ({ locked: true, notice: null, lockSeq: s.lockSeq + 1 }));
+      forgetAway();
+      return;
+    }
+    // Back within "Lock after", after a restart: open. The trip goes on
+    // until the app is first in front, where it is decided once more and
+    // forgotten; a launch into the background keeps its start.
+    trip = { since: awaySince, failed: false };
   },
 
   appPhaseChanged: (next) => {
@@ -112,23 +216,73 @@ export const useLockStore = create<LockState>((set, get) => ({
       abandonCheck();
       // Off, or not in this build: nothing locks, and a cover left up goes.
       if (!lockOn()) {
+        trip = null;
         set({ covered: false });
         return;
       }
-      set((s) => ({
-        locked: true,
-        checking: false,
-        notice: null,
-        lockSeq: s.lockSeq + 1,
-      }));
       // The phone may have gained or lost Face ID while the app was away.
-      void lockMethod().then((method) => set({ method }));
+      readMethod();
+      // Already away with no return between (or a launch that opened and
+      // never came to the front): the trip keeps the time it began.
+      if (trip !== null) {
+        set({ covered: true });
+        return;
+      }
+      // Immediately, or a lock already up: locked now, as before D75, and
+      // nothing remembered. A lock once up opens only on Unlock (D74).
+      if (get().locked || graceMinutes() === 0) {
+        set((s) => ({
+          locked: true,
+          checking: false,
+          notice: null,
+          lockSeq: s.lockSeq + 1,
+        }));
+        forgetAway();
+        return;
+      }
+      // Open, with time to come back (D75): covered, so the app switcher
+      // shows only the name, and when it left kept on the phone.
+      const t: Trip = { since: new Date(Date.now()).toISOString(), failed: false };
+      trip = t;
+      set({ covered: true, checking: false, notice: null });
+      rememberAway(t);
       return;
     }
     if (next === 'active') {
-      // Back in front: the cover goes. A lock stays up with its Unlock
-      // button, and nothing is asked until that is tapped (D74).
-      set({ covered: false });
+      const t = trip;
+      trip = null;
+      if (t === null) {
+        // Back in front: the cover goes. A lock stays up with its Unlock
+        // button, and nothing is asked until that is tapped (D74).
+        set({ covered: false });
+        return;
+      }
+      // Back from a trip away (D75): decided now, and the cover comes off
+      // in the same update that puts the lock up, so the content never
+      // shows for a frame when it should be locked.
+      const settings = useSettingsStore.getState();
+      const wasLocked = get().locked;
+      const lockNow =
+        lockOn() &&
+        lockOnReturn({
+          graceMinutes: settings.appLockGraceMinutes,
+          awaySince: t.failed ? null : t.since,
+          now: Date.now(),
+          alreadyLocked: wasLocked,
+        });
+      if (lockNow && !wasLocked) {
+        set((s) => ({
+          covered: false,
+          locked: true,
+          checking: false,
+          notice: null,
+          lockSeq: s.lockSeq + 1,
+        }));
+        readMethod();
+      } else {
+        set({ covered: false });
+      }
+      forgetAway();
       return;
     }
     // Inactive (and the states iOS never sends an app): cover, don't lock.
@@ -167,6 +321,8 @@ export const useLockStore = create<LockState>((set, get) => ({
   continueWithoutLock: async () => {
     // Only from the notice that the phone has nothing to check against.
     if (get().notice !== 'no_passcode') return;
+    trip = null;
+    // Forgets the time away too (`setAppLock`).
     await useSettingsStore.getState().setAppLock(false);
     set({ locked: false, covered: false, checking: false, notice: null });
   },
@@ -175,6 +331,7 @@ export const useLockStore = create<LockState>((set, get) => ({
     // Off, however it comes about, leaves nothing locked or covered: the app
     // may have been to the background while the prompt was up.
     const turnOff = async (): Promise<LockChange> => {
+      trip = null;
       await useSettingsStore.getState().setAppLock(false);
       set({ locked: false, covered: false, checking: false, notice: null });
       return 'changed';
@@ -187,8 +344,11 @@ export const useLockStore = create<LockState>((set, get) => ({
     const result = await checkLock(on ? LOCK_ON_REASON : LOCK_OFF_REASON);
     if (result === 'passed') {
       if (!on) return turnOff();
+      // On leaves the app open, as it is now, and forgets any time away
+      // from before (`setAppLock`, D75).
+      trip = null;
       await useSettingsStore.getState().setAppLock(true);
-      void lockMethod().then((method) => set({ method }));
+      readMethod();
       return 'changed';
     }
     if (result === 'no_passcode') return on ? 'no_passcode' : turnOff();
@@ -196,11 +356,12 @@ export const useLockStore = create<LockState>((set, get) => ({
   },
 }));
 
-/** Test-only: back to an unlocked, unread start. */
+/** Test-only: back to an unlocked, unread start, with no trip away. */
 export function __resetLockStoreForTests(): void {
   if (process.env.NODE_ENV !== 'test') {
     throw new Error('__resetLockStoreForTests is only allowed when NODE_ENV=test');
   }
+  trip = null;
   useLockStore.setState({
     locked: false,
     covered: false,

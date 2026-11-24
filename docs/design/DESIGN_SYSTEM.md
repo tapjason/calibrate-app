@@ -1550,6 +1550,15 @@ for a built-in as much as for an added category. Tapping it again, or Done, clos
 - **It opens on a tap** (D74, the owner, 2026-11-21): the phone's check starts only when
   Unlock is tapped, at launch and on coming back alike. Until then it started by itself
   the moment the app was in front, which he found too sudden when switching back.
+- **"Lock after"** (D75, the owner, 2026-11-23) sits under the switch while the lock is on
+  and the phone can lock: the practice reminder's stacked row (label, one line, chips two
+  to a row, a radio group; `OptionChip`), "Immediately", "1 minute", "5 minutes" (the
+  default), "15 minutes", the number and its unit kept together. Its line: "It locks every
+  time you leave it." or "Come back within 5 minutes and it opens without asking." The
+  switch's first sentence follows it: "Locks Fairly Sure each time it opens or comes back
+  to the front…" at Immediately, else "Locks Fairly Sure once you’ve been away from it for
+  more than 5 minutes, and covers it in the app switcher." The cover in the app switcher is
+  the same at every choice.
 - **Words:** "Locked. Unlock with Face ID or your iPhone passcode to see your predictions."
   A closed prompt says nothing more; a failed check adds "That didn’t unlock it. Try again.",
   spoken as well as shown.
