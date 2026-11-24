@@ -5,6 +5,25 @@
 TestFlight build"), reviewed, not pushed. The voice and text pass (D76, step 212) and the two-choice control at 0 to 100% (D77, step
 213), both the owner's that day.** `check.sh` exit 0: 255 suites, 5,506 tests. JS only, no migration,
 nothing new leaves the phone. Build 15 on TestFlight has none of it.
+- **Production build 1.1.0 (16)** (`8e96d34f`, from `66949b6`, the version bump on top of `77e6954`),
+  finished on EAS:
+  https://expo.dev/accounts/tapjason/projects/calibrate/builds/8e96d34f-35e2-44d3-9595-76413d89f100
+  - *The version is his choice* (asked with the exact command, 2026-11-23: "Build as 1.1.0"), so build
+    15 stays the 1.0.1 candidate. *For TestFlight only*; nothing reaches the store.
+  - *Pre-flight:* `release-auditor` (Opus) said GO on `77e6954`: `check.sh --release` exit 0 (255
+    suites, 5,506 tests; doctor 20/20; no drift; bundle 7.24 MB, export 7.65 MB, the same as build
+    15; both pages 200); JS only since build 15, no migration; `eas whoami` and the three production
+    environment names in place. `/release-gate` was not run: he waived it for an internal build
+    ("go ahead with the new TestFlight build"). The RevenueCat key's prefix wasn't read; build 8's
+    paywall is the last proof.
+  - *His to do:* `npx eas submit --profile production --platform ios`, choosing build 16; add it to the
+    internal group; then the phone checks (the release audit's list: the empty control and numbers
+    under 50 in practice and Log, the reminder ask, Insights' short lines and folds, VoiceOver and
+    large text on them, and build 15's nine lock and share-link checks if not yet done), recorded
+    through `/device-check`. `git push origin master` is his too (7 commits ahead).
+  - *Before an App Store submission of 1.1.0:* the review notes (trim about 260 characters, add the two
+    additions), What's New, screenshots 01 to 04, the demo account's re-seed, his yes on the listing
+    draft, `/release-gate` on the commit, the tag.
 - **The review he called** (three rounds; `code-reviewer` and `record-auditor` three times,
   `policy-auditor` once, all Opus at xhigh): it ends CLEAN, HOLDS and no FAIL, and both say the
   result may go to an internal TestFlight build.
