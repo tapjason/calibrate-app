@@ -26,15 +26,19 @@ function bucket(
 }
 
 describe('naturalFrequency', () => {
+  // D76: the chart subtitle's voice.
   it('counts in plain words', () => {
     expect(naturalFrequency(bucket(80, 12, 7, 'overconfident'))).toBe(
-      'Of 12 things you called 80–100% likely, 7 happened.',
+      'You called 12 things 80–100% likely. 7 happened.',
     );
     expect(naturalFrequency(bucket(60, 3, 3, 'underconfident'))).toBe(
-      'Of 3 things you called 60–80% likely, all 3 happened.',
+      'You called 3 things 60–80% likely. All 3 happened.',
     );
     expect(naturalFrequency(bucket(40, 1, 0, 'calibrated'))).toBe(
-      'Of 1 thing you called 40–60% likely, 0 happened.',
+      "You called 1 thing 40–60% likely. It didn't happen.",
+    );
+    expect(naturalFrequency(bucket(40, 1, 1, 'calibrated'))).toBe(
+      'You called 1 thing 40–60% likely. It happened.',
     );
   });
 });
@@ -52,7 +56,7 @@ describe('chartTakeaway', () => {
   it('gives no verdict while the rating is provisional', () => {
     const t = chartTakeaway([bucket(80, 15, 5, 'overconfident', 0.5)], true);
     expect(t.title).toBe('Your curve so far');
-    expect(t.subtitle).toBe('Of 15 things you called 80–100% likely, 5 happened.');
+    expect(t.subtitle).toBe('You called 15 things 80–100% likely. 5 happened.');
   });
 
   it('gives no verdict from thin buckets even once unlocked', () => {
@@ -76,7 +80,7 @@ describe('chartTakeaway', () => {
     expect(t.title).toBe("You're overconfident at 80–100%");
     // Roadmap D57: what would have matched, as the category line says it.
     expect(t.subtitle).toBe(
-      'Of 12 things you called 80–100% likely, 7 happened. You said about\u00A090%; about\u00A060% would have matched.',
+      'You called 12 things 80–100% likely. 7 happened. You said about\u00A090%; about\u00A060% would have matched.',
     );
   });
 
@@ -133,7 +137,7 @@ describe('chartTakeaway, a lean outranks a bigger gap inside luck', () => {
     expect(chartTakeaway(buckets, false)).toEqual({
       title: "You're overconfident at 80–100%",
       subtitle:
-        'Of 60 things you called 80–100% likely, 45 happened. You said about\u00A088%; about\u00A075% would have matched.',
+        'You called 60 things 80–100% likely. 45 happened. You said about\u00A088%; about\u00A075% would have matched.',
       lean: 'overconfident',
     });
     expect(headlineRange(buckets.filter((b) => b.total_resolved >= 10))).toBe(top);
@@ -180,7 +184,7 @@ describe('chartTakeaway, inside luck (roadmap D57)', () => {
     const t = read(calls(66, 21, 12)); // 57% against 66%, inside 52–81%
     expect(t).toEqual({
       title: 'No clear lean at 60–80%',
-      subtitle: 'Of 21 things you called 60–80% likely, 12 happened; your numbers expected about\u00A014.',
+      subtitle: "You called 21 things 60–80% likely. 12 happened, and you'd expect about\u00A014.",
       lean: 'calibrated',
     });
   });
@@ -188,9 +192,17 @@ describe('chartTakeaway, inside luck (roadmap D57)', () => {
   it('keeps "well calibrated" within 5 points', () => {
     expect(read(calls(70, 20, 14))).toEqual({
       title: "You're well calibrated at 60–80%",
-      subtitle: 'Of 20 things you called 60–80% likely, 14 happened; your numbers expected about\u00A014.',
+      subtitle: "You called 20 things 60–80% likely. 14 happened, and you'd expect about\u00A014.",
       lean: 'calibrated',
     });
+  });
+
+  // D76: the shorter subtitle never claims a lean, nor "well calibrated":
+  // the title alone says which (D57).
+  it('names no lean and no verdict in the subtitle', () => {
+    for (const t of [read(calls(66, 21, 12)), read(calls(70, 20, 14))]) {
+      expect(t.subtitle).not.toMatch(/too sure|too cautious|overconfident|underconfident|calibrated/);
+    }
   });
 
   it('speaks for every range when there are several and none leans', () => {
@@ -215,7 +227,7 @@ describe('chartTakeaway, inside luck (roadmap D57)', () => {
     expect(buckets.every((b) => b.direction === 'calibrated')).toBe(true);
     expect(chartTakeaway(buckets, false)).toEqual({
       title: 'No clear lean overall yet',
-      subtitle: 'Of 50 things you called 80–100% likely, 38 happened; your numbers expected about\u00A040.',
+      subtitle: "You called 50 things 80–100% likely. 38 happened, and you'd expect about\u00A040.",
       lean: 'calibrated',
     });
   });

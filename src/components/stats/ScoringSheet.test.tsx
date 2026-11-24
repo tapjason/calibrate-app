@@ -59,14 +59,29 @@ describe('ScoringSheet', () => {
   });
 });
 
-// Step 173: opened from Today's rating, the person's own number first.
-describe('ScoringSheet with the rating line', () => {
-  it('shows it above the explainer, and nothing without it', () => {
-    const view = render(<ScoringSheet onClose={jest.fn()} ratingLine="Your rating is 86. Band by band…" />);
-    expect(screen.getByTestId('scoring-rating-line')).toHaveTextContent(/Your rating is 86\. Band by band…/);
+// Step 173: opened from Today's rating, the person's own number first. Since
+// D76 from Insights' "What does this mean?" too, with every line the page
+// left out, one paragraph each.
+describe('ScoringSheet with the rating lines', () => {
+  const lines = [
+    'Your rating is 86. Range by range, what you said averaged about 14 points away from how often those things happened, each range counting by how many answers it holds.',
+    'Even perfectly calibrated, 20 answers like yours would typically score about 86, since luck alone moves each range. At this count, your score can’t be told apart from perfect calibration.',
+    'Give or take 3 points with this many predictions.',
+    'Up 2 since last week, from 6 answers given since then, within its give⁠-⁠or⁠-⁠take.',
+  ];
+
+  it('shows them above the explainer, in order, and nothing without them', () => {
+    const view = render(<ScoringSheet onClose={jest.fn()} ratingLines={lines} />);
+    expect(screen.getByTestId('scoring-rating-line')).toBeTruthy();
+    lines.forEach((line, i) => {
+      expect(screen.getByTestId(`scoring-rating-line-${i}`)).toHaveTextContent(line);
+    });
     // Its own heading, so a heading jump reaches it (step 179).
     expect(screen.getByRole('header', { name: 'Your rating' })).toBeTruthy();
     view.rerender(<ScoringSheet onClose={jest.fn()} />);
+    expect(screen.queryByTestId('scoring-rating-line')).toBeNull();
+    // An empty list (a provisional rating) shows no box either.
+    view.rerender(<ScoringSheet onClose={jest.fn()} ratingLines={[]} />);
     expect(screen.queryByTestId('scoring-rating-line')).toBeNull();
   });
 });

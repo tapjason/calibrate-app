@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-import { ConfidenceControl, naturalFrequencyFor } from './ConfidenceControl';
+import { CONFIDENCE_EMPTY_READOUT, ConfidenceControl, naturalFrequencyFor } from './ConfidenceControl';
 
 jest.mock('expo-haptics', () => ({
   selectionAsync: jest.fn(async () => undefined),
@@ -58,11 +58,20 @@ describe('ConfidenceControl', () => {
     expect(Haptics.selectionAsync).not.toHaveBeenCalled();
   });
 
-  it('respects a narrower range (the Warmup runs 50–100)', () => {
+  it('respects a narrower range when one is given', () => {
     const onChange = jest.fn();
     render(<ConfidenceControl value={50} onChange={onChange} min={50} />);
     fireEvent.press(screen.getByTestId('confidence-decrement'));
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  // The owner, 2026-11-23: "the minimum should never be 50%". The two-choice
+  // questions run 0–100 like Log, so a number under 50 can be said.
+  it('goes below 50 on the full range', () => {
+    const onChange = jest.fn();
+    render(<ConfidenceControl value={10} onChange={onChange} />);
+    fireEvent.press(screen.getByTestId('confidence-decrement'));
+    expect(onChange).toHaveBeenLastCalledWith(5);
   });
 
   // Roadmap D23: no confidence is marked or rewarded for being a number.
@@ -106,14 +115,78 @@ describe('ConfidenceControl', () => {
   describe('before anything is set', () => {
     const slider = () => screen.getByTestId('confidence-slider', { includeHiddenElements: true });
 
-    it('reads as empty, with the thumb resting grey at the coin flip', () => {
-      render(<ConfidenceControl value={null} onChange={jest.fn()} min={50} />);
-      expect(screen.getByTestId('confidence-readout')).toHaveTextContent('—%');
-      expect(screen.getByText('not set yet')).toBeTruthy();
+    // The owner, 2026-11-23: no "—%" and no "not set yet". The readout asks
+    // instead; the spoken value still says nothing is set.
+    it('reads "Slide to set" in the number\'s place, with the thumb resting grey at the coin flip', () => {
+      render(<ConfidenceControl value={null} onChange={jest.fn()} />);
+      expect(screen.getByTestId('confidence-readout')).toHaveTextContent(CONFIDENCE_EMPTY_READOUT);
+      expect(CONFIDENCE_EMPTY_READOUT).toBe('Slide to set');
+      expect(screen.queryByText('—%')).toBeNull();
+      expect(screen.queryByText('not set yet')).toBeNull();
       expect(slider().props.value).toBe(50);
       expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.text).toBe(
         'not set',
       );
+    });
+
+    // The readout's slot keeps the number's height, so the row doesn't jump
+    // when the first number arrives.
+    it("holds the number's height while empty", () => {
+      // The nearest holder above the readout that sets a minimum height.
+      const slotHeight = () => {
+        type Node = { props: { style?: unknown }; parent: Node | null };
+        let node = (screen.getByTestId('confidence-readout') as unknown as Node).parent;
+        while (node) {
+          const flat = [node.props.style].flat(Infinity) as Array<Record<string, unknown> | undefined>;
+          const merged = Object.assign({}, ...flat.filter(Boolean)) as Record<string, unknown>;
+          if (typeof merged.height === 'number') return merged.height;
+          node = node.parent;
+        }
+        return undefined;
+      };
+      // Normal text: the number's line is type.readout's 56.
+      const dims = jest
+        .spyOn(require('react-native/Libraries/Utilities/useWindowDimensions'), 'default')
+        .mockReturnValue({ width: 390, height: 844, scale: 3, fontScale: 1 });
+      try {
+        const { rerender } = render(<ConfidenceControl value={null} onChange={jest.fn()} />);
+        const empty = slotHeight();
+        expect(empty).toBe(56);
+        rerender(<ConfidenceControl value={70} onChange={jest.fn()} />);
+        expect(slotHeight()).toBe(empty);
+      } finally {
+        dims.mockRestore();
+      }
+    });
+
+    // Owner, 2026-11-23: the gloss always on its own line, so the whole block
+    // is one height, empty or set, at every number and width.
+    it('keeps one block height, gloss line included, at every number and width', () => {
+      const heightOf = () => {
+        const flat = [screen.getByTestId('confidence-readout-block').props.style].flat(Infinity) as Array<
+          Record<string, unknown> | undefined
+        >;
+        return Object.assign({}, ...flat.filter(Boolean)).height as number;
+      };
+      for (const width of [320, 375]) {
+        const dims = jest
+          .spyOn(require('react-native/Libraries/Utilities/useWindowDimensions'), 'default')
+          .mockReturnValue({ width, height: 844, scale: 3, fontScale: 1 });
+        try {
+          const { rerender, unmount } = render(<ConfidenceControl value={null} onChange={jest.fn()} />);
+          const empty = heightOf();
+          expect(empty).toBe(56 + 20);
+          expect(screen.queryByTestId('confidence-gloss')).toBeNull();
+          for (const v of [0, 5, 25, 45, 50, 75, 95, 100]) {
+            rerender(<ConfidenceControl value={v} onChange={jest.fn()} />);
+            expect(heightOf()).toBe(empty);
+            expect(screen.getByTestId('confidence-gloss')).toBeTruthy();
+          }
+          unmount();
+        } finally {
+          dims.mockRestore();
+        }
+      }
     });
 
     // Roadmap D49 (blind playtest 2026-11-09b): the first ±5 steps from the
@@ -126,13 +199,23 @@ describe('ConfidenceControl', () => {
       rerender(<ConfidenceControl value={null} onChange={onChange} />);
       fireEvent.press(screen.getByTestId('confidence-increment'));
       expect(onChange).toHaveBeenLastCalledWith(55);
-      // The Warmup's 50–100 rests at 50 too: +5 is 55, and −5 sets 50.
+      // A narrower range that starts at the coin flip still rests there: +5 is
+      // 55, and −5 sets 50.
       rerender(<ConfidenceControl value={null} onChange={onChange} min={50} />);
       fireEvent.press(screen.getByTestId('confidence-increment'));
       expect(onChange).toHaveBeenLastCalledWith(55);
       rerender(<ConfidenceControl value={null} onChange={onChange} min={50} />);
       fireEvent.press(screen.getByTestId('confidence-decrement'));
       expect(onChange).toHaveBeenLastCalledWith(50);
+    });
+
+    it("VoiceOver's first swipe down from empty says 45, as the ±5 does", () => {
+      const onChange = jest.fn();
+      render(<ConfidenceControl value={null} onChange={onChange} />);
+      fireEvent(screen.getByTestId('confidence-adjustable'), 'accessibilityAction', {
+        nativeEvent: { actionName: 'decrement' },
+      });
+      expect(onChange).toHaveBeenLastCalledWith(45);
     });
 
     it('takes a touch of the resting thumb as a choice, once', () => {

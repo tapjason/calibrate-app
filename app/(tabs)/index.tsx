@@ -100,7 +100,7 @@ export default function TodayScreen() {
   // been saved. On the focus after Log's sheet closes (Log from "Log it
   // again" replaces Resolve, so it closes onto Today too), only when the card
   // isn't already all on screen (owner, 2026-11-10: on Day 0 a scroll would
-  // push "Your first answer: tomorrow evening" off the top), and only as far
+  // push "Your first answer lands tomorrow evening." off the top), and only as far
   // as needed (`cardPlacement`).
   const reduceMotion = useReducedMotion();
   const fullyVisible = useRef<ReadonlySet<string>>(new Set());

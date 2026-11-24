@@ -78,10 +78,10 @@ describe('CalibrationView headline', () => {
     );
     // The misleading raw rating must NOT be headlined…
     expect(queryByTestId('rating-value')).toBeNull();
-    // …instead the remaining count (20 − 8 = 12) is shown.
+    // …instead the remaining count (20 − 8 = 12) is shown, in UnlockProgress's
+    // one line (D76).
     expect(getByTestId('rating-provisional')).toBeTruthy();
-    expect(getByText('8 of 20 scored')).toBeTruthy();
-    expect(getByText(/12 more scored answers and your score unlocks/)).toBeTruthy();
+    expect(getByText(/12 more scored answers unlock your score/)).toBeTruthy();
   });
 
   it('headlines the rounded rating once non-provisional', () => {
@@ -102,11 +102,12 @@ describe('CalibrationView headline', () => {
   });
 });
 
-describe('CalibrationView — How is this scored? (roadmap step 29)', () => {
+// Roadmap step 29; D76: one link, "What does this mean?", with the rating.
+describe('CalibrationView — What does this mean?', () => {
   it('offers the explainer whether or not the rating has unlocked', () => {
     for (const total_resolved of [8, 40]) {
       const onExplain = jest.fn();
-      const { getByTestId, unmount } = render(
+      const { getByTestId, getAllByRole, queryByText, unmount } = render(
         <CalibrationView
           userStat={userStat({ total_resolved, rating_is_provisional: total_resolved < 20 })}
           calibration={EMPTY_CAL}
@@ -115,6 +116,12 @@ describe('CalibrationView — How is this scored? (roadmap step 29)', () => {
           onExplain={onExplain}
         />,
       );
+      expect(getByTestId('stats-explain')).toHaveTextContent('What does this mean?');
+      expect(getByTestId('stats-explain').props.accessibilityRole).toBe('button');
+      expect(getByTestId('stats-explain').props.accessibilityHint).toBe('Opens How scoring works');
+      // One way to the explanation, not two.
+      expect(getAllByRole('button', { name: /What does this mean\?|How is this scored\?/ })).toHaveLength(1);
+      expect(queryByText('How is this scored?')).toBeNull();
       fireEvent.press(getByTestId('stats-explain'));
       expect(onExplain).toHaveBeenCalledTimes(1);
       unmount();
@@ -133,13 +140,14 @@ describe('CalibrationView — next due date while calibrating (roadmap step 35)'
         nextDue="The next one comes due Tue, Oct 6."
       />,
     );
-    expect(getByText(/your score unlocks\. The next one comes due Tue, Oct 6\.$/)).toBeTruthy();
+    expect(getByText(/unlock your score\. The next one comes due Tue, Oct 6\.$/)).toBeTruthy();
   });
 });
 
 describe('CalibrationView provisional progress', () => {
+  // Since D76 the bar alone draws the ones on their way (UnlockProgress).
   it('counts open predictions as on their way', () => {
-    const { getByText, getByTestId } = render(
+    const { getByTestId } = render(
       <CalibrationView
         userStat={userStat({ total_resolved: 4 })}
         calibration={EMPTY_CAL}
@@ -148,7 +156,6 @@ describe('CalibrationView provisional progress', () => {
         pendingCount={3}
       />,
     );
-    expect(getByText('4 of 20 scored, 3 on their way')).toBeTruthy();
     expect(getByTestId('rating-provisional').props.accessibilityValue).toEqual({
       min: 0,
       max: 20,
@@ -185,11 +192,12 @@ describe('CalibrationView chart section', () => {
     expect(getByTestId('chart-takeaway').props.children).toBe(
       "You're overconfident at 80\u2060–\u2060100%",
     );
-    // Roadmap D57: what would have matched, for a range that leans.
+    // Roadmap D57: what would have matched, for a range that leans; the
+    // counts in D76's words.
     expect(
       getByText(
         holdRanges(
-          'Of 12 things you called 80–100% likely, 7 happened. You said about 88%; about 60% would have matched.',
+          'You called 12 things 80–100% likely. 7 happened. You said about 88%; about 60% would have matched.',
         ),
       ),
     ).toBeTruthy();
@@ -205,8 +213,9 @@ describe('CalibrationView chart section', () => {
       />,
     );
     expect(getByTestId('coverage-0')).toBeTruthy();
+    // D76's words.
     expect(getByTestId('coverage-note')).toHaveTextContent(
-      /^None of your scored answers is from a call under 40% yet/,
+      'No scored answers under 40% yet, so your score doesn’t cover things you thought were unlikely.',
     );
   });
 
@@ -283,20 +292,40 @@ describe('CalibrationView — the rating as one stop (roadmap step 43)', () => {
   });
 });
 
-// Roadmap D4: the rating's give-or-take, once the rating has unlocked.
+// Roadmap D4: the rating's give-or-take, once the rating has unlocked. Since
+// D76 the bar draws it and the rating speaks it; its sentence is in How
+// scoring works.
 describe('CalibrationView rating range', () => {
-  it('says how far the rating could move', () => {
-    const { getByTestId } = render(
+  it('draws how far the rating could move, and says it to a screen reader', () => {
+    const { getByTestId, queryByTestId, queryByText } = render(
       <CalibrationView
-        userStat={userStat({ total_resolved: 145, rating_is_provisional: false })}
+        userStat={userStat({ total_resolved: 145, rating_is_provisional: false, calibration_rating: 92 })}
         calibration={{ rating: 92, buckets: [] }}
         categoryStats={[]}
         nextBadges={{}}
         ratingRange={{ giveOrTake: 3, low: 89, high: 95 }}
       />,
     );
-    expect(getByTestId('stats-rating-range')).toHaveTextContent(
-      'Give or take 3 points with this many predictions.',
+    expect(queryByTestId('stats-rating-range')).toBeNull();
+    expect(queryByText(/Give or take 3 points/)).toBeNull();
+    expect(getByTestId('stats-score-bar-range', { includeHiddenElements: true })).toBeTruthy();
+    expect(getByTestId('stats-rating-group').props.accessibilityLabel).toBe(
+      'Calibration rating, 92 out of 100, give or take 3.',
+    );
+  });
+
+  it('speaks no give-or-take when it is 0', () => {
+    const { getByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 145, rating_is_provisional: false, calibration_rating: 92 })}
+        calibration={{ rating: 92, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        ratingRange={{ giveOrTake: 0, low: 92, high: 92 }}
+      />,
+    );
+    expect(getByTestId('stats-rating-group').props.accessibilityLabel).toBe(
+      'Calibration rating, 92 out of 100.',
     );
   });
 
@@ -383,8 +412,9 @@ describe('CalibrationView first badge', () => {
     );
 
   it('says a first badge comes at 20 answered in a category', () => {
+    // D76's words.
     expect(view([]).getByTestId('badges-first')).toHaveTextContent(
-      'A category earns its first badge at 20 scored answers there: Tracker, or higher if its score is already high enough. Until then it shows Getting started, which means fewer than 20 scored there.',
+      'Each category earns its first badge at 20 scored answers.',
     );
     expect(view([cat('health', 19)]).getByTestId('badges-first')).toBeTruthy();
   });
@@ -552,12 +582,49 @@ describe('CalibrationView pattern lines', () => {
         weekChange={{ before: 85, now: 87, answered: 6 }}
       />,
     );
+    // D76: the page keeps what was said and what happened, and the news.
     expect(getByTestId('stats-furthest-off')).toHaveTextContent(
-      'Furthest off: Finance. You said about 85%, and 9 of 21 happened. About 45% would have matched.',
+      'Furthest off: Finance. You said about 85%, and 9 of 21 happened.',
     );
-    expect(getByTestId('stats-week-change')).toHaveTextContent(
-      'Up 2 since last week, from 6 answers given since then, within its give\u2060-\u2060or\u2060-\u2060take.',
+    expect(getByTestId('stats-week-change')).toHaveTextContent('Up 2 since last week.');
+  });
+
+  // D76: what would have matched unfolds in place under the line, as "More
+  // about your record" does, and folds again.
+  it('keeps what would have matched behind a tap on the furthest-off line', () => {
+    const { getByTestId, queryByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 145, rating_is_provisional: false })}
+        calibration={{ rating: 87, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        furthestOff={{
+          category: 'finance',
+          resolved: 21,
+          happened: 9,
+          mean_stated: 85,
+          actual_rate: 9 / 21,
+          direction: 'overconfident',
+        }}
+      />,
     );
+    const toggle = getByTestId('stats-furthest-off-toggle');
+    expect(toggle.props.accessibilityRole).toBe('button');
+    expect(toggle.props.accessibilityState).toEqual({ expanded: false });
+    expect(queryByTestId('stats-furthest-off-detail')).toBeNull();
+    expect(toggle.props.accessibilityLabel).toMatch(/^Furthest off: Finance\./);
+    expect(toggle.props.accessibilityLabel).not.toMatch(/would have matched/);
+
+    fireEvent.press(toggle);
+    expect(getByTestId('stats-furthest-off-toggle').props.accessibilityState).toEqual({ expanded: true });
+    // The open row keeps a name carrying everything it shows.
+    expect(getByTestId('stats-furthest-off-toggle').props.accessibilityLabel).toMatch(
+      /^Furthest off: Finance\..*About 45% would have matched\./,
+    );
+    expect(getByTestId('stats-furthest-off-detail')).toHaveTextContent('About 45% would have matched.');
+
+    fireEvent.press(getByTestId('stats-furthest-off-toggle'));
+    expect(queryByTestId('stats-furthest-off-detail')).toBeNull();
   });
 
   // Blind playtest 2026-11-12d, run 2: a rename left the old name here until
@@ -615,11 +682,12 @@ describe('CalibrationView step 173', () => {
   });
   const unlocked = userStat({ total_resolved: 73, rating_is_provisional: false, calibration_rating: 86 });
 
+  // D76: in fewer words; the full line is in How scoring works.
   it('says what the rating means in points', () => {
     const { getByTestId } = render(
       <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} />,
     );
-    expect(getByTestId('stats-rating-meaning')).toHaveTextContent(/^Range by range, what you said averaged about 14 points away/);
+    expect(getByTestId('stats-rating-meaning')).toHaveTextContent('On average you’re about 14 points off.');
   });
 
   it('says why there is no badge when the answers are spread thin', () => {
@@ -634,7 +702,7 @@ describe('CalibrationView step 173', () => {
       />,
     );
     expect(getByTestId('badges-spread')).toHaveTextContent(
-      `Badges are per category, at 20 scored answers in one. Your ${total} scored answers are spread over 5 categories, so none has 20 yet.`,
+      `Badges need 20 scored answers in one category. Your ${total} are spread over 5, so none is there yet.`,
     );
     expect(queryByTestId('badges-first')).toBeNull();
   });
@@ -682,6 +750,7 @@ describe('CalibrationView step 173', () => {
     expect(view.queryByTestId('stats-refiled')).toBeNull();
   });
 
+  // Behind the tap since D76.
   it('ties the furthest-off line to that category’s badge', () => {
     const { getByTestId } = render(
       <CalibrationView
@@ -693,27 +762,68 @@ describe('CalibrationView step 173', () => {
         furthestOff={{ category: 'health', resolved: 22, happened: 15, mean_stated: 88, actual_rate: 15 / 22, direction: 'overconfident' }}
       />,
     );
-    expect(getByTestId('stats-furthest-off')).toHaveTextContent(
-      /That gap is already in its score, 80, which still clears Forecaster's 70 at its low end\.$/,
+    expect(getByTestId('stats-furthest-off')).not.toHaveTextContent(/That gap/);
+    fireEvent.press(getByTestId('stats-furthest-off-toggle'));
+    expect(getByTestId('stats-furthest-off-detail')).toHaveTextContent(
+      "About 70% would have matched. That gap is already in its score, 80, which still clears Forecaster's 70 at its low end.",
     );
   });
 });
 
-// D62 (blind playtest 2026-11-13d, findings 1 and 4).
+// D62 (blind playtest 2026-11-13d, findings 1 and 4). Since D76 the full
+// line is in How scoring works; the page keeps one short line, and only
+// where the full one said the score can't be told apart from perfect.
 describe('CalibrationView, what luck alone gives', () => {
-  it('sets the rating beside what perfect calibration scores on the same answers', () => {
-    const { getByTestId } = render(
+  /** A range of 12 at 80–100% that leans too sure (by the engine's rule). */
+  const leaning = {
+    low: 80,
+    high: 100,
+    total_resolved: 12,
+    resolved_yes: 7,
+    stated_confidence_mean: 88,
+    actual_rate: 7 / 12,
+    bucket_error: 0.3,
+    direction: 'overconfident' as const,
+    chance_low: 0.7,
+    chance_high: 1,
+    expected_yes: 10.6,
+  };
+  const view = (rating: number, buckets: (typeof leaning)[] = []) =>
+    render(
       <CalibrationView
-        userStat={userStat({ total_resolved: 20, rating_is_provisional: false, calibration_rating: 85 })}
-        calibration={{ rating: 85, buckets: [] }}
+        userStat={userStat({ total_resolved: 20, rating_is_provisional: false, calibration_rating: rating })}
+        calibration={{ rating, buckets }}
         categoryStats={[]}
         nextBadges={{}}
         perfect={{ typical: 86, low: 80, high: 91 }}
       />,
     );
-    expect(getByTestId('stats-perfect')).toHaveTextContent(
-      /^Even perfectly calibrated, 20 answers like yours would typically score about 86/,
+
+  it('says it is about as good as anyone can tell, where it can’t be told apart', () => {
+    view(85);
+    expect(screen.getByTestId('stats-perfect')).toHaveTextContent(
+      'With 20 answers, that’s about as good as anyone can tell.',
     );
+    expect(screen.queryByText(/Even perfectly calibrated/)).toBeNull();
+  });
+
+  it('says nothing on the page in the other three cases', () => {
+    // Above the range.
+    view(95);
+    expect(screen.queryByTestId('stats-perfect')).toBeNull();
+    screen.unmount();
+    // Within luck, while the chart names a lean.
+    view(85, [leaning]);
+    expect(screen.getByTestId('chart-takeaway').props.children).toMatch(/overconfident/);
+    expect(screen.queryByTestId('stats-perfect')).toBeNull();
+    screen.unmount();
+    // Further off than luck, with a lean; and below it with none.
+    view(72, [leaning]);
+    expect(screen.queryByTestId('stats-perfect')).toBeNull();
+    screen.unmount();
+    view(72);
+    expect(screen.queryByTestId('stats-perfect')).toBeNull();
+    expect(screen.queryByText(/Even perfectly calibrated/)).toBeNull();
   });
 
   it('gives a first look in plain counts from 10 scored answers', () => {
@@ -727,7 +837,7 @@ describe('CalibrationView, what luck alone gives', () => {
       />,
     );
     expect(getByTestId('rating-provisional-first-look')).toHaveTextContent(
-      'First look: you said about 75% on average, and 6 of your 12 scored predictions happened. Too few to rate yet.',
+      'First look: you said about 75%, and 6 of 12 happened. Too early to rate.',
     );
   });
 });
@@ -779,10 +889,12 @@ describe('CalibrationView with the words hidden', () => {
   });
 });
 
-// D68 (Insights A): the six equal lines under the rating, "a wall" in five
-// playtest rounds, become three groups, 12 apart and 4 within, with what the
-// number means as their lead. No words change, and nothing moves.
-describe('CalibrationView, the lines under the rating in groups (D68)', () => {
+/// D68 (Insights A): the six equal lines under the rating, "a wall" in five
+// playtest rounds, became three groups, 12 apart and 4 within, with what the
+// number means as their lead. D76 (the owner's voice pass, 2026-11-23) took
+// the explanations off the page: one short line, "What does this mean?", the
+// week's news and the count; the rest is on top of How scoring works.
+describe('CalibrationView, the lines under the rating in groups (D68, D76)', () => {
   type Shown = { range?: boolean; week?: boolean; perfect?: boolean; rating?: number };
   const unlocked = (rating: number) =>
     userStat({
@@ -791,6 +903,8 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
       calibration_rating: rating,
       current_streak: 9,
     });
+  // At 86 the rating sits inside perfect calibration's middle 80% and the
+  // chart names no lean, so the short perfect line shows.
   const show = ({ range = true, week = true, perfect = true, rating = 86 }: Shown = {}) =>
     render(
       <CalibrationView
@@ -800,7 +914,7 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
         nextBadges={{}}
         ratingRange={range ? { giveOrTake: 3, low: rating - 3, high: rating + 3 } : null}
         weekChange={week ? { before: 84, now: 86, answered: 6 } : null}
-        perfect={perfect ? { typical: 92, low: 89, high: 95 } : null}
+        perfect={perfect ? { typical: 88, low: 84, high: 91 } : null}
         answeredCount={160}
         onExplain={() => {}}
       />,
@@ -821,7 +935,6 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
     const watched = new Set([
       'stats-rating-group',
       'stats-score-bar',
-      'stats-score-bar-caption',
       'stats-rating-meaning',
       'stats-perfect',
       'stats-rating-range',
@@ -846,6 +959,30 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
     return out;
   }
 
+  it('says the short lines, and no longer the long ones', () => {
+    show();
+    expect(screen.getByTestId('stats-rating-meaning')).toHaveTextContent(
+      'On average you’re about 14 points off.',
+    );
+    expect(screen.getByTestId('stats-perfect')).toHaveTextContent(
+      'With 153 answers, that’s about as good as anyone can tell.',
+    );
+    expect(screen.getByTestId('stats-week-change')).toHaveTextContent('Up 2 since last week.');
+    expect(screen.getByTestId('stats-explain')).toHaveTextContent('What does this mean?');
+    // Each in full on top of How scoring works (ratingDetailLines), not here.
+    for (const gone of [
+      /Range by range/,
+      /Even perfectly calibrated/,
+      /can’t be told apart/,
+      /Give or take 3 points/,
+      /answers given since then/,
+      /give⁠-⁠or⁠-⁠take/,
+    ]) {
+      expect(screen.queryByText(gone)).toBeNull();
+    }
+    expect(screen.queryByTestId('stats-rating-range')).toBeNull();
+  });
+
   it('leads with what the number means, a step up and in ink', () => {
     show();
     const lead = style('stats-rating-meaning');
@@ -859,22 +996,22 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
     expect(screen.getByTestId('stats-perfect').props.maxFontSizeMultiplier).toBeUndefined();
   });
 
-  it('keeps the other four lines quiet, as they were', () => {
+  it('keeps the other lines quiet', () => {
     show();
     quiet(style('stats-perfect'));
-    quiet(style('stats-rating-range'));
     quiet(style('stats-week-change'));
     quiet(countStyle());
   });
 
   it('sets 12 before each group and 4 within, with every line shown', () => {
     show();
-    // What the number means: the lead, then the perfect-calibration line.
+    // What the number means: the lead, then the short perfect line, then the
+    // way to the rest.
     expect(style('stats-rating-meaning').marginTop).toBe(space.md);
     expect(style('stats-perfect').marginTop).toBe(space.xs);
-    // How firm it is: the give-or-take, then since last week.
-    expect(style('stats-rating-range').marginTop).toBe(space.md);
-    expect(style('stats-week-change').marginTop).toBe(space.xs);
+    expect(style('stats-explain').marginTop).toBe(space.sm);
+    // The week's news.
+    expect(style('stats-week-change').marginTop).toBe(space.md);
     // The count.
     expect(countStyle().marginTop).toBe(space.md);
     expect([space.md, space.xs]).toEqual([12, 4]);
@@ -883,61 +1020,35 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
   it('closes up when there is no week change', () => {
     show({ week: false });
     expect(screen.queryByTestId('stats-week-change')).toBeNull();
-    expect(style('stats-rating-range').marginTop).toBe(space.md);
     expect(countStyle().marginTop).toBe(space.md);
   });
 
-  it('opens the group with the week change when there is no give-or-take', () => {
-    show({ range: false });
-    expect(screen.queryByTestId('stats-rating-range')).toBeNull();
-    expect(style('stats-week-change').marginTop).toBe(space.md);
-    expect(countStyle().marginTop).toBe(space.md);
-  });
-
-  it('leaves no gap behind when neither is shown', () => {
-    show({ range: false, week: false });
-    expect(screen.queryByTestId('stats-rating-range')).toBeNull();
-    expect(screen.queryByTestId('stats-week-change')).toBeNull();
-    // The count follows the first group by 12, not 24.
-    expect(style('stats-perfect').marginTop).toBe(space.xs);
-    expect(countStyle().marginTop).toBe(space.md);
-  });
-
-  it('keeps the give-or-take opening its group without the perfect line', () => {
+  it('keeps the link under the lead without the perfect line', () => {
     show({ perfect: false });
     expect(screen.queryByTestId('stats-perfect')).toBeNull();
     expect(style('stats-rating-meaning').marginTop).toBe(space.md);
-    expect(style('stats-rating-range').marginTop).toBe(space.md);
-  });
-
-  it('treats a give-or-take of 0 as no give-or-take', () => {
-    render(
-      <CalibrationView
-        userStat={unlocked(86)}
-        calibration={{ rating: 86, buckets: [] }}
-        categoryStats={[]}
-        nextBadges={{}}
-        ratingRange={{ giveOrTake: 0, low: 86, high: 86 }}
-        weekChange={{ before: 84, now: 86, answered: 6 }}
-      />,
-    );
-    expect(screen.queryByTestId('stats-rating-range')).toBeNull();
+    expect(style('stats-explain').marginTop).toBe(space.sm);
     expect(style('stats-week-change').marginTop).toBe(space.md);
   });
 
-  it('keeps every line in its old order', () => {
+  it('shows the week change the same without a give-or-take', () => {
+    show({ range: false });
+    expect(screen.getByTestId('stats-week-change')).toHaveTextContent('Up 2 since last week.');
+    expect(style('stats-week-change').marginTop).toBe(space.md);
+    expect(countStyle().marginTop).toBe(space.md);
+  });
+
+  it('puts the link with the rating, before the news and the count', () => {
     show();
     expect(renderOrder()).toEqual([
       'stats-rating-group',
       'stats-score-bar',
-      'stats-score-bar-caption',
       'stats-rating-meaning',
       'stats-perfect',
-      'stats-rating-range',
+      'stats-explain',
       'stats-week-change',
       'count',
       'stats-fine-toggle',
-      'stats-explain',
       'chart-takeaway',
     ]);
   });
@@ -945,7 +1056,7 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
   it('styles the other wording at 100 the same way', () => {
     show({ rating: 100 });
     expect(screen.getByTestId('stats-rating-meaning')).toHaveTextContent(
-      'Range by range, what you said matched how often those things happened.',
+      'Your numbers match what happened.',
     );
     expect(style('stats-rating-meaning').fontSize).toBe(type.subhead.fontSize);
     expect(style('stats-rating-meaning').color).toEqual(colors.textPrimary);
@@ -978,8 +1089,7 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
     try {
       show();
       expect(style('stats-rating-meaning').color).toEqual(colors.textPrimary);
-      expect(style('stats-rating-range').marginTop).toBe(space.md);
-      expect(style('stats-week-change').marginTop).toBe(space.xs);
+      expect(style('stats-week-change').marginTop).toBe(space.md);
       expect(countStyle().marginTop).toBe(space.md);
     } finally {
       act(() => useSettingsStore.setState({ hideTitles: false }));
@@ -1087,7 +1197,7 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
     });
   });
 
-  it('leaves the calibrating state as it was', () => {
+  it('leaves the calibrating state as it was, with the link under the progress', () => {
     render(
       <CalibrationView
         userStat={userStat({ total_resolved: 12, calibration_rating: 80 })}
@@ -1097,12 +1207,49 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
         ratingRange={{ giveOrTake: 3, low: 77, high: 83 }}
         weekChange={{ before: 78, now: 80, answered: 4 }}
         perfect={{ typical: 86, low: 80, high: 91 }}
+        onExplain={() => {}}
       />,
     );
     expect(screen.getByTestId('rating-provisional')).toBeTruthy();
+    // No number, and no line about one, before the rating unlocks.
     for (const id of ['stats-rating-meaning', 'stats-perfect', 'stats-rating-range', 'stats-week-change']) {
       expect(screen.queryByTestId(id)).toBeNull();
     }
+    expect(screen.queryByText(/points off|as good as anyone can tell|since last week/)).toBeNull();
     expect(screen.queryByText(/^12 scored/)).toBeNull();
+    expect(screen.getByTestId('stats-explain')).toHaveTextContent('What does this mean?');
+  });
+});
+
+// Owner, 2026-11-23: explanations live one tap away, not beside the score.
+describe('CalibrationView — the rating block', () => {
+  const unlocked = () => (
+    <CalibrationView
+      userStat={userStat({ total_resolved: 40, rating_is_provisional: false })}
+      calibration={EMPTY_CAL}
+      categoryStats={[]}
+      nextBadges={{}}
+      onExplain={jest.fn()}
+      answeredCount={3}
+    />
+  );
+
+  it('prints no caption under the bar, which still speaks what its marks are', () => {
+    const { queryByTestId, queryByText, getByLabelText } = render(unlocked());
+    expect(queryByTestId('stats-score-bar-caption')).toBeNull();
+    expect(queryByText(/The marks are a category's badge bars/)).toBeNull();
+    expect(getByLabelText(/The marks are a category's badge bars: Forecaster above 70/)).toBeTruthy();
+  });
+
+  it('shows "What does this mean?" as a link with a chevron, and the fold with its own', () => {
+    const { getByTestId } = render(unlocked());
+    const link = getByTestId('stats-explain');
+    expect(link.props.accessibilityRole).toBe('button');
+    expect(link).toHaveTextContent('What does this mean?');
+    expect(link.findAll((n: { props: { name?: { ios?: string } } }) => n.props.name?.ios === 'chevron.right').length).toBeGreaterThan(0);
+    const fold = getByTestId('stats-fine-toggle');
+    expect(fold.findAll((n: { props: { name?: { ios?: string } } }) => n.props.name?.ios === 'chevron.down').length).toBeGreaterThan(0);
+    fireEvent.press(fold);
+    expect(getByTestId('stats-fine-toggle').findAll((n: { props: { name?: { ios?: string } } }) => n.props.name?.ios === 'chevron.up').length).toBeGreaterThan(0);
   });
 });

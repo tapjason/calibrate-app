@@ -25,7 +25,8 @@ interface PracticeQuizProps {
 
 /**
  * One of the day's practice questions, as the Warmup asks them: pick an
- * answer, then say how sure (50–100%, nothing preset, roadmap D13). Like the
+ * answer, then say how sure (0–100% since the owner's call of 2026-11-23, a
+ * number under 50 taken as said; nothing preset, roadmap D13). Like the
  * Warmup, the answers land together at the end: three questions take half a
  * minute, and a reveal after each would double the taps.
  *
@@ -116,7 +117,8 @@ export function PracticeQuiz({ day, slot, reveal }: PracticeQuizProps) {
         min={MIN_PRACTICE_CONFIDENCE}
         max={MAX_PRACTICE_CONFIDENCE}
         label="How sure are you?"
-        hint="50% is a coin flip: there are only two options."
+        // The Warm-up's line without its tap tip (voice pass, 2026-11-23).
+        hint="50% means no idea, a coin flip."
         idPrefix="practice-confidence"
       />
 

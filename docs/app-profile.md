@@ -39,7 +39,7 @@ Status: filled in 2026-11-08
 
 ## §2 Main flow
 
-- **First run:** the Warmup (ten two-choice questions, an empty 50–100% confidence control each,
+- **First run:** the Warmup (ten two-choice questions, an empty 0–100% confidence control each, D77,
   then the counts and a read of *these ten*, D18) → "Make a real prediction" → Log, with the due
   date on Tomorrow and starter ideas that resolve by then. No account and no permission prompt
   first; Apple's age-range sheet may appear after the first screen is up (D4 in
@@ -60,7 +60,8 @@ Status: filled in 2026-11-08
   ready-to-resolve (D22) with the streak, today's goal and the practice row right after it, then the
   other open predictions; with nothing ready, the open predictions come before the daily rows (D48).
   After a save it scrolls to the new card when it isn't all on screen (D48).
-- **Insights** (tab): the rating with its give-or-take, the Brier line, the calibration chart with
+- **Insights** (tab): the rating, its bar (the give-or-take as its band) and one short line, with
+  "What does this mean?" opening the rest in How scoring works (D76), the Brier line, the calibration chart with
   the grey luck bars, the named pattern (D37), categories with badges, the Plus card.
 - **History** (tab): open predictions first, then everything answered, filterable (D26).
 - **You** (tab): Your card and the recaps (Share), Plus, Categories (D39, D40), the streak,

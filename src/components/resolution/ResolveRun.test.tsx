@@ -111,9 +111,9 @@ describe('ResolveRun (roadmap step 18)', () => {
       '3 answered. 2 happened. You expected 2\u00A0or\u00A03.',
     );
     expect(screen.getByTestId('resolve-run-streak').props.accessibilityLabel).toBe(
-      // Three answers meet the day's goal (D17), and the rest-day line (roadmap
-      // step 87): day 7 saves the first.
-      "1-day streak. Today's goal met. Next milestone: 7\u00A0days. A rest day comes with day\u00A07.",
+      // Three answers meet the day's goal (D17). No rest-day line on day 1
+      // (D76: it waits for day 3).
+      "1-day streak. Today's goal met. Next milestone: 7\u00A0days.",
     );
     // A natural stopping point: Today may ask for a rating once this closes (D15).
     expect(useRatingStore.getState().moment).toBe(true);
@@ -155,7 +155,7 @@ describe('ResolveRun (roadmap step 18)', () => {
 
     await waitFor(() => expect(screen.getByText('Third due')).toBeTruthy());
     await answer('resolve-yes');
-    expect(screen.getByText(/Your rating (moved|stays)/)).toBeTruthy();
+    expect(screen.getByText(/Your rating (went|stays)/)).toBeTruthy();
     expect(screen.queryByText(new RegExp(RATING_WHY.replace(/[.;]/g, '.')))).toBeNull();
   });
 

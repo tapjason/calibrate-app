@@ -138,8 +138,9 @@ describe('wrappedStory verdict', () => {
   // confident, right 81%" read as a contradiction.
   it('says "no clear lean" when no band leans but the averages are 5 or more apart', () => {
     const story = wrappedStory(summary([bucket(60, 20, 14, 70), bucket(80, 20, 18, 88)]));
+    // D76: the voice pass's words, with luck still saying why.
     expect(story.verdict).toBe(
-      'This year, no clear lean — 68% confident on average, and 80% happened. On 40 answers, luck often moves it that far.',
+      'This year, no clear lean. You said about 68%, and 80% happened. On 40 answers, luck often moves it that far.',
     );
   });
 
@@ -185,8 +186,10 @@ describe('wrappedStory verdict', () => {
       Array.from({ length: n }, (_, i) => ({ confidence, yes: i < yes }));
     const { buckets } = computeCalibrationPoints([...calls(66, 21, 12), ...calls(88, 20, 18)]);
     expect(buckets.every((b) => b.direction === 'calibrated')).toBe(true);
+    // D76 (the voice pass, 2026-11-23): "This week, no clear lean. You said
+    // about 70%, and 66% happened."
     expect(wrappedStory({ ...summary(buckets), mean_confidence: 76.8 }).verdict).toBe(
-      'This year, no clear lean — 77% confident on average, and 73% happened. One range sits further off, but not by enough to call a lean.',
+      'This year, no clear lean. You said about 77%, and 73% happened.',
     );
   });
 
@@ -204,7 +207,28 @@ describe('wrappedStory verdict', () => {
     const story = wrappedStory(
       summary([bucket(20, 5, 1, 25), bucket(60, 8, 5, 70), bucket(80, 9, 6, 90)]),
     );
-    expect(story.verdict).toMatch(/ — 68% confident on average/);
+    // The averages, in D76's words for a read with no clear lean.
+    expect(story.verdict).toMatch(/You said about 68%, and 55% happened\./);
+  });
+});
+
+// D76 (the voice pass, 2026-11-23): "3 predictions come due this week. This
+// fills in as you answer them."
+describe('wrappedStory, a week with nothing scored yet', () => {
+  const empty = (): WrappedSummary => ({
+    ...summary([bucket(60, 1, 1, 70)]),
+    span: 'week',
+    resolved: 0,
+  });
+
+  it('says what comes due, in the plural and the singular', () => {
+    expect(wrappedStory(empty(), null, 3).note).toBe(
+      '3 predictions come due this week. This fills in as you answer them.',
+    );
+    expect(wrappedStory(empty(), null, 1).note).toBe(
+      '1 prediction comes due this week. This fills in as you answer it.',
+    );
+    expect(wrappedStory(empty(), null, 3).statCount).toBe('3 on the way');
   });
 });
 

@@ -212,11 +212,13 @@ describe('CalibrationChart honesty', () => {
   // Roadmap D58 (owner, 2026-11-10): said only when a grey dot is drawn.
   it('says what a grey dot is, only when one is drawn', () => {
     const thin = render(<CalibrationChart buckets={[bucket({ low: 60, total_resolved: 9 })]} />);
+    fireEvent.press(thin.getByTestId('chart-key-toggle'));
     expect(thin.getByTestId('chart-caption')).toHaveTextContent(
       /A grey dot has fewer than 10 answers, too few to read yet\./,
     );
     thin.unmount();
     const solid = render(<CalibrationChart buckets={[bucket({ low: 60, total_resolved: 10 })]} />);
+    fireEvent.press(solid.getByTestId('chart-key-toggle'));
     expect(solid.getByTestId('chart-caption')).not.toHaveTextContent(/grey dot/);
   });
 
@@ -489,9 +491,11 @@ describe('CalibrationChart chance capsules', () => {
   // Roadmap step 68: the key names only what's drawn.
   it('are explained in the key only when there are some', () => {
     const empty = render(<CalibrationChart buckets={[]} />);
+    fireEvent.press(empty.getByTestId('chart-key-toggle'));
     expect(empty.getByTestId('chart-caption')).not.toHaveTextContent(/Grey bars/);
     empty.unmount();
     const drawn = render(<CalibrationChart buckets={[bucket({ low: 60 })]} />);
+    fireEvent.press(drawn.getByTestId('chart-key-toggle'));
     expect(drawn.getByTestId('chart-caption')).toHaveTextContent(/Grey bars: where a perfectly calibrated dot lands/);
     // Inside the bar is "can't be told apart", not "as close as luck allows"
     // (blind playtest 2026-11-05, run 3).
@@ -520,5 +524,21 @@ describe('xTickLabel', () => {
   it('keeps the percent sign where the ticks have room, and drops it where they do not', () => {
     expect(xTickLabel(80, 58)).toBe('80%');
     expect(xTickLabel(80, 47)).toBe('80');
+  });
+
+  // Owner, 2026-11-23: the 85-word key is folded behind a toggle.
+  it('folds the key behind "How to read this chart"', () => {
+    const view = render(<CalibrationChart buckets={[bucket({ low: 60 })]} />);
+    const toggle = view.getByTestId('chart-key-toggle');
+    expect(view.queryByTestId('chart-caption')).toBeNull();
+    expect(toggle.props.accessibilityRole).toBe('button');
+    expect(toggle.props.accessibilityState).toEqual({ expanded: false });
+    expect(view.getByText('How to read this chart')).toBeTruthy();
+    fireEvent.press(toggle);
+    expect(view.getByTestId('chart-caption')).toHaveTextContent(/Dashed line: perfectly calibrated/);
+    expect(view.getByTestId('chart-key-toggle').props.accessibilityState).toEqual({ expanded: true });
+    expect(view.getByText('Hide')).toBeTruthy();
+    fireEvent.press(view.getByTestId('chart-key-toggle'));
+    expect(view.queryByTestId('chart-caption')).toBeNull();
   });
 });

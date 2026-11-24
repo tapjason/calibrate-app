@@ -74,8 +74,9 @@ export const REFILED_NOTE =
 /**
  * Under the category chips of a scored answer (step 184, D65), before a move
  * and after: a count nobody was told about reads as being caught, so it is
- * said first, as a delete's is. True whichever way the answer was last
- * moved, since one moved back is off the count.
+ * said first, as a delete's is. One sentence since D76 (the voice pass,
+ * 2026-11-23; it was 56 words): the full rule below is said in How scoring
+ * works.
  *
  * The rule (review round 7, `answerCountedAsMoved` in
  * src/engine/corrections.ts), which depends only on where the answer ends
@@ -89,16 +90,15 @@ export const REFILED_NOTE =
  * was answered, and not back in that end-of-day category (case C: moved on
  * the eve, answered, moved back: one late change). Only a move to a third
  * category, neither of those two, adds a moved answer beside it. So the
- * first sentence holds in every case (an answer left where it was answered
- * after an eve change is counted, as that late change), and the second says
- * "once" of the change. "While it was open": a move of the answer itself,
- * after the due day too, is never a late change. "But not on the day it was
- * logged": a slip fixed that day, the due-tomorrow default included, isn't
- * counted at all. "Logged", not "made" (until round 7): new words don't move
- * that day.
+ * rule holds in every case (an answer left where it was answered after an
+ * eve change is counted, as that late change), and a change is counted
+ * "once". "While it was open": a move of the answer itself, after the due
+ * day too, is never a late change. "But not on the day it was logged": a
+ * slip fixed that day, the due-tomorrow default included, isn't counted at
+ * all. "Logged", not "made" (until round 7): new words don't move that day.
  */
 export const REFILE_COUNTED_HINT =
-  'Insights counts a scored answer that ends up in a different category from the one it had at the end of the day it was logged. A category change made while it was open, from the day before its due day but not on the day it was logged, is counted once, as a late change.';
+  'Moving a scored answer to another category is counted on Insights.';
 
 /** Whether switching this answer can move a rating or a badge on screen. */
 export function correctionMoves(prediction: Prediction): boolean {
@@ -348,10 +348,10 @@ export function AnsweredDetails({
 
       {until === null && error && <Text style={styles.error}>{error}</Text>}
       {until === null ? (
+        // D76 (the voice pass, 2026-11-23).
         <Text style={styles.body} testID="answered-locked">
-          Answers can be changed for a day after they’re given. After that they stay as they
-          are, whichever way they went, so the record can’t be rewritten later. This one is
-          part of your record now.
+          This one’s locked in. Answers can be changed for a day, then they’re part of your
+          record.
         </Text>
       ) : (
         <>

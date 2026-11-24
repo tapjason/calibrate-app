@@ -167,7 +167,8 @@ export function wrappedStory(
       allTime: null,
       receipt: null,
       provisionalNote: null,
-      note: `${upcoming === 1 ? 'It comes' : 'They come'} due in the next 7 days. This recap fills in as you answer ${upcoming === 1 ? 'it' : 'them'}.`,
+      // D76 (the voice pass, 2026-11-23).
+      note: `${localCount(upcoming)} ${plural} ${upcoming === 1 ? 'comes' : 'come'} due this week. This fills in as you answer ${upcoming === 1 ? 'it' : 'them'}.`,
     };
   }
 
@@ -238,15 +239,14 @@ function verdictLine(
   // happened… luck often moves it that far" pointed at a gap of nothing
   // (blind playtest 2026-11-13c, finding 18). Not "luck" there: a range can
   // miss a lean by the 5-point floor, not by luck (record audit 2026-11-13).
-  const offRanges = summary.buckets.filter(
-    (b) =>
-      b.total_resolved >= MIN_BUCKET_N_FOR_VERDICT &&
-      !closeToSaid(b.stated_confidence_mean, b.actual_rate * 100),
-  ).length;
+  // D76 (the voice pass, 2026-11-23): "This week, no clear lean. You said
+  // about 70%, and 66% happened.", without the sentence on the ranges further
+  // off. With the averages apart, luck still says why it isn't a lean.
+  const saidAbout = `You said about ${stated}%, and ${hitRate}% happened.`;
   const noLean = () =>
     closeToSaid(stated, hitRate)
-      ? `${w}, no clear lean — ${averages} ${offRanges === 1 ? 'One range sits' : 'Some ranges sit'} further off, but not by enough to call a lean.`
-      : `${w}, no clear lean — ${averages} On ${summary.resolved} answers, luck often moves it that far.`;
+      ? `${w}, no clear lean. ${saidAbout}`
+      : `${w}, no clear lean. ${saidAbout} On ${summary.resolved} answers, luck often moves it that far.`;
   const calibrated = () =>
     closeToSaid(stated, hitRate) ? `${w}, ${VERDICTS.calibrated} — ${averages}` : noLean();
   const pooled = () =>

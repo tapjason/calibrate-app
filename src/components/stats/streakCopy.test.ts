@@ -183,6 +183,17 @@ describe('streakCopy — rest days', () => {
     });
   });
 
+  // D76 (the text-load run, 2026-11-22): before day 3 the promise is one
+  // more line before it matters.
+  it('says nothing about the next one before day 3', () => {
+    const on = (streak: number) =>
+      streakCopy(status({ streak, today: 1, todayCounts: true, nextCheckpoint: 7, nextRestAt: 7 }));
+    expect(on(1)?.rest).toBeNull();
+    expect(on(2)?.rest).toBeNull();
+    expect(on(1)?.spoken).toBe('1-day streak. Today counts. Goal:\u00A01\u00A0of\u00A03.');
+    expect(on(3)?.rest).toBe('A rest day comes with day\u00A07');
+  });
+
   it('says how many are saved', () => {
     expect(running({ restDays: 1, nextRestAt: 14 })?.rest).toBe('1 rest day saved');
     expect(running({ restDays: 2 })?.rest).toBe('2 rest days saved');
@@ -233,7 +244,8 @@ describe('streakCopy — rest days', () => {
 // Roadmap D60 (e): an ended streak is said for a week while none runs, as a
 // fresh start (blind playtest 2026-11-13b, run 3).
 describe('streakCopy — a streak that ended', () => {
-  it('says it ended yesterday, with no rest day to cover it, and no goal dots', () => {
+  // D76: why it ended is said under Your streak; the row says the fresh start.
+  it('says it ended yesterday, and that one prediction starts a new one, with no goal dots', () => {
     const copy = streakCopy(
       status({
         streak: 0,
@@ -244,14 +256,15 @@ describe('streakCopy — a streak that ended', () => {
     );
     expect(copy).toMatchObject({
       headline: 'Your 151-day streak ended yesterday',
-      detail: 'No rest day was left to cover it. One prediction today starts a new one',
+      detail: 'One prediction today starts a new one',
       filled: 0,
       ended: true,
       rest: null,
     });
     expect(copy?.spoken).toBe(
-      'Your 151-day streak ended yesterday. No rest day was left to cover it. One prediction today starts a new one.',
+      'Your 151-day streak ended yesterday. One prediction today starts a new one.',
     );
+    expect(`${copy?.headline} ${copy?.detail}`).not.toMatch(/lose|lost|break|miss/i);
   });
 
   it('names the weekday further back', () => {

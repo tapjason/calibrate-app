@@ -14,8 +14,13 @@ import {
   useWarmupStore,
 } from '@/store/warmupStore';
 
+/**
+ * Under the control on every question, as on practice. The scale runs 0–100
+ * (the owner, 2026-11-23); 50 is where "no idea" sits on a two-choice question.
+ */
+export const TWO_CHOICE_HINT = '50% means no idea, a coin flip.';
 /** Said on the first questions only (roadmap D60 (g)). */
-export const WARMUP_TAP_TIP = 'Tap anywhere on the bar to jump to a number.';
+export const WARMUP_TAP_TIP = 'Tap the bar to pick a number.';
 const WARMUP_TAP_TIP_QUESTIONS = 3;
 
 /**
@@ -255,8 +260,8 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
               // question 3 (blind playtest 2026-11-13b, runs 4 and 8; D60).
               hint={
                 index < WARMUP_TAP_TIP_QUESTIONS
-                  ? `50% is a coin flip: there are only two options. ${WARMUP_TAP_TIP}`
-                  : '50% is a coin flip: there are only two options.'
+                  ? `${TWO_CHOICE_HINT} ${WARMUP_TAP_TIP}`
+                  : TWO_CHOICE_HINT
               }
               idPrefix="warmup-confidence"
             />

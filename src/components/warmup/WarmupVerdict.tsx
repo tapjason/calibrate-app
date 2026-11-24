@@ -4,10 +4,9 @@ import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { Button } from '@/components/ui/Button';
 import { colors, space, type } from '@/constants/theme';
 import { useWarmupStore } from '@/store/warmupStore';
-import { MIN_N_OVERALL } from '@/types';
 
 import { AnswerKeyRow } from './AnswerKeyRow';
-import { warmupChartNote, warmupVerdict } from './verdictCopy';
+import { warmupVerdict } from './verdictCopy';
 
 interface WarmupVerdictScreenProps {
   /** Continue into the app. The screen owns the navigation. */
@@ -41,21 +40,21 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         {verdict.title}
       </Text>
       <Text style={styles.detail}>{verdict.detail}</Text>
-      {/* What the verdict means in counts ("Your numbers expected about 7 right, and you got
-          7"), straight under it: below the chart it sat three screens down at
-          large text, and a screen reader heard both buttons first (blind
-          playtest 2026-11-12f, finding 2; step 173). */}
+      {/* What the verdict means in counts ("You expected about 7 and got 7")
+          or what to do next, straight under it: below the chart it sat three
+          screens down at large text, and a screen reader heard both buttons
+          first (blind playtest 2026-11-12f, finding 2; step 173). */}
       <Text style={styles.advice} testID="warmup-expected">
         {verdict.advice}
       </Text>
 
       {/* The bridge (roadmap D18 (3)): trivia is the warm-up, plans are where
-          overconfidence lives (Buehler, Griffin & Ross 1994: 33.9 days
-          predicted, 55.5 taken). */}
+          overconfidence lives. The study behind it (Buehler, Griffin & Ross
+          1994: 33.9 days predicted, 55.5 taken) is in How scoring works since
+          the voice pass (2026-11-23). */}
       <Text style={styles.advice} testID="warmup-bridge">
-        Trivia is the warm-up. People are most overconfident about their own plans:
-        students who expected to finish a big school project in 34 days took 56. Make your
-        first one about tomorrow.
+        That was the warm-up. The real thing is your own plans, where people are most
+        overconfident. Start with one about tomorrow.
       </Text>
 
       {/* The bridge and the two things to do next right under the counts
@@ -85,19 +84,16 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
           (blind playtest 2026-11-01, run 1); the result is where it's needed
           first (roadmap D36). */}
       <Text style={styles.advice} testID="warmup-not-right">
-        {/* "Shouldn't happen": the verb was missing (blind playtest 2026-11-13d,
-            run 7, an English teacher). */}
-        It isn’t about being right. A 60% call that doesn’t happen isn’t a mistake: about 4 in
-        10 of them shouldn’t happen.
+        It isn’t about being right. If you say 60%, about 4 in 10 should miss.
       </Text>
 
-      {/* The headline reads all ten together; a band of two or eight says
-          less, so a lean can be named over dots inside their bars, or none
-          over a dot outside one (blind playtests 2026-11-04 and 11-05). */}
+      {/* No caption note since the voice pass (2026-11-23): "The read above
+          takes all ten together…" was cut with the text load, and so were the
+          one-number note and the "not your calibration rating" box under the
+          chart (Today says the 20). */}
       <CalibrationChart
         buckets={result.buckets}
         animateIn
-        captionNote={warmupChartNote(result.answered)}
         // Its ten answers never fill a range, so the chart's own rule (a
         // range with 10) would never name the zones. They're named when the
         // headline names a lean, and not over "no clear lean", where two dots
@@ -105,17 +101,6 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         // 2026-11-14, run 1; code review of step 181).
         zoneWords={result.direction !== 'calibrated'}
       />
-
-      {verdict.sameNumber && (
-        <Text style={styles.advice} testID="warmup-same-number">
-          {verdict.sameNumber}
-        </Text>
-      )}
-
-      <Text style={styles.disclaimer}>
-        This is a warm-up, not your calibration rating. That one needs{' '}
-        {MIN_N_OVERALL} of your own predictions.
-      </Text>
 
       <View style={styles.key}>
         <Text accessibilityRole="header" style={styles.keyTitle}>
@@ -150,13 +135,6 @@ const styles = StyleSheet.create({
   title: { ...type.title1, color: colors.textPrimary },
   detail: { ...type.callout, color: colors.textSecondary },
   advice: { ...type.subhead, color: colors.textSecondary },
-  disclaimer: {
-    backgroundColor: colors.surfaceSunken,
-    borderRadius: 8,
-    ...type.footnote,
-    color: colors.textSecondary,
-    padding: 12,
-  },
   actions: { gap: 10 },
   key: { gap: 12, marginTop: 4 },
   keyTitle: { ...type.headline, color: colors.textPrimary },

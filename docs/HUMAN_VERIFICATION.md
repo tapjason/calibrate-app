@@ -1051,7 +1051,7 @@ Added 2026-11-13 (step 178, D62, the calls after round 21; a reload is enough):
       delete. With unsaved changes in Edit, the sheet asks first. A day later the button is gone
       (from round 7's build, a delete that day is counted: the 2026-11-19 block).
 - [ ] **Before 20:** at 10–19 scored answers, Today and Insights show "First look: you said
-      about …% on average, and … of your … scored predictions happened. Too few to rate yet." Before
+      about …%, and … of … happened. Too early to rate." (D76's words) Before
       the first answer, the practice row reads "While you wait: today's practice".
 - [ ] **Hide the words:** You → "Hide the words" sits on one line with its switch at 375. On, a card
       in an added or renamed category reads "Your own category" with a plain folder symbol,

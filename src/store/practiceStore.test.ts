@@ -3,7 +3,7 @@ import { listPracticeAnswers } from '@/db/practice';
 import { createTestDb } from '@/db/testing';
 import type { PracticeFacts } from '@/types';
 
-import { usePracticeStore } from './practiceStore';
+import { MAX_PRACTICE_CONFIDENCE, MIN_PRACTICE_CONFIDENCE, usePracticeStore } from './practiceStore';
 
 // Small tables with exactly one fair pair per kind used, so the assertions
 // describe the store rather than whichever trivia is shipping.
@@ -70,12 +70,29 @@ describe('practiceStore', () => {
     expect(usePracticeStore.getState().answersFor(DAY)[0]?.question).toEqual(q);
   });
 
-  it('holds confidence to 50–100', async () => {
+  // The owner, 2026-11-23: "The minimum should never be 50%." 0–100 like Log,
+  // a number under 50 kept as said; an unreadable one is the coin flip.
+  it('holds confidence to 0–100, keeping a number under 50 as said', async () => {
+    expect([MIN_PRACTICE_CONFIDENCE, MAX_PRACTICE_CONFIDENCE]).toEqual([0, 100]);
     const { answer } = usePracticeStore.getState();
     await answer(DAY, 0, 0, 20);
     await answer(DAY, 1, 0, 140);
     await answer(DAY, 2, 0, Number.NaN);
-    expect(usePracticeStore.getState().answersFor(DAY).map((a) => a.confidence)).toEqual([50, 100, 50]);
+    expect(usePracticeStore.getState().answersFor(DAY).map((a) => a.confidence)).toEqual([20, 100, 50]);
+    await answer(DAY, 0, 0, -5);
+    expect(usePracticeStore.getState().answersFor(DAY)[0]?.confidence).toBe(0);
+    expect((await listPracticeAnswers()).map((a) => a.confidence)).toEqual([0, 100, 50]);
+  });
+
+  it('counts the day with a number under 50 as said', async () => {
+    const { questionsFor, answer } = usePracticeStore.getState();
+    for (const [slot, q] of questionsFor(DAY).entries()) await answer(DAY, slot, q.correctIndex, 30);
+    expect(usePracticeStore.getState().dayTally(DAY)).toEqual({
+      answered: 3,
+      correct: 3,
+      expected: expect.closeTo(0.9, 5),
+    });
+    expect(usePracticeStore.getState().record().mean_confidence).toBe(30);
   });
 
   it('replaces an answer to the same slot', async () => {

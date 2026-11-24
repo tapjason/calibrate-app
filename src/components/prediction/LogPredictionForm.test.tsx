@@ -180,7 +180,7 @@ describe('LogPredictionForm', () => {
 
     fireEvent.changeText(screen.getByTestId('title-field'), 'Ship it');
     expect(save().props.accessibilityState).toMatchObject({ disabled: true });
-    expect(screen.getByTestId('confidence-readout')).toHaveTextContent('—%');
+    expect(screen.getByTestId('confidence-readout')).toHaveTextContent('Slide to set');
 
     fireEvent.press(screen.getByTestId('confidence-decrement'));
     expect(screen.getByTestId('confidence-readout')).toHaveTextContent('45%');
@@ -429,7 +429,7 @@ describe('LogPredictionForm', () => {
       fireEvent.press(screen.getByTestId('coverage-nudge-dismiss'));
 
       expect(screen.queryByTestId('coverage-nudge')).toBeNull();
-      expect(screen.getByTestId('confidence-readout')).toHaveTextContent('—%');
+      expect(screen.getByTestId('confidence-readout')).toHaveTextContent('Slide to set');
     });
   });
 });
@@ -551,12 +551,12 @@ describe('LogPredictionForm track record (roadmap step 19)', () => {
 
     raise(3); // 70%
     expect(screen.getByTestId('track-record').props.children).toBe(
-      holdRanges('Of your 52 scored calls at 60–80%, 30 happened.'),
+      holdRanges('52 scored calls at 60–80% so far. 30 happened.'),
     );
 
     fireEvent.press(screen.getByTestId('category-finance'));
     expect(screen.getByTestId('track-record').props.children).toBe(
-      holdRanges('Of your 12 scored finance calls at 60–80%, 7 happened.'),
+      holdRanges('12 scored finance calls at 60–80% so far. 7 happened.'),
     );
   });
 

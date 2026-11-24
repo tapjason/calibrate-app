@@ -101,6 +101,17 @@ describe('MilestoneCard — score unlock', () => {
   });
 });
 
+// D76 (the voice pass, 2026-11-23): the owner's words, with the count from
+// MIN_N_OVERALL; the badge sentence after it stays.
+describe('milestoneCopy, the unlock', () => {
+  it("says it's rough for now, in the owner's words", () => {
+    expect(milestoneCopy({ kind: 'rating_unlocked', rating: 86 })).toEqual({
+      title: 'Your calibration score is unlocked',
+      body: '20 answers in. Here’s your rating. It’s rough for now and settles as you answer more.',
+    });
+  });
+});
+
 describe('milestoneCopy (step 179)', () => {
   it('names the badge that came with the unlock, and ends each sentence', () => {
     const unlocked = milestoneCopy({

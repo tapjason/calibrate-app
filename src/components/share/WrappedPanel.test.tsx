@@ -115,7 +115,10 @@ describe('WrappedPanel — an empty week (roadmap step 34)', () => {
     });
     render(<WrappedPanel span="week" />);
     expect(screen.getByText('2 on the way')).toBeTruthy();
-    expect(screen.getByText(/They come due in the next 7 days/)).toBeTruthy();
+    // D76 (the voice pass, 2026-11-23).
+    expect(
+      screen.getByText('2 predictions come due this week. This fills in as you answer them.'),
+    ).toBeTruthy();
     expect(screen.queryByText('Nothing scored yet')).toBeNull();
   });
 

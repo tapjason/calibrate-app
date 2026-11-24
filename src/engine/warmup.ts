@@ -35,8 +35,14 @@ const EMPTY: WarmupResult = {
  * outside the central WARMUP_LEAN_MASS of what a perfectly calibrated person
  * at the mean stated confidence would get from this many answers; inside it,
  * `calibrated` means "no clear lean" (roadmap D18 (2)). The binomial at the
- * mean is wider than the exact spread of mixed confidences, so it errs toward
- * calling luck.
+ * mean is wider than the exact spread of mixed confidences (Σp(1−p) is at most
+ * n·p̄(1−p̄) for any mix), so it errs toward calling luck.
+ *
+ * Confidences run 0–100 (50–100 before the owner's call of 2026-11-23). One
+ * under 50 is the stated chance that the pick is right, scored as said against
+ * whether it was: nothing here needs a floor. The buckets are the real
+ * predictions' five, the lean's chance range holds at any p, and at 0 or 100
+ * a single answer the other way is a lean, as luck can't explain it.
  *
  * Empty input returns a zeroed, `calibrated` result rather than throwing.
  */

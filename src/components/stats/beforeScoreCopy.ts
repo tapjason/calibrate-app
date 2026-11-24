@@ -5,8 +5,8 @@ import { localDate } from '@/components/ui/dates';
 import { MIN_N_BAND, MIN_N_OVERALL, type CategoryCounts, type UnlockEstimate } from '@/types';
 
 /**
- * "You said about 85% on average, and 7 of the 9 scored predictions happened.
- * Too few to read yet." A category's plain counts before its score unlocks:
+ * "You said about 85%, and 7 of 9 scored answers happened. Too early to
+ * read." A category's plain counts before its score unlocks:
  * what was said and what happened, with no verdict on the gap (D35).
  * "Scored", because History's summary for the category counts every answer,
  * same-day ones included (record audit, 2026-11-09); "too few to read yet",
@@ -17,30 +17,31 @@ export function plainCountsLine(counts: CategoryCounts): string | null {
   const said = Math.round(counts.mean_stated);
   if (counts.resolved === 1) {
     return (
-      `Its one scored prediction: you said ${said}%, and ` +
-      `${counts.happened === 1 ? 'it happened' : 'it didn’t happen'}. Too few to read yet.`
+      `Its one scored answer: you said ${said}%, and ` +
+      `${counts.happened === 1 ? 'it happened' : 'it didn’t happen'}. Too early to read.`
     );
   }
   return (
-    `You said about ${said}% on average, and ${counts.happened} of the ` +
-    `${counts.resolved} scored predictions happened. Too few to read yet.`
+    `You said about ${said}%, and ${counts.happened} of ` +
+    `${counts.resolved} scored answers happened. Too early to read.`
   );
 }
 
 /**
- * "First look: you said about 75% on average, and 6 of your 12 scored
- * predictions happened. Too few to rate yet." (D62, blind playtest
- * 2026-11-13d, finding 4: twenty answers with the first a week out left the
- * competitive and the curious nothing for weeks). From MIN_N_BAND scored
- * answers, the floor where Log's track record shows a range's counts, until
- * the rating unlocks. Counts only, never a lean (D35), as a category's plain
- * counts are. Null outside that span.
+ * "First look: you said about 75%, and 6 of 12 happened. Too early to rate."
+ * (D62, blind playtest 2026-11-13d, finding 4: twenty answers with the first
+ * a week out left the competitive and the curious nothing for weeks; worded
+ * for D76). From MIN_N_BAND scored answers, the floor where Log's track
+ * record shows a range's counts, until the rating unlocks. The 12 is scored
+ * answers, as the "12 of 20 scored" above it on Today and Insights. Counts
+ * only, never a lean (D35), as a category's plain counts are. Null outside
+ * that span.
  */
 export function firstLookLine(counts: CategoryCounts | null): string | null {
   if (!counts || counts.resolved < MIN_N_BAND || counts.resolved >= MIN_N_OVERALL) return null;
   return (
-    `First look: you said about ${Math.round(counts.mean_stated)}% on average, and ` +
-    `${counts.happened} of your ${counts.resolved} scored predictions happened. Too few to rate yet.`
+    `First look: you said about ${Math.round(counts.mean_stated)}%, and ` +
+    `${counts.happened} of ${counts.resolved} happened. Too early to rate.`
   );
 }
 

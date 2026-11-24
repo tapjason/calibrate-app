@@ -82,6 +82,37 @@ describe('scoringCopy (roadmap step 29)', () => {
     expect(allText()).not.toMatch(/day a prediction was made/);
   });
 
+  // D76: the Warm-up's bridge no longer gives the study's figures, so the
+  // page does, where it says what the score measures.
+  it('gives the planning study’s figures', () => {
+    const measures = scoringSections().find((s) => s.title === 'What the score measures');
+    expect(measures?.paragraphs).toContain(
+      'People are most overconfident about their own plans. In one study, students who expected to finish a big school project in 34 days took 56.',
+    );
+  });
+
+  // D76: an answer's details now say only that a category move is counted;
+  // the whole rule, as the details said it until then, is here.
+  it('keeps the whole category-move rule the answered details used to give', () => {
+    const text = allText();
+    // A scored answer that ends up elsewhere than at the end of its logged day.
+    expect(text).toContain(
+      'Insights also counts a scored answer that ends up in a different category from the one it had at the end of the day it was logged',
+    );
+    // A change while open, from the eve of the due day, counted once as late.
+    expect(text).toContain('another category, from the day before the due day');
+    expect(text).toContain('a category change made while it was open, that close to the due day, is counted once, as a late change');
+    // Never on the day it was logged while it isn't due yet.
+    expect(text).toContain("A change on the day a prediction was logged isn't counted while it isn't due yet");
+  });
+
+  // Rest days are said under Your streak, where the voice pass sends the
+  // streak row's rest-day words (D76).
+  it('explains rest days under Your streak', () => {
+    const streak = scoringSections().find((s) => s.title === 'Your streak');
+    expect(streak?.paragraphs.join(' ')).toMatch(/save a rest day, up to \d+\. A day that doesn't count uses one/);
+  });
+
   // Roadmap D60: badges follow the record both ways, and the page says so
   // (blind playtest 2026-11-13c, finding 16: two testers had to guess).
   it('says a badge can go back', () => {

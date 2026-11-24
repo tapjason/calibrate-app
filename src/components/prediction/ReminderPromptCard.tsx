@@ -1,13 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { localTime } from '@/constants/locale';
 import { colors, radius, space, type } from '@/constants/theme';
-import { reminderTimeLabel } from '@/notifications/practiceReminder';
 import { useSettingsStore } from '@/store/settingsStore';
 
 interface ReminderPromptCardProps {
-  /** "Tue, Oct 6": when the first reminder would come, or null if none is ahead. */
-  firstDue: string | null;
   onAllow: () => void;
   onDismiss: () => void;
   /** While the system alert is up. */
@@ -15,21 +13,37 @@ interface ReminderPromptCardProps {
 }
 
 /**
- * The in-context ask for notification permission (roadmap step 38). It says
- * what the reminders are and when the first one would come, and only the tap
- * on "Turn on reminders" shows the system alert. Same quiet card as the
- * coverage nudge: sunken, a secondary button, and "Not now" as a real answer.
+ * The reminder's time for the card's question: "7 PM" on the hour on a
+ * 12-hour clock, "7:30 PM" off it, and "19:00" on a 24-hour clock, where the
+ * hour alone would read "19".
  */
-export function ReminderPromptCard({ firstDue, onAllow, onDismiss, busy }: ReminderPromptCardProps) {
+export function nudgeTime(time: { hour: number; minute: number }): string {
+  const at = new Date(2000, 0, 1, time.hour, time.minute);
+  const full = localTime(at, { hour: 'numeric', minute: '2-digit' });
+  if (time.minute !== 0) return full;
+  const hourOnly = localTime(at, { hour: 'numeric' });
+  return /\d$/.test(hourOnly.trim()) ? full : hourOnly;
+}
+
+/**
+ * The in-context ask for notification permission (roadmap step 38). It asks
+ * in the person's own time (D38) and names the weekly summary too, since one
+ * permission covers both (D76, the voice pass, 2026-11-23: "Want a nudge at
+ * 7 PM on the day it's due?" then "Plus a quiet weekly summary. Nothing
+ * else."). Only the tap on "Turn on reminders" shows the system alert. Same
+ * quiet card as the coverage nudge: sunken, a secondary button, and "Not now"
+ * as a real answer.
+ */
+export function ReminderPromptCard({ onAllow, onDismiss, busy }: ReminderPromptCardProps) {
   // The person's own time since D38, not always the evening.
   const reminderAt = useSettingsStore((s) => s.dueReminderTime);
   return (
     <View style={styles.wrap} testID="reminder-prompt">
-      <Text style={styles.title}>Want a reminder when it's due?</Text>
-      <Text style={styles.body}>
-        At {reminderTimeLabel(reminderAt)} on the day each prediction comes due, one nudge to
-        say how it went{firstDue ? `, starting ${firstDue}` : ''}. And a quiet weekly summary.
-        Nothing else.
+      <Text style={styles.title} testID="reminder-prompt-title">
+        Want a nudge at {nudgeTime(reminderAt)} on the day it&apos;s due?
+      </Text>
+      <Text style={styles.body} testID="reminder-prompt-body">
+        Plus a quiet weekly summary. Nothing else.
       </Text>
       <View style={styles.actions}>
         <Button

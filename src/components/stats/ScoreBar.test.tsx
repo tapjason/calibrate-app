@@ -67,10 +67,13 @@ describe('ScoreBar range', () => {
     expect(SCORE_MARKS_CAPTION).toBe(
       "The marks are a category's badge bars: Forecaster above 70, Sharp above 85, Oracle above 90, at its score's low end.",
     );
-    expect(screen.getByTestId('bar-caption')).toHaveTextContent(SCORE_MARKS_CAPTION);
-    // Not in Today's hero, where it would sit there every day.
-    view.rerender(<ScoreBar score={78} testID="bar" />);
+    // Spoken, not printed (owner, 2026-11-23).
     expect(screen.queryByTestId('bar-caption')).toBeNull();
+    expect(screen.queryByText(SCORE_MARKS_CAPTION)).toBeNull();
+    expect(screen.getByLabelText(SCORE_MARKS_CAPTION)).toBeTruthy();
+    // Not in Today's hero, where it would be said every day.
+    view.rerender(<ScoreBar score={78} testID="bar" />);
+    expect(screen.queryByLabelText(SCORE_MARKS_CAPTION)).toBeNull();
   });
 });
 

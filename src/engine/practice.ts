@@ -411,7 +411,10 @@ export function warmupQuestions(
   ];
 }
 
-/** One day's answers in counts. */
+/**
+ * One day's answers in counts. `expected` is the stated chances summed, under
+ * 50 included (0–100 since 2026-11-23), so three picks at 30% expect about 1.
+ */
 export function practiceDayTally(answers: readonly PracticeAnswer[]): PracticeDayTally {
   return {
     answered: answers.length,
@@ -423,7 +426,8 @@ export function practiceDayTally(answers: readonly PracticeAnswer[]): PracticeDa
 /**
  * Everything practised so far. Which way it leans, and the chart's bands,
  * only from PRACTICE_MIN_N answers: below that a lean is noise, the same rule
- * as the real rating's.
+ * as the real rating's. A confidence under 50 is read as said, as in the
+ * Warmup (engine/warmup.ts).
  */
 export function scorePractice(answers: readonly PracticeAnswer[]): PracticeRecord {
   const answered = answers.length;

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { holdRanges } from '@/components/ui/holdRanges';
 import { SheetCloseBar } from '@/components/ui/SheetCloseBar';
 import { colors, radius, space, type } from '@/constants/theme';
 
@@ -17,9 +18,12 @@ interface ScoringSheetProps {
   openAt?: string | null;
   /**
    * The person's own rating in words, above the explainer, when it's opened
-   * from Today's rating (step 173): "is 86 good?" was answered nowhere.
+   * from a rating (step 173: "is 86 good?" was answered nowhere): from Today's
+   * rating, and from "What does this mean?" on Insights since D76, which moved
+   * these lines off the page. One paragraph each, in order
+   * (`ratingDetailLines`); none while the rating is provisional.
    */
-  ratingLine?: string | null;
+  ratingLines?: readonly string[] | null;
 }
 
 /**
@@ -28,7 +32,7 @@ interface ScoringSheetProps {
  * with no tab bar to fall back on (blind playtest 2026-11-12e, finding 1), so
  * it is the scroll's sticky first child, as on details and Resolve.
  */
-export function ScoringSheet({ onClose, openAt = null, ratingLine = null }: ScoringSheetProps) {
+export function ScoringSheet({ onClose, openAt = null, ratingLines = null }: ScoringSheetProps) {
   const scroll = useRef<ScrollView>(null);
   const jumped = useRef(false);
   // A hairline sets the bar off once the text has scrolled under it.
@@ -42,14 +46,18 @@ export function ScoringSheet({ onClose, openAt = null, ratingLine = null }: Scor
       testID="scoring-scroll"
     >
       <SheetCloseBar onPress={onClose} testID="scoring-close" scrolled={scrolled} />
-      {ratingLine && (
+      {ratingLines && ratingLines.length > 0 && (
         <View style={styles.yours} testID="scoring-rating-line">
           {/* A heading of its own, so a heading jump reaches it (blind
               playtest 2026-11-13e, run 6: it sat above the first heading). */}
           <Text style={styles.yoursHeading} accessibilityRole="header">
             Your rating
           </Text>
-          <Text style={styles.yoursText}>{ratingLine}</Text>
+          {ratingLines.map((line, i) => (
+            <Text key={line} style={styles.yoursText} testID={`scoring-rating-line-${i}`}>
+              {holdRanges(line)}
+            </Text>
+          ))}
         </View>
       )}
       <ScoringExplainer
@@ -79,6 +87,7 @@ const styles = StyleSheet.create({
   yours: {
     backgroundColor: colors.surfaceSunken,
     borderRadius: radius.md,
+    gap: space.sm,
     marginHorizontal: space.lg,
     marginTop: space.sm,
     padding: space.lg,

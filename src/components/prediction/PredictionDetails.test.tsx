@@ -411,11 +411,10 @@ describe('PredictionDetails (roadmap D25)', () => {
       expect(screen.queryByTestId('answered-refiled')).toBeNull();
       // Said before the move (step 184, D65), and still there after it.
       expect(screen.getByTestId('answered-refile-hint')).toHaveTextContent(REFILE_COUNTED_HINT);
-      // Review round 7: the store's rule, "logged" not "made" (new words don't
-      // move that day), and an eve change before the answer counted once, as
-      // a late change, never on the day it was logged.
+      // D76 (the voice pass, 2026-11-23): one sentence here; review round
+      // 7's full rule is said in How scoring works.
       expect(REFILE_COUNTED_HINT).toBe(
-        'Insights counts a scored answer that ends up in a different category from the one it had at the end of the day it was logged. A category change made while it was open, from the day before its due day but not on the day it was logged, is counted once, as a late change.',
+        'Moving a scored answer to another category is counted on Insights.',
       );
       fireEvent.press(screen.getByTestId('category-health'));
       await waitFor(() => expect(screen.getByTestId('answered-category')).toHaveTextContent('Health'));
@@ -463,9 +462,10 @@ describe('PredictionDetails (roadmap D25)', () => {
 
   // Review round 7, case C: moved on the eve of its due day (counted then, as
   // a late change), answered, then moved back to the category it had at the
-  // end of the day it was logged. The hint's second sentence: counted once,
-  // as a late change, and nothing on the moved-answers line. Moved on to a
-  // category that is neither, the first sentence: a moved answer too.
+  // end of the day it was logged: counted once, as a late change, and
+  // nothing on the moved-answers line. Moved on to a category that is
+  // neither, a moved answer too. (The rule is How scoring works' since D76;
+  // the hint here says only that a move is counted.)
   it('says a category change on the eve is counted once, as a late change (case C)', async () => {
     const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
     await insertPrediction(open({ due_date: tomorrow }));
@@ -483,7 +483,6 @@ describe('PredictionDetails (roadmap D25)', () => {
     await waitFor(() =>
       expect(screen.getByTestId('answered-refile-hint')).toHaveTextContent(REFILE_COUNTED_HINT),
     );
-    expect(REFILE_COUNTED_HINT).toMatch(/is counted once, as a late change/);
 
     fireEvent.press(screen.getByTestId('category-work'));
     await waitFor(() => expect(screen.getByTestId('answered-category')).toHaveTextContent('Work'));
@@ -790,15 +789,16 @@ describe('PredictionDetails (roadmap D25)', () => {
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
     fireEvent.press(screen.getByTestId('details-answer'));
-    // Roadmap D56: said once, here, with what to do, and without "answering
-    // early is fine" beside it.
-    expect(screen.getByTestId('details-early')).toHaveTextContent(
-      /^It's due .+\. You logged it today, so an answer today isn’t scored\. From tomorrow it is\./,
+    // Roadmap D56: said once, here, and without the early line beside it, in
+    // D76's words.
+    expect(screen.getByTestId('details-early-text')).toHaveTextContent(
+      "Heads up: an answer today won't count, because you logged it today. Tomorrow it will.",
     );
+    expect(screen.getByTestId('details-early')).not.toHaveTextContent(/Go ahead/);
     // The habit tip only on a repeat (D62): this one is a one-off.
     expect(screen.getByTestId('details-early')).not.toHaveTextContent(/evening before/);
     // Said aloud too: it appears in place of the button (playtest 2026-11-04b, run 2).
-    expect(announce).toHaveBeenCalledWith(expect.stringMatching(/From tomorrow it is\.$/));
+    expect(announce).toHaveBeenCalledWith(expect.stringMatching(/Tomorrow it will\.$/));
     announce.mockRestore();
   });
 
@@ -812,8 +812,8 @@ describe('PredictionDetails (roadmap D25)', () => {
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
     fireEvent.press(screen.getByTestId('details-answer'));
-    expect(screen.getByTestId('details-early')).toHaveTextContent(
-      /For something you do every day, log the next one the evening before\./,
+    expect(screen.getByTestId('details-early-text')).toHaveTextContent(
+      "Heads up: an answer today won't count, because you logged it today. Tomorrow it will. For something you do every day, log the next one the evening before.",
     );
   });
 
@@ -835,8 +835,11 @@ describe('PredictionDetails (roadmap D25)', () => {
     await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
 
     fireEvent.press(screen.getByTestId('details-answer'));
-    expect(screen.getByTestId('details-early')).toHaveTextContent(/It's due .+\. Answering early is fine/);
-    expect(screen.getByTestId('details-early')).not.toHaveTextContent(/isn’t scored/);
+    // D76: "It's not due until Fri, Nov 28. Know already? Go ahead."
+    expect(screen.getByTestId('details-early-text')).toHaveTextContent(
+      /^It's not due until .+\. Know already\? Go ahead\.$/,
+    );
+    expect(screen.getByTestId('details-early')).not.toHaveTextContent(/won't count/);
     expect(onAnswer).not.toHaveBeenCalled();
     fireEvent.press(screen.getByTestId('details-answer-now'));
     expect(onAnswer).toHaveBeenCalledWith('p1', { warned: false });
@@ -972,6 +975,10 @@ describe('PredictionDetails, answered (roadmap D34)', () => {
     await insertPrediction(answered(30));
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('answered-locked')).toBeTruthy());
+    // D76 (the voice pass, 2026-11-23).
+    expect(screen.getByTestId('answered-locked')).toHaveTextContent(
+      'This one’s locked in. Answers can be changed for a day, then they’re part of your record.',
+    );
     expect(screen.queryByTestId('answered-switch')).toBeNull();
     expect(screen.queryByTestId('answered-delete')).toBeNull();
     expect(screen.queryByTestId('category-health')).toBeNull();
@@ -1138,8 +1145,8 @@ describe('PredictionDetails, D56 edges (code review 2026-11-10)', () => {
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
     fireEvent.press(screen.getByTestId('details-answer'));
-    expect(screen.getByTestId('details-early')).toHaveTextContent(
-      /You changed its words today, so an answer today isn’t scored\. From tomorrow it is\./,
+    expect(screen.getByTestId('details-early-text')).toHaveTextContent(
+      "Heads up: an answer today won't count, because you reworded it today. Tomorrow it will.",
     );
     expect(screen.getByTestId('details-early')).not.toHaveTextContent(/evening before/);
   });

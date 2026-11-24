@@ -233,7 +233,7 @@ a lean at any 5-point gap, so a dot could be "overconfident" on what the Warmup
 called luck. **No lean mark under 10** (decided 2026-11-10, D58): a range with fewer
 than 10 scored answers (`MIN_N_BAND`) gets no lean word and no lean mark either, so
 its chart dot is grey (the Warm-up's too, whose ranges rarely reach 10; the caption
-says what a grey dot is), its mark on the share card a small neutral dot and its
+says what a grey dot is, one tap away under "How to read this chart" since D76), its mark on the share card a small neutral dot and its
 square in the text share ⬜. The card's strip and the squares wait until some range
 has 10. Each carries a one-line key in the strip's words (D59, 2026-11-12, reversing
 D58's no-key): "Low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under
@@ -260,15 +260,15 @@ thing due tomorrow and answered tomorrow still counts.
 
 **Said once, with what to do** (decided 2026-11-10, D56; blind playtest
 2026-11-10, run 2: a daily walk was "not scored" three times per tick). Before a
-same-day answer the rule is said once, on "Answer it now": "It's due Wed, Nov 11.
-You logged it today, so an answer today isn't scored. From tomorrow it is. For
-something you do every day, log the next one the evening before." (that last sentence
-only when the same words were answered before, D62: it reached a one-off maths test).
-Resolve doesn't
-repeat its note when opened from there, and only while the answer would still be
-same-day; every other route keeps it. After the answer: "Not scored: you logged it
-today. Log the next one now, and its answer is scored from tomorrow." beside "Log
-it again". A prediction reworded that day (D45) says it was reworded, not logged.
+same-day answer the rule is said once, on "Answer it now": "Heads up: an answer today
+won't count, because you logged it today. Tomorrow it will. For something you do every
+day, log the next one the evening before." (that last sentence only when the same words
+were answered before, D62: it reached a one-off maths test; the words D76's). Resolve's
+own note says the same first two sentences (`sameDayHeadsUp`), no longer that the streak
+is kept (D76; How scoring works says it); it isn't repeated when Resolve opens from
+there, and only while the answer would still be same-day; every other route keeps it.
+After the answer: "Saved, but not scored, since you logged it today." beside "Log it
+again" (D76). A prediction reworded that day (D45) says it was reworded, not logged.
 
 ### Minimum-N gating (required)
 Small samples make `actual_rate` meaningless — with two resolved predictions a bucket can
@@ -308,7 +308,7 @@ authoritative.
 
 ### 1. Warmup Module (onboarding — build early)
 A 60-second first-run quiz of ten two-choice questions ("Which happened first?" + a
-50–100% confidence slider). Immediately renders the counts, a mini calibration chart
+0–100% confidence slider, D77). Immediately renders the counts, a mini calibration chart
 and a read of those ten ("You said 85% on average. 5 of 10 were right." under "On
 these ten, you were overconfident"); see the D18 bullets below.
 
@@ -317,10 +317,19 @@ where users decide whether the app is worth keeping. The Warmup delivers the cor
 on Day 0, teaches the mechanic, and produces the first shareable card. Warmup results are
 stored separately and **never** mixed into real `UserStat` / `CategoryStat` data.
 
-The confidence slider starts **empty** and Next waits for a number, so tapping through
-can't produce a verdict about a preset (D13). The resting thumb sits at the coin flip,
-50%, on every screen, and the first ±5 steps from it (50% or 55% here, 45% or 55% on Log),
-as VoiceOver's first swipe does (D49).
+The confidence slider starts **empty**, reading "Slide to set" where the number goes (on
+every control, Log's too, D77), and Next waits for a number, so tapping through can't
+produce a verdict about a preset (D13). The resting thumb sits at the coin flip, 50%, on
+every screen, and the first ±5 steps from it, to 45% or 55%, as VoiceOver's first swipe
+does (D49, D77).
+
+**The two-choice scale runs 0 to 100%** (decided 2026-11-23 by the owner, D77: "the
+minimum should never be 50%"), in steps of 5 like Log's, here and in practice. A number
+under 50 is taken as said, the stated chance the picked answer is right, and never
+flipped to the other answer; under the control, "50% means no idea, a coin flip." On this
+scale opposite errors cancel more easily (five at 10% all right and five at 90% all wrong
+read "no clear lean"). Answers kept from before run 50–100 and read as ever; no Warm-up or
+practice number leaves the phone.
 
 **Day 0 is for calibration, not an identity verdict** (D18):
 - The first screen says what the app is for ("How sure are you, really?", D61).
@@ -333,21 +342,24 @@ as VoiceOver's first swipe does (D49).
   78% on average. 6 of 10 were right." under "On these ten, you were overconfident".
   A lean is named only outside the central 80% of what luck gives at ten answers
   (`WARMUP_LEAN_MASS`); otherwise "On these ten, no clear lean", with what did happen
-  in plain counts (D36, D61): "Your numbers expected about 8 right, and you got 9. On ten
-  answers luck often moves it that far, so it can't tell yet whether you run too sure, too
-  cautious or about right." That expected-and-got line sits straight under the verdict,
-  before the bridge and the buttons (D59). The result also carries "It isn't about being
-  right. A 60% call that doesn't happen isn't a mistake: about 4 in 10 of them shouldn't
-  happen." A bare ±5 rule called a lean on 47–73% of perfectly calibrated people
+  in plain counts (D36, D61, worded by D76): "You expected about 8 and got 9. Too close to
+  call on ten questions." With a lean, advice instead ("You felt surer than you were. Next
+  time you feel sure, go a little lower."; with an average under 50, "Your picks came true
+  less often than your numbers said. Go a little lower next time.", D77). That line sits
+  straight under the verdict, before the bridge and the buttons (D59). The result also
+  carries "It isn't about being right. If you say 60%, about 4 in 10 should miss." A bare
+  ±5 rule called a lean on 47–73% of perfectly calibrated people
   (`docs/design/research/day0-2026-10.md`). No 0–100 warm-up score (D20).
 - A US-region phone sees feet and miles beside the metric units in the answer key (D59).
-- A bridge to the person's own plans (the planning-fallacy line) sits above the
-  button, "Make a real prediction" (the bridge ends "Make your first one about
-  tomorrow.").
+- A bridge to the person's own plans sits above the button, "Make a real prediction":
+  "That was the warm-up. The real thing is your own plans, where people are most
+  overconfident. Start with one about tomorrow." (D76; the planning-fallacy study's
+  figures are in How scoring works).
 - The first prediction is due Tomorrow, as every new one is (D55), with starter ideas that
   resolve by then, so the first real result lands on Day 1. That first yes/no answer says
-  what the number means, the same for Yes and No ("A 70% call should come true about 7
-  times in 10, so one answer can't say much; 20 can.").
+  what the number means, the same for Yes and No ("70% means right about 7 times in 10.
+  It takes around 20 answers before we can tell how you're doing.", D76; under 50, "30%
+  means it happens about 3 times in 10.").
 - The Day-0 card shares the counts as an invitation: "5 of 10 right. I was 77% sure.
   How sure are you?"
 
@@ -376,9 +388,9 @@ so "Log it again" always matches), a line under the title says how they came out
 "Answered 3 times before: happened 1 of 3." Outcomes only, never the earlier confidences,
 which would anchor the new number; skips and open ones don't count. From the first answer
 on, since it's the person's own record and not a score. Free. It sits beside the track
-record under the confidence ("Of your 12 scored finance calls at 60–80%, 7 happened."): the
-category's range from 10 scored answers, else the overall range from 10, else **the
-overall range from 5**, with "Too few to read yet" (D57). Counts only, never a lean.
+record under the confidence ("12 scored finance calls at 60–80% so far. 7 happened.", D76):
+the category's range from 10 scored answers, else the overall range from 10, else **the
+overall range from 5**, with "Early days." (D57, D76). Counts only, never a lean.
 Linking past experience to the prediction is the one prompt with strong evidence against
 optimism about one's own plans; premortems and "list reasons you're wrong" aren't worth
 building (`docs/design/research/debiasing-2026-10.md` §1).
@@ -417,11 +429,11 @@ Resolve directly. A delete is synced as a deletion (a local tombstone pushed to 
 so it doesn't come back on the next pull; another signed-in device keeps its copy until it
 is deleted there.
 
-**After a Yes or No** (D50): the same for both. Under the range's record, until the rating
-unlocks, what the number means ("A 70% call should come true about 7 times in 10: one that
-doesn't isn't a mistake, and one that does isn't proof."); once it's unlocked, what the
-answer did to it ("Your rating moved from 91 to 89. One answer nudges it either way; the
-pattern over many is what counts."; in an answer run the second sentence comes once),
+**After a Yes or No** (D50): the same for both. Under the range's record ("At 60–80%, 6
+of your 9 calls happened.", D76), until the rating unlocks, what the number means ("70%
+means right about 7 times in 10. A miss isn't a mistake, and a hit isn't proof.", D76);
+once it's unlocked, what the answer did to it ("Your rating went from 91 to 89. One answer
+only nudges it. The pattern is what counts."; in an answer run the reason comes once),
 including after a reminder's Happened or Didn't, but not after "Change answer", where it
 would make a false answer a one-tap comparison. The reflection asks "Anything to remember
 about this one?", and the coverage nudge stays quiet for 30 minutes after any answer.
@@ -475,10 +487,11 @@ many answers were "Can't tell", which the rating leaves out, under "More about y
   answered. Only this phone keeps this count.", D69 e), on this phone only (`prediction_refiles`, SQLite migration
   017, never synced). One moved back isn't counted; one deleted after a move is counted
   once, as a deletion. The answer's details say so under the category chips, before a
-  move ("Insights counts a scored answer that ends up in a different category from the one
-  it had at the end of the day it was logged. A category change made while it was open,
-  from the day before its due day but not on the day it was logged, is counted once, as a
-  late change."). A same-day answer or a "Can't tell" isn't counted: neither was scored.
+  move ("Moving a scored answer to another category is counted on Insights.", D76); the
+  whole rule (counted when it ends up in a different category from the one it had at the
+  end of the day it was logged; a change while it was open, from the day before its due
+  day but not on the day it was logged, counted once, as a late change) is in How scoring
+  works. A same-day answer or a "Can't tell" isn't counted: neither was scored.
 - **Category changes on open predictions are counted** (D69 e). From the eve of the due
   day, on the late-changes line beside date moves and rewordings; earlier ones, when the
   prediction is then answered in a different category from the one it had before its first
@@ -509,17 +522,28 @@ weekly reveal) carries retention — build it deliberately.
 See the authoritative section above.
 
 ### 5. Stats & Insight Module
-- Overall calibration rating (0–100), or provisional-progress state. Until the first
-  answer, the progress state leads with when it comes ("Your first answer: tomorrow
-  evening", D30)
+- Overall calibration rating (0–100), or provisional-progress state: the bar and one
+  line (D76). Until the first answer, it leads with when it comes ("Your first answer
+  lands tomorrow evening. 20 answers unlock your score.", D30); after it, "15 more scored
+  answers unlock your score." with when the next one comes due
 - What the rating means in points (D59): "Range by range, what you said averaged about
-  14 points away from how often those things happened…", 100 minus the rounded rating;
-  Today's rating opens How scoring works with the same line on top. Today's bar carries
-  no 70 / 85 / 90 marks (Insights keeps them, with D54's caption)
-- **The lines under Insights' rating sit in three groups** (D68): the points line leads, in
-  larger ink, with the perfect-calibration line under it; then give or take and "since last
-  week"; then the count. The words and their order are as decided; only the setting changed
-- **What perfect calibration scores on the same answers** (D62), under that line:
+  14 points away from how often those things happened, each range counting by how many
+  answers it holds.", 100 minus the rounded rating. On Insights it reads "On average
+  you're about 14 points off." (D76). Today's rating and Insights' "What does this mean?"
+  open How scoring works with the full line on top. Today's bar carries no 70 / 85 / 90
+  marks (Insights keeps them; D54’s caption
+  is spoken, not printed, since D76)
+- **Insights' rating keeps the number, the bar, one short line and "What does this
+  mean?"** (decided 2026-11-23 by the owner, D76: "Much of the score calculation based
+  explanations do not need to be on the main page next to the score"). In groups (D68):
+  the points line in larger ink, the perfect-calibration line's short form under it where
+  it applies, and the link; then "Up 2 since last week." as news; then the count. The
+  give-or-take stays as the bar's band and in the rating's spoken label. The full points
+  line, the perfect-calibration line with every ending, the give-or-take ("Give or take 5
+  points with this many predictions.") and the full since-last-week line sit in that order
+  under "Your rating" at the top of How scoring works; none while provisional
+- **What perfect calibration scores on the same answers** (D62), in How scoring works
+  under the full points line since D76:
   "Even perfectly calibrated, 20 answers like yours would typically score about 86,
   since luck alone moves each range. At this count, your score can't be told apart from
   perfect calibration." The verdict is about the score and never contradicts the
@@ -529,10 +553,12 @@ See the authoritative section above.
   else the figure alone; above it, "Your score is above that, which luck can do too".
   `perfectReference` simulates the same confidences coming true as often as they say:
   absolute error over few answers a range keeps even perfect calibration near 85–88 at 20
-  answers, 92 at 50, 95 at 100. The formula and the badge bars don't change
+  answers, 92 at 50, 95 at 100. The formula and the badge bars don't change. Insights'
+  page keeps only the "can't be told apart" case, short: "With 20 answers, that's about as
+  good as anyone can tell." (D76)
 - **A first look before 20** (D62): from 10 scored answers until the rating unlocks,
-  Today and Insights add "First look: you said about 75% on average, and 6 of your 12
-  scored predictions happened. Too few to rate yet." Counts, never a lean
+  Today and Insights add "First look: you said about 75%, and 6 of 12 happened. Too early
+  to rate." (D76). Counts, never a lean
 - **The fine print, folded** (D62): the Brier line, the Can't tell count (D57's line at
   zero too) and the same-day, deleted and moved counts sit under "More about your
   record" on Insights, one tap away ("Show less" folds it again)
@@ -543,26 +569,28 @@ See the authoritative section above.
 - The Brier score, one quiet line in the fine print from 50 scored answers (D24, D62, above)
 - **The pattern, named** (D37), all free and all by the one lean rule (D35): the category
   furthest off, past `MIN_N_CATEGORY` ("Furthest off: finance. You said about 85%, and 9
-  of 21 happened. About 45% would have matched.", and how it fits that category's badge,
-  D59: "That gap is already in its score, 80, which still clears Forecaster's 70 at its
-  low end."); the chart's title naming both sides when there are both ("You're too sure
-  at 80–100% and too cautious at 60–80%"); and "since last week" under the rating once
-  it's unlocked at both ends ("Up 2 since last week, from 6 answers given since then,
-  within its give-or-take."). The Plus card shows one Coach-style card on the person's own
+  of 21 happened."; a tap on the row unfolds what would have matched, "About 45% would
+  have matched.", and how it fits that category's badge, D59: "That gap is already in its
+  score, 80, which still clears Forecaster's 70 at its low end.", D76); the chart's title
+  naming both sides when there are both ("You're too sure at 80–100% and too cautious at
+  60–80%"); and "since last week" under the rating once it's unlocked at both ends ("Up 2
+  since last week."; in full in How scoring works, "Up 2 since last week, from 6 answers
+  given since then, within its give-or-take.", D76). The Plus card shows one Coach-style card on the person's own
   numbers as a sample, written by the app and labelled so (Coach itself needs Plus
   and a sign-in).
 - **Plain counts on the chart** (D57), by the same rule. The title names a range that
   leans before any range inside luck, and never says there's no lean while a range with 10
   or more leans. A range inside luck but 5 points or more off what was said reads "No
   clear lean at 60–80%" (the recaps' rule, one shared helper); "You're well calibrated at
-  60–80%" only under 5. The subtitle gives the expected count ("Of 21 things you called
-  60–80% likely, 12 happened; your numbers expected about 14."), and for a range the lean
+  60–80%" only under 5. The subtitle gives the expected count ("You called 21 things
+  60–80% likely. 12 happened, and you'd expect about 14.", D76), and for a range the lean
   rule names, what would have matched ("You said about 88%; about 65% would have
   matched.", rounded to 5 as the category line is). Insights shows "No answers are Can't
   tell." when there are none, from the first answer (D59).
 - Per-category breakdown with badge levels, and each category's own score once it is
   past `MIN_N_CATEGORY` (D28); before that, the count to go and its plain counts ("You
-  said about 90% on average, and 7 of 9 happened.", D53), never a lean
+  said about 90%, and 7 of 9 scored answers happened. Too early to read.", D53, D76),
+  never a lean
 - While the rating is calibrating, when it could unlock at the recent pace ("At your
   recent pace, about 3 weeks (around Nov 30).", D53; on Today only when it's three weeks
   off or nearer, D63, on Insights always): scored answers over the last 28
@@ -572,10 +600,13 @@ See the authoritative section above.
   "fewer than 20 scored here", which would read as a verdict; it stays on Insights' badge
   rows, where the count to go sits beside it, named **"Getting started"** there (D36; the
   stored id stays `guesser`). Until a category has a badge, Insights says the first comes
-  at 20 answered there, or, once the total would have earned one, that the answers are
-  spread over N categories (D59), and Today names the closest badge ("To reach Tracker or
-  higher in finance: 13 more scored answers.": at 20 a category can go straight to
-  Forecaster). Tapping the streak row on Today opens How scoring works at Your streak.
+  at 20 ("Each category earns its first badge at 20 scored answers.", D76), or, once the
+  total would have earned one, that the answers are spread over N categories (D59), and
+  Today names the closest badge ("13 more scored answers to your first badge in finance.":
+  the first, not "Tracker", since at 20 a category can go straight to Forecaster; short on
+  score, "Forecaster in work needs a score that clears 70 with room to spare. You're at
+  64.", D76; the recap card keeps "To reach …", since on a shared card a line led by the
+  tier reads as a claim). Tapping the streak row on Today opens How scoring works at Your streak.
   Tapping the identity line on Today explains the tiers (How scoring works, at Badges)
   rather than opening Share.
 - Streak tracker. Checkpoints at **7, 30, 100 and 365 days, then every further year**:
@@ -624,11 +655,11 @@ See the authoritative section above.
   count spends one automatically, and the streak carries on *without* adding that day;
   with none saved, the streak ends and the reserve goes with it. Derived from the
   predictions on every read, never stored, so every device agrees. Today says what's
-  saved, the day one covered ("Yesterday was a rest day"), or when the next one comes, and
-  once none are left says so ("None saved now"). For a week after a streak of 2 days or
-  more ends, while none runs, the streak row says so: "Your 151-day streak ended on
-  Thursday", "No rest day was left to cover it. One prediction today starts a new one"
-  (D60). Evidence: `docs/design/research/retention-2026-10.md` §2.2.
+  saved, the day one covered ("Yesterday was a rest day"), or, from day 3 of a streak
+  (D76), when the next one comes, and once none are left says so ("None saved now"). For a
+  week after a streak of 2 days or more ends, while none runs, the streak row says so:
+  "Your 151-day streak ended on Thursday", "One prediction today starts a new one" (D60;
+  why it ended is said under Your streak in How scoring works since D76). Evidence: `docs/design/research/retention-2026-10.md` §2.2.
 - Coach insight cards (Plus — see `COACH_AGENT.md`)
 
 ### 6. Share & Wrapped Module (free — this is the growth engine)
@@ -711,7 +742,7 @@ only after 7 days and 10 yes/no answers, never in the Warmup, at most once per 9
 days (D15). Never tied to a Yes: reward calibration, not correctness.
 
 ### 9. Daily practice
-Three two-choice questions a day, with the Warmup's 50–100% confidence control,
+Three two-choice questions a day, with the Warmup's 0–100% confidence control (D77),
 the **same three for everyone on the same local day**. Real predictions resolve
 when they come due, which the user doesn't choose, so this is the reason to open
 the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2.5).

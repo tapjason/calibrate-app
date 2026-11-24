@@ -8,20 +8,22 @@ import { CategoryBadge } from '@/components/stats/CategoryBadge';
 import { chartTakeaway, rangeLabel } from '@/components/stats/chartTakeaway';
 import { expectedPhrase } from '@/components/stats/expectedPhrase';
 import { CoverageRow } from '@/components/stats/CoverageRow';
-import { furthestOffLine, weekChangeLine } from '@/components/stats/patternCopy';
+import { furthestOffDetail, furthestOffLine } from '@/components/stats/patternCopy';
 import { firstLookLine } from '@/components/stats/beforeScoreCopy';
 import {
   chartNamesLean,
-  perfectLine,
+  perfectShortLine,
   ratingHeadline,
-  ratingMeaningLine,
+  ratingPointsLine,
   spreadThinLine,
+  weekChangeShortLine,
 } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
 import { useStreakNow } from '@/components/stats/useStreakNow';
 import { CountUp } from '@/components/ui/CountUp';
 import { localCount } from '@/components/ui/count';
+import { Icon } from '@/components/ui/Icon';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, space, tabularNums, type } from '@/constants/theme';
@@ -48,13 +50,19 @@ interface CalibrationViewProps {
   nextBadges: Partial<Record<Category, NextBadgeTarget | null>>;
   /** Open predictions, shown as "on their way" while the rating is provisional. */
   pendingCount?: number;
-  /** Opens "How scoring works" (roadmap step 29). */
+  /**
+   * Opens "How scoring works" (roadmap step 29), from "What does this mean?"
+   * with the rating (D76), where the person's own lines sit on top.
+   */
   onExplain?: () => void;
   /** While calibrating, when the next one comes due (roadmap step 35). */
   nextDue?: string | null;
   /** Opens a confidence range's predictions in History (roadmap step 51). */
   onSelectRange?: (low: number) => void;
-  /** "Give or take 3" on the rating (roadmap D4). */
+  /**
+   * "Give or take 3" on the rating (roadmap D4): the bar's band, and spoken
+   * with the rating. Its sentence is in How scoring works since D76.
+   */
   ratingRange?: RatingRange | null;
   /** The Brier score, one quiet line once the rating is unlocked (roadmap D24). */
   brier?: number | null;
@@ -62,7 +70,10 @@ interface CalibrationViewProps {
   brierBaseline?: { rate: number; score: number } | null;
   /** Whether the Brier gap is more than luck (step 173). */
   brierEdge?: BrierEdge | null;
-  /** What perfect calibration would score on the same answers (D62). */
+  /**
+   * What perfect calibration would score on the same answers (D62). On the
+   * page only as `perfectShortLine` since D76; in full in How scoring works.
+   */
   perfect?: PerfectReference | null;
   /**
    * Answers marked "Can't tell", which the rating leaves out (roadmap D34):
@@ -97,7 +108,10 @@ interface CalibrationViewProps {
   categoryRanges?: Partial<Record<Category, RatingRange>>;
   /** The category furthest from what was said (roadmap D37), or null. */
   furthestOff?: CategoryMiss | null;
-  /** The rating's change since last week (roadmap D37), or null. */
+  /**
+   * The rating's change since last week (roadmap D37), or null: the news on
+   * the page, the full sentence in How scoring works (D76).
+   */
   weekChange?: WeekChange | null;
   /** Each category's plain counts, said before its score unlocks (roadmap D53). */
   categoryCounts?: Partial<Record<Category, CategoryCounts>>;
@@ -153,6 +167,8 @@ export function CalibrationView({
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
   const [showFine, setShowFine] = useState(false);
+  // What would have matched, behind a tap on the furthest-off line (D76).
+  const [showFurthest, setShowFurthest] = useState(false);
   // The lines under the rating that only some people want (D62), in their
   // old order: the Brier line (secondary and quiet, D24; from BRIER_MIN_N,
   // D62), then what the record leaves out or counted.
@@ -216,8 +232,36 @@ export function CalibrationView({
         giveOrTake: categoryRanges?.[furthestStat.category]?.giveOrTake ?? 0,
       }
     : null;
-  // The give-or-take line opens "how firm it is" when it's there (D68).
-  const hasRange = !!ratingRange && ratingRange.giveOrTake > 0;
+  // The give-or-take: the bar's band, and spoken with the rating (D76).
+  const giveOrTake = ratingRange && ratingRange.giveOrTake > 0 ? ratingRange.giveOrTake : 0;
+  // Of the perfect-calibration line, only "can't be told apart" stays on the
+  // page, shortened (D76); its other endings are in How scoring works.
+  const perfectShort =
+    userStat && headline && !headline.provisional && perfect
+      ? perfectShortLine(
+          headline.rating,
+          perfect,
+          userStat.total_resolved,
+          chartNamesLean(takeaway.lean),
+        )
+      : null;
+  // The one way to the explanation, with the rating (D76; it was "How is
+  // this scored?" under the fine print, and the rating's lines sat here).
+  const explain = onExplain ? (
+    <Pressable
+      onPress={onExplain}
+      accessibilityRole="button"
+      accessibilityHint="Opens How scoring works"
+      hitSlop={8}
+      style={styles.explain}
+      testID="stats-explain"
+    >
+      <Text style={styles.linkText}>What does this mean?</Text>
+      {/* A row that opens a sheet shows it (owner, 2026-11-23): it read as
+          the fold heading below it. */}
+      <Icon sf="chevron.right" fallback="chevron-forward" size={14} color={colors.textSecondary} />
+    </Pressable>
+  ) : null;
   const spread = userStat
     ? spreadThinLine(
         userStat.total_resolved,
@@ -243,57 +287,48 @@ export function CalibrationView({
             />
           ) : (
             <>
-              {/* Number and label as one stop (roadmap step 43). */}
+              {/* Number and label as one stop (roadmap step 43), with the
+                  give-or-take the bar draws (D76: its sentence left the page,
+                  and the bar is hidden from VoiceOver). */}
               <View
                 style={styles.ratingGroup}
                 accessible
                 accessibilityRole="text"
-                accessibilityLabel={`Calibration rating, ${headline.rating} out of 100.`}
+                accessibilityLabel={`Calibration rating, ${headline.rating} out of 100${
+                  giveOrTake > 0 ? `, give or take ${giveOrTake}` : ''
+                }.`}
                 testID="stats-rating-group"
               >
                 <CountUp value={headline.rating} style={styles.rating} testID="rating-value" />
                 <Text style={styles.ratingLabel}>calibration rating</Text>
               </View>
               <ScoreBar score={headline.rating} range={ratingRange} caption testID="stats-score-bar" />
-              {/* The lines under the rating in three groups, 12 apart and 4
-                  within (D68; "a wall" in five playtest rounds as six equal
-                  lines): what the number means, how firm it is, the count.
-                  Margins on the lines themselves, so nothing is wrapped and
-                  VoiceOver's order and stops stay as they were. */}
-              {/* What the number means, in points (step 173): the lead. */}
+              {/* One short line and the way to the rest (D76, the owner: "Much
+                  of the score calculation based explanations do not need to be
+                  on the main page next to the score"). The full points line,
+                  the perfect-calibration line, the give-or-take and since last
+                  week in full sit on top of How scoring works. Groups 12 apart
+                  and 4 within (D68), margins on the lines themselves. */}
               <Text style={styles.lead} testID="stats-rating-meaning">
-                {ratingMeaningLine(headline.rating)}
+                {ratingPointsLine(headline.rating)}
               </Text>
-              {/* How much of that gap luck alone gives (D62): with the lead,
-                  whose figure its endings answer ("above that"). */}
-              {perfect && (
+              {/* Only where the full line says "can't be told apart". */}
+              {perfectShort && (
                 <Text style={styles.subtle} testID="stats-perfect">
-                  {perfectLine(
-                    headline.rating,
-                    perfect,
-                    userStat.total_resolved,
-                    chartNamesLean(takeaway.lean),
-                  )}
+                  {perfectShort}
                 </Text>
               )}
-              {/* How firm it is: whichever of the two comes first opens it. */}
-              {ratingRange && hasRange && (
-                <Text style={[styles.subtle, styles.groupStart]} testID="stats-rating-range">
-                  Give or take {ratingRange.giveOrTake}{' '}
-                  {ratingRange.giveOrTake === 1 ? 'point' : 'points'} with this many predictions.
-                </Text>
-              )}
-              {/* Free (roadmap D37): nothing free showed change over time. */}
+              {explain}
+              {/* The news (roadmap D37): nothing free showed change over time. */}
               {weekChange && (
-                <Text
-                  style={[styles.subtle, !hasRange && styles.groupStart]}
-                  testID="stats-week-change"
-                >
-                  {weekChangeLine(weekChange, ratingRange?.giveOrTake ?? 0)}
+                <Text style={[styles.subtle, styles.groupStart]} testID="stats-week-change">
+                  {weekChangeShortLine(weekChange)}
                 </Text>
               )}
             </>
           )}
+          {/* While calibrating, the link sits under the progress (D76). */}
+          {headline.provisional && explain}
           {/* The fine print, folded under one line (D62; blind playtest
               2026-11-13c, finding 11: the lines under the rating read as a
               wall). One tap shows them all, and each is the line it was. */}
@@ -321,6 +356,12 @@ export function CalibrationView({
                     print" read as something hidden). */}
                 {showFine ? 'Show less' : 'More about your record'}
               </Text>
+              <Icon
+                sf={showFine ? 'chevron.up' : 'chevron.down'}
+                fallback={showFine ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color={colors.textSecondary}
+              />
             </Pressable>
           )}
           {showFine &&
@@ -329,18 +370,6 @@ export function CalibrationView({
                 {line.text}
               </Text>
             ))}
-          {/* The math on demand, one tap from the number it explains. */}
-          {onExplain && (
-            <Pressable
-              onPress={onExplain}
-              accessibilityRole="button"
-              hitSlop={8}
-              style={styles.explain}
-              testID="stats-explain"
-            >
-              <Text style={styles.tableToggleText}>How is this scored?</Text>
-            </Pressable>
-          )}
         </View>
       ) : null}
 
@@ -411,15 +440,41 @@ export function CalibrationView({
         <SectionHeader title="Category badges" />
       </View>
       {/* The area furthest off, said plainly (roadmap D37): a power user found
-          her finance pattern only through History's filters. */}
+          her finance pattern only through History's filters. What would have
+          matched, and how it fits the badge, unfold under it in place (D76),
+          as "More about your record" does. */}
       {furthestOff && (
-        <Text style={styles.pattern} testID="stats-furthest-off">
-          {furthestOffLine(
-            furthestOff,
-            furthestBadge,
-            visibleCategoryTitle(furthestOff.category, hideTitles),
+        <>
+          <Pressable
+            onPress={() => setShowFurthest((v) => !v)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showFurthest }}
+            aria-expanded={showFurthest}
+            // The whole visible text in both states, so the row has a name
+            // when it is open too (web accessibility snapshot, 2026-11-23).
+            accessibilityLabel={
+              furthestOffLine(furthestOff, visibleCategoryTitle(furthestOff.category, hideTitles)) +
+              (showFurthest ? ` ${furthestOffDetail(furthestOff, furthestBadge)}` : '')
+            }
+            style={styles.patternRow}
+            testID="stats-furthest-off-toggle"
+          >
+            <Text style={styles.pattern} testID="stats-furthest-off">
+              {furthestOffLine(furthestOff, visibleCategoryTitle(furthestOff.category, hideTitles))}
+            </Text>
+            <Icon
+              sf={showFurthest ? 'chevron.up' : 'chevron.down'}
+              fallback={showFurthest ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color={colors.textTertiary}
+            />
+          </Pressable>
+          {showFurthest && (
+            <Text style={styles.patternDetail} testID="stats-furthest-off-detail">
+              {furthestOffDetail(furthestOff, furthestBadge)}
+            </Text>
           )}
-        </Text>
+        </>
       )}
       {/* When a first badge can come (roadmap D36): a first-timer saw a tier
           name and nothing about when another could arrive. */}
@@ -431,11 +486,10 @@ export function CalibrationView({
       )}
       {spread === null && categoryStats.every((c) => c.predictions_resolved < FIRST_BADGE_AT) && (
         <Text style={styles.empty} testID="badges-first">
-          {/* Tracker, or higher: Forecaster needs 20 too (blind playtest
-              2026-11-12e, run 5 went from Getting started to Forecaster). */}
-          A category earns its first badge at {FIRST_BADGE_AT} scored answers there: Tracker, or
-          higher if its score is already high enough. Until then it shows Getting started, which
-          means fewer than {FIRST_BADGE_AT} scored there.
+          {/* "First badge", not "Tracker": Forecaster needs 20 too (blind
+              playtest 2026-11-12e, run 5 went from Getting started to
+              Forecaster). What each tier takes is in How scoring works (D76). */}
+          Each category earns its first badge at {FIRST_BADGE_AT} scored answers.
         </Text>
       )}
       {categoryStats.length === 0 ? null : (
@@ -457,7 +511,17 @@ export function CalibrationView({
 
 const styles = StyleSheet.create({
   wrap: { padding: 16 },
-  pattern: { ...type.subhead, color: colors.textPrimary, marginBottom: space.sm },
+  // The furthest-off line is the whole row, with its chevron (D76); 44pt at
+  // least, though it is two lines or more at every size.
+  patternRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: space.sm,
+    marginBottom: space.sm,
+    minHeight: 44,
+  },
+  pattern: { ...type.subhead, color: colors.textPrimary, flex: 1 },
+  patternDetail: { ...type.subhead, color: colors.textSecondary, marginBottom: space.sm },
   // Left-aligned with the chart and the rows below it (roadmap D33).
   summary: { alignItems: 'stretch', marginBottom: space.xxxl },
   // The hero numeral is always ink; colour belongs to direction, not to
@@ -477,8 +541,25 @@ const styles = StyleSheet.create({
   empty: { ...type.subhead, color: colors.textSecondary, marginTop: space.md },
   chartTitle: { ...type.title3, color: colors.textPrimary, marginBottom: space.xs },
   chartSubtitle: { ...type.subhead, color: colors.textSecondary, marginBottom: space.md },
-  tableToggle: { alignSelf: 'flex-start', marginTop: space.md, paddingVertical: space.xs },
-  explain: { marginTop: space.sm, paddingVertical: space.xs },
+  tableToggle: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    gap: space.xs,
+    marginTop: space.md,
+    paddingVertical: space.xs,
+  },
+  explain: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    gap: space.xs,
+    marginTop: space.sm,
+    paddingVertical: space.xs,
+  },
+  // A link that opens a sheet: ink, regular weight beside its chevron, so it
+  // isn't the fold heading's bold.
+  linkText: { ...type.subhead, color: colors.actionText },
   tableToggleText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
   bucket: {
     borderBottomColor: colors.hairline,

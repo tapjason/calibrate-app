@@ -124,27 +124,30 @@ describe('dueWithin', () => {
   });
 });
 
-// Roadmap D30: before the first answer, Today leads with when it comes.
+// Roadmap D30: before the first answer, Today leads with when it comes, as a
+// sentence (D76: "Your first answer lands tomorrow evening.").
 describe('firstAnswerLead', () => {
   it('says tomorrow evening for a prediction due tomorrow', () => {
-    expect(firstAnswerLead([dueIn(7), dueIn(1)], NOW)).toBe('Your first answer: tomorrow evening');
+    expect(firstAnswerLead([dueIn(7), dueIn(1)], NOW)).toBe('Your first answer lands tomorrow evening.');
   });
 
   it("names the day's evening within the week", () => {
     // 10 Sep 2026 is a Thursday, so three days on is Sunday.
-    expect(firstAnswerLead([dueIn(3)], NOW)).toBe('Your first answer: Sunday evening');
+    expect(firstAnswerLead([dueIn(3)], NOW)).toBe('Your first answer lands Sunday evening.');
   });
 
   it('gives the date beyond the week', () => {
-    expect(firstAnswerLead([dueIn(9)], NOW)).toMatch(/^Your first answer: Sat,?\u00A0Sep\u00A019$|^Your first answer: Sat,\u00A019\u00A0Sep$/);
+    expect(firstAnswerLead([dueIn(9)], NOW)).toMatch(
+      /^Your first answer lands on Sat,?\u00A0Sep\u00A019\.$|^Your first answer lands on Sat,\u00A019\u00A0Sep\.$/,
+    );
   });
 
   // Playtest 2026-11-09b, finding 13: reminders at 4 PM still read "evening".
   it("names the reminder's part of the day", () => {
-    expect(firstAnswerLead([dueIn(1)], NOW, 16)).toBe('Your first answer: tomorrow afternoon');
-    expect(firstAnswerLead([dueIn(3)], NOW, 8)).toBe('Your first answer: Sunday morning');
-    expect(firstAnswerLead([dueIn(1)], NOW, 22)).toBe('Your first answer: tomorrow night');
-    expect(firstAnswerLead([dueIn(1)], NOW, 19)).toBe('Your first answer: tomorrow evening');
+    expect(firstAnswerLead([dueIn(1)], NOW, 16)).toBe('Your first answer lands tomorrow afternoon.');
+    expect(firstAnswerLead([dueIn(3)], NOW, 8)).toBe('Your first answer lands Sunday morning.');
+    expect(firstAnswerLead([dueIn(1)], NOW, 22)).toBe('Your first answer lands tomorrow night.');
+    expect(firstAnswerLead([dueIn(1)], NOW, 19)).toBe('Your first answer lands tomorrow evening.');
   });
 
   it('puts every hour in one part of the day', () => {
@@ -155,7 +158,7 @@ describe('firstAnswerLead', () => {
   });
 
   it('says it is ready once one is due', () => {
-    expect(firstAnswerLead([dueIn(0), dueIn(2)], NOW)).toBe('Your first answer is ready');
+    expect(firstAnswerLead([dueIn(0), dueIn(2)], NOW)).toBe('Your first answer is ready.');
   });
 
   it('says nothing with nothing open', () => {

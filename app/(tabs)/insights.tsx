@@ -93,7 +93,9 @@ export default function InsightsScreen() {
         nextDue={nextDueLine(pending, new Date(), {
           first: (userStat?.total_resolved ?? 0) === 0,
         })}
-        onExplain={() => router.push('/scoring' as never)}
+        // "What does this mean?": How scoring works with the person's own
+        // lines on top, the ones the rating's block left out (D76).
+        onExplain={() => router.push('/scoring?section=rating' as never)}
         // The predictions behind a range, in History (roadmap step 51).
         onSelectRange={(low) => router.push(`/history?range=${low}` as never)}
         ratingRange={ratingRange}

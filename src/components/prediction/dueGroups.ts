@@ -125,9 +125,10 @@ export function partOfDay(hour: number): string {
 
 /**
  * Until anything has resolved, the nearest thing (roadmap D30): when the first
- * answer comes. "Your first answer: tomorrow evening", "…: Friday evening"
- * within the week, "…: Fri, Oct 16" beyond it, or "Your first answer is ready"
- * once one is due. The part of the day follows the reminder's time (D38): a
+ * answer comes, as a sentence (D76, the voice pass, 2026-11-23). "Your first
+ * answer lands tomorrow evening.", "…lands Friday evening." within the week,
+ * "…lands on Fri, Oct 16." beyond it, or "Your first answer is ready." once
+ * one is due. The part of the day follows the reminder's time (D38): a
  * tester with it at 4 PM read "Friday evening" (playtest 2026-11-09b, finding
  * 13). Null with nothing open.
  */
@@ -138,17 +139,17 @@ export function firstAnswerLead(
 ): string | null {
   const open = pending.filter((p) => p.status === 'pending' && !Number.isNaN(Date.parse(p.due_date)));
   if (open.length === 0) return null;
-  if (open.some((p) => isReadyToResolve(p, now))) return 'Your first answer is ready';
+  if (open.some((p) => isReadyToResolve(p, now))) return 'Your first answer is ready.';
   const soonest = open.reduce((a, b) => (daysUntilDue(b, now) < daysUntilDue(a, now) ? b : a));
   const days = daysUntilDue(soonest, now);
   const due = new Date(soonest.due_date);
   const part = partOfDay(reminderHour);
-  if (days === 1) return `Your first answer: tomorrow ${part}`;
+  if (days === 1) return `Your first answer lands tomorrow ${part}.`;
   if (days < 7) {
-    return `Your first answer: ${due.toLocaleDateString(dateLocale(), { weekday: 'long' })} ${part}`;
+    return `Your first answer lands ${due.toLocaleDateString(dateLocale(), { weekday: 'long' })} ${part}.`;
   }
   const day = localDate(due, { weekday: 'short', day: 'numeric', month: 'short' }, now);
-  return `Your first answer: ${day.replace(/ /g, '\u00A0')}`;
+  return endSentence(`Your first answer lands on ${day.replace(/ /g, '\u00A0')}`);
 }
 
 /**

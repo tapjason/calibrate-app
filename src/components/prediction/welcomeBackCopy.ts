@@ -12,46 +12,26 @@ export interface WelcomeBackInput {
   todayCounts: boolean;
   /** Whether the rating is unlocked (not provisional). */
   rated: boolean;
-  /** Whether anything has been logged or answered today. */
-  activeToday?: boolean;
-}
-
-/** "3 weeks", "8 weeks", "2 months": rounded down, never more than it was. */
-export function awayFor(days: number): string {
-  if (days < 60) {
-    const weeks = Math.floor(days / 7);
-    return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
-  }
-  const months = Math.floor(days / 30);
-  return `${months} months`;
 }
 
 /**
- * What changed while the person was away, one fact a line, plainly: the gap,
- * what's waiting, the streak, and that the rating moves as they catch up.
- * Never a loss frame: the streak "ended" and a new one starts today
- * (DESIGN_SYSTEM §6.2).
+ * What's waiting, the streak, and that the rating moves as they catch up,
+ * under the card's "Welcome back" (D76, the voice pass, 2026-11-23: "Welcome
+ * back. 2 predictions are waiting. Go with what you remember."; the line on
+ * how long it had been went, the title says it). Never a loss frame: the
+ * streak "ended" and a new one starts today (DESIGN_SYSTEM §6.2).
  */
-export function welcomeBackLines({
-  gap,
-  ready,
-  todayCounts,
-  rated,
-  activeToday = false,
-}: WelcomeBackInput): string[] {
-  // Past tense once something's done today, when "since you last" stops being true.
-  const lines = [
-    activeToday
-      ? `It had been ${awayFor(gap.awayDays)} since you last logged, answered or practised.`
-      : `It’s been ${awayFor(gap.awayDays)} since you last logged, answered or practised.`,
-  ];
+export function welcomeBackLines({ gap, ready, todayCounts, rated }: WelcomeBackInput): string[] {
+  const lines: string[] = [];
   if (ready > 0) {
-    const what = ready === 1 ? 'One prediction is' : `${localCount(ready)} predictions are`;
     lines.push(
-      // "about it" for one (blind playtest 2026-11-13b, run 1: "each, of one?").
-      `${what} ready to answer. Answer what you remember about ${ready === 1 ? 'it' : 'each'}.`,
+      ready === 1
+        ? 'One prediction is waiting. Go with what you remember.'
+        : `${localCount(ready)} predictions are waiting. Go with what you remember.`,
     );
-    if (rated) lines.push('Your rating moves as you answer them.');
+    if (rated) lines.push(`Your rating moves as you answer ${ready === 1 ? 'it' : 'them'}.`);
+  } else {
+    lines.push('Nothing is waiting to be answered.');
   }
   if (gap.endedStreak >= 2) {
     lines.push(

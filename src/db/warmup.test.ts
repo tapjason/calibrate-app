@@ -39,6 +39,32 @@ describe('warmup db', () => {
     expect(await getWarmupRecord()).toEqual(record);
   });
 
+  // 0–100 since 2026-11-23 (the owner: "The minimum should never be 50%"):
+  // the row stores whatever number was said, 0 included.
+  it('keeps a confidence under 50 as said, 0 included', async () => {
+    const record = {
+      completed_at: '2026-11-23T12:00:00.000Z',
+      answers: [
+        { confidence: 0, correct: false },
+        { confidence: 30, correct: true },
+        { confidence: 45, correct: false },
+      ],
+    };
+    await saveWarmupRecord(record);
+    expect(await getWarmupRecord()).toEqual(record);
+    await saveWarmupProgress({
+      question_ids: ['q1'],
+      answers: [{ confidence: 25, correct: true }],
+      pick: { question_id: 'q2', option: 0, confidence: 10 },
+    });
+    // Saving the record cleared progress; this one is new, so it reads back.
+    expect(await getWarmupProgress()).toEqual({
+      question_ids: ['q1'],
+      answers: [{ confidence: 25, correct: true }],
+      pick: { question_id: 'q2', option: 0, confidence: 10 },
+    });
+  });
+
   it('retaking overwrites in place (stays a singleton)', async () => {
     await saveWarmupRecord({
       completed_at: '2026-08-29T12:00:00.000Z',

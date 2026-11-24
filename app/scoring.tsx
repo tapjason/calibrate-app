@@ -1,16 +1,14 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { chartVerdict } from '@/components/stats/chartTakeaway';
-import {
-  chartNamesLean,
-  perfectLine,
-  ratingHeadline,
-  ratingMeaningLine,
-} from '@/components/stats/ratingHeadline';
+import { chartNamesLean, ratingDetailLines } from '@/components/stats/ratingHeadline';
 import { ScoringSheet } from '@/components/stats/ScoringSheet';
-import { useStatsStore } from '@/store/statsStore';
+import { useLocalDay } from '@/components/ui/useLocalDay';
+import { usePredictionStore } from '@/store/predictionStore';
+import { useStatsStore, weekChangeFor } from '@/store/statsStore';
 
 /**
  * "How scoring works", opened from Stats and Settings (roadmap step 29), and
@@ -21,23 +19,25 @@ import { useStatsStore } from '@/store/statsStore';
 export default function ScoringScreen() {
   const router = useRouter();
   const { section } = useLocalSearchParams<{ section?: string }>();
-  // From Today's rating (step 173): the person's own number first, in words.
+  // From a rating (step 173; Insights' "What does this mean?" since D76): the
+  // person's own lines first, in full, the ones Insights' page left out.
   const userStat = useStatsStore((s) => s.userStat);
   const perfect = useStatsStore((s) => s.perfect);
+  const ratingRange = useStatsStore((s) => s.ratingRange);
   const buckets = useStatsStore((s) => s.calibration.buckets);
-  const headline = ratingHeadline(userStat);
-  // With what perfect calibration would score on the same answers (D62).
-  const ratingLine =
-    section === 'rating' && headline && !headline.provisional
-      ? `Your rating is ${headline.rating}. ${ratingMeaningLine(headline.rating)}` +
-        (perfect && userStat
-          ? ` ${perfectLine(
-              headline.rating,
-              perfect,
-              userStat.total_resolved,
-              chartNamesLean(chartVerdict(buckets, false)?.lean),
-            )}`
-          : '')
+  const resolved = usePredictionStore((s) => s.resolved);
+  // Since last week, read as Insights reads it (roadmap D37).
+  const day = useLocalDay();
+  const weekChange = useMemo(() => weekChangeFor(resolved, new Date()), [resolved, day]);
+  const ratingLines =
+    section === 'rating'
+      ? ratingDetailLines({
+          userStat,
+          perfect,
+          chartLeans: chartNamesLean(chartVerdict(buckets, false)?.lean),
+          ratingRange,
+          weekChange,
+        })
       : null;
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -47,7 +47,7 @@ export default function ScoringScreen() {
           else router.replace('/insights' as never);
         }}
         openAt={section === 'badges' ? 'Badges' : section === 'streak' ? 'Your streak' : null}
-        ratingLine={ratingLine}
+        ratingLines={ratingLines}
       />
     </SafeAreaView>
   );

@@ -1,5 +1,5 @@
 // Presentation helper: the track record under the Log screen's confidence
-// control (roadmap step 19). "Of your 12 scored finance calls at 60–80%, 7
+// control (roadmap step 19). "12 scored finance calls at 60–80% so far. 7
 // happened."
 //
 // It closes the feedback loop at the moment of commitment, which is the app's
@@ -24,15 +24,19 @@ export interface TrackRecord {
 
 function happened(b: BucketStat): string {
   const n = b.total_resolved;
-  if (b.resolved_yes === n) return `all ${n} happened`;
-  if (b.resolved_yes === 0) return 'none happened';
-  return `${b.resolved_yes} happened`;
+  if (b.resolved_yes === n) return `All ${n} happened.`;
+  if (b.resolved_yes === 0) return 'None happened.';
+  return `${b.resolved_yes} happened.`;
 }
 
-/** "Of your 12 scored finance calls at 60–80%, 7 happened." */
+/**
+ * "12 scored finance calls at 60–80% so far. 7 happened." (D76, the voice
+ * pass, 2026-11-23; it was "Of your 12 scored finance calls at 60–80%, 7
+ * happened.").
+ */
 function line(b: BucketStat, category: Category | null): string {
   const calls = category === null ? 'calls' : `${categoryLabel(category)} calls`;
-  return `Of your ${b.total_resolved} scored ${calls} at ${rangeLabel(b)}, ${happened(b)}.`;
+  return `${b.total_resolved} scored ${calls} at ${rangeLabel(b)} so far. ${happened(b)}`;
 }
 
 /**
@@ -58,7 +62,8 @@ export function trackRecordLine(
     return { scope: 'overall', text: line(overallBucket, null) };
   }
   if (overallBucket && overallBucket.total_resolved >= TRACK_RECORD_MIN_N) {
-    return { scope: 'overall', text: `${line(overallBucket, null)} Too few to read yet.` };
+    // "Early days." (D76): it was "Too few to read yet."
+    return { scope: 'overall', text: `${line(overallBucket, null)} Early days.` };
   }
   return null;
 }

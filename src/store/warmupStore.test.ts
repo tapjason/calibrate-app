@@ -4,9 +4,11 @@ import { createTestDb } from '@/db/testing';
 import { PRACTICE_FACTS } from '@/constants/practiceFacts';
 import { getWarmupProgress, getWarmupRecord, saveWarmupProgress, saveWarmupRecord } from '@/db/warmup';
 import { warmupQuestions } from '@/engine/practice';
-import type { WarmupQuestion } from '@/types';
+import { TWO_CHOICE_COIN_FLIP, type WarmupQuestion } from '@/types';
 
 import {
+  MAX_WARMUP_CONFIDENCE,
+  MIN_WARMUP_CONFIDENCE,
   selectCurrentQuestion,
   selectHasCompletedWarmup,
   useWarmupStore,
@@ -115,13 +117,56 @@ describe('warmupStore', () => {
     expect(selectHasCompletedWarmup(s)).toBe(true);
   });
 
-  it('clamps confidence into the 50–100 slider range', async () => {
-    await useWarmupStore.getState().answer(0, 12);
+  // The owner, 2026-11-23: "The minimum should never be 50%." The scale runs
+  // 0–100 like Log's, and a number under 50 is kept as said.
+  it('runs 0 to 100, like Log', () => {
+    expect(MIN_WARMUP_CONFIDENCE).toBe(0);
+    expect(MAX_WARMUP_CONFIDENCE).toBe(100);
+  });
+
+  it('clamps confidence into the 0–100 range', async () => {
+    await useWarmupStore.getState().answer(0, -12);
     await useWarmupStore.getState().answer(0, 140);
 
     expect(useWarmupStore.getState().answers.map((a) => a.confidence)).toEqual([
-      50, 100,
+      0, 100,
     ]);
+  });
+
+  it('keeps a number under 50 as said, scores it so, and reads it back', async () => {
+    await useWarmupStore.getState().answer(0, 30); // q1 right, at 30%
+    await useWarmupStore.getState().answer(0, 20); // q2 wrong, at 20%
+
+    const s = useWarmupStore.getState();
+    expect(s.answers).toEqual([
+      { confidence: 30, correct: true },
+      { confidence: 20, correct: false },
+    ]);
+    expect(s.result?.mean_confidence).toBe(25);
+    expect(s.result?.buckets.map((b) => b.low)).toEqual([20]);
+    expect((await getWarmupRecord())?.answers).toEqual(s.answers);
+
+    reset();
+    await useWarmupStore.getState().hydrate();
+    expect(useWarmupStore.getState().answers).toEqual([
+      { confidence: 30, correct: true },
+      { confidence: 20, correct: false },
+    ]);
+    expect(useWarmupStore.getState().result?.mean_confidence).toBe(25);
+  });
+
+  it('takes an unreadable number as the coin flip, never the floor', async () => {
+    await useWarmupStore.getState().setPick(0, Number.NaN);
+    expect(useWarmupStore.getState().pick).toEqual({ option: 0, confidence: TWO_CHOICE_COIN_FLIP });
+    await useWarmupStore.getState().answer(0, Number.NaN);
+    expect(useWarmupStore.getState().answers[0]?.confidence).toBe(50);
+  });
+
+  it('keeps a pick under 50 across a reload', async () => {
+    await useWarmupStore.getState().setPick(1, 15);
+    reset();
+    await useWarmupStore.getState().hydrate();
+    expect(useWarmupStore.getState().pick).toEqual({ option: 1, confidence: 15 });
   });
 
   it('ignores answers once the quiz is finished', async () => {

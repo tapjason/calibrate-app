@@ -28,6 +28,12 @@ interface ConfidenceControlProps {
 const STEP = 5;
 /** Where an unset control rests and the first ±5 steps from (roadmap D49). */
 const COIN_FLIP = 50;
+/**
+ * What the readout says before a number is set (the owner, 2026-11-23: a
+ * default of "—%" "makes no sense in the UI"). Still empty, still no preset
+ * (D13): Next and Save wait for a number.
+ */
+export const CONFIDENCE_EMPTY_READOUT = 'Slide to set';
 
 /**
  * Below this width, or above this text scale, the ±5 buttons drop to their own
@@ -67,9 +73,9 @@ export function naturalFrequencyFor(percent: number): string {
  * §7.3): a large readout with its natural-frequency twin, a stepped slider
  * with a haptic detent per 5%, and the ±5 buttons kept for precision.
  *
- * It starts empty ("—%, not set yet") with a grey thumb resting at the coin
- * flip, 50%; the first drag, tap, touch of the thumb or ±5 sets a number
- * (roadmap D13, D49).
+ * It starts empty (the readout reads "Slide to set"; VoiceOver hears "not set")
+ * with a grey thumb resting at the coin flip, 50%; the first drag, tap, touch
+ * of the thumb or ±5 sets a number (roadmap D13, D49).
  *
  * For VoiceOver the whole control is one `adjustable` element (swipe up/down,
  * hear the value), exactly as before the slider existed; the slider itself is
@@ -100,13 +106,20 @@ export function ConfidenceControl({
   const { width, fontScale } = useWindowDimensions();
   const inlineSteppers =
     width >= INLINE_STEPPERS_MIN_WIDTH && fontScale <= INLINE_STEPPERS_MAX_FONT_SCALE;
+  // The number's first line, as iOS scales it (up to its cap): the readout's
+  // slot keeps this height empty or set, so the row doesn't jump when the
+  // first number arrives.
+  const readoutLine = type.readout.lineHeight * Math.min(fontScale, DISPLAY_MAX_SCALE);
+  // The gloss's one line, under the number, at the same cap.
+  const glossLine = type.subhead.lineHeight * Math.min(fontScale, DISPLAY_MAX_SCALE);
   // Unset, the thumb rests in grey at the coin flip, 50%, on every screen,
   // and the first ±5 steps from it, as VoiceOver's first swipe does: 45% or
-  // 55% on Log, 50% or 55% in the Warmup and practice (roadmap D49). Until
-  // 2026-11-09 it rested mid-range (D36), 75% on the two-choice scales, so a
-  // coin flip cost five taps and 70% one, and a tester took 70 "because it was
-  // one tap" (blind playtest 2026-11-09b, finding 5). Any number is still one
-  // tap on the track.
+  // 55% (roadmap D49). Every screen runs 0–100 now; the Warm-up and practice
+  // stopped at 50 until the owner's call of 2026-11-23 ("the minimum should
+  // never be 50%"). Until 2026-11-09 it rested mid-range (D36), 75% on the
+  // two-choice scales, so a coin flip cost five taps and 70% one, and a tester
+  // took 70 "because it was one tap" (blind playtest 2026-11-09b, finding 5).
+  // Any number is still one tap on the track.
   const middle = Math.min(max, Math.max(min, COIN_FLIP));
   const from = value ?? middle;
   // From the latest value, not the one this render drew: two taps landing
@@ -168,29 +181,54 @@ export function ConfidenceControl({
           their own row beneath the slider they pushed Next and Save below the
           fold on a 667pt phone. Narrower, or with larger text, they stay below. */}
       <View style={styles.readoutRow}>
-        <View style={styles.readoutText}>
-          <Text
-            style={[styles.readout, unset && styles.readoutUnset]}
-            testID={`${idPrefix}-readout`}
-            maxFontSizeMultiplier={DISPLAY_MAX_SCALE}
-          >
-            {unset ? '—%' : `${value}%`}
-          </Text>
-          <Text style={styles.frequency}>{unset ? 'not set yet' : naturalFrequencyFor(value)}</Text>
+        {/* One block, one height in every state (owner, 2026-11-23): the number
+            line over the gloss line, the gloss always on its own line, and
+            empty the same two lines with the question where the number sits,
+            so nothing below moves when the first number arrives or the gloss
+            would have wrapped. */}
+        <View
+          style={[styles.readoutText, { height: readoutLine + glossLine }]}
+          testID={`${idPrefix}-readout-block`}
+        >
+          <View style={[styles.readoutNumber, { height: readoutLine }]}>
+            {unset ? (
+              // A question in the number's place, not "—%" (the owner,
+              // 2026-11-23), centred in the number's line like the ±5 beside it.
+              <Text
+                style={styles.readoutEmpty}
+                testID={`${idPrefix}-readout`}
+                maxFontSizeMultiplier={DISPLAY_MAX_SCALE}
+              >
+                {CONFIDENCE_EMPTY_READOUT}
+              </Text>
+            ) : (
+              <Text
+                style={styles.readout}
+                testID={`${idPrefix}-readout`}
+                maxFontSizeMultiplier={DISPLAY_MAX_SCALE}
+              >
+                {`${value}%`}
+              </Text>
+            )}
+          </View>
+          <View style={{ height: glossLine }}>
+            {!unset && (
+              <Text
+                style={styles.frequency}
+                testID={`${idPrefix}-gloss`}
+                numberOfLines={1}
+                maxFontSizeMultiplier={DISPLAY_MAX_SCALE}
+              >
+                {naturalFrequencyFor(value)}
+              </Text>
+            )}
+          </View>
         </View>
         {/* Held level with the number's first line, so the frequency wrapping
             under it doesn't move them: a stylus user's +5 dropped about 10 px
             mid-tap (blind playtest 2026-11-13b, run 8). */}
         {inlineSteppers && (
-          <View
-            style={[
-              styles.steppersInline,
-              // The number's first line, as iOS scales it (up to its cap).
-              { minHeight: type.readout.lineHeight * Math.min(fontScale, DISPLAY_MAX_SCALE) },
-            ]}
-          >
-            {steppers}
-          </View>
+          <View style={[styles.steppersInline, { minHeight: readoutLine }]}>{steppers}</View>
         )}
       </View>
       {hint && <Text style={styles.hint}>{hint}</Text>}
@@ -227,21 +265,15 @@ const styles = StyleSheet.create({
     gap: space.sm,
     marginBottom: space.xs,
   },
-  readoutText: {
-    alignItems: 'baseline',
-    columnGap: space.md,
-    flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
+  readoutText: { flex: 1 },
+  // The number's line: its text sits at the start, or the question centred.
+  readoutNumber: { justifyContent: 'center' },
   readout: {
     ...type.readout,
     ...tabularNums,
     color: colors.textPrimary,
   },
-  // Same size, so setting a number doesn't shift the layout; tertiary ink
-  // (4.91:1) says nothing is there yet.
-  readoutUnset: { color: colors.textTertiary },
+  readoutEmpty: { ...type.title3, color: colors.textSecondary },
   frequency: { ...type.subhead, color: colors.textSecondary },
   hint: { ...type.footnote, color: colors.textSecondary, marginBottom: space.xs },
   slider: { height: 40, width: '100%' },

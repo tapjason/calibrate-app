@@ -45,7 +45,8 @@ interface StarterIdeasProps {
 export function StarterIdeas({ onPick }: StarterIdeasProps) {
   return (
     <View style={styles.wrap} testID="starter-ideas">
-      <Text style={styles.label}>Not sure where to start? Try one, then make it yours:</Text>
+      {/* D76 (the voice pass, 2026-11-23). */}
+      <Text style={styles.label}>Stuck? Try one:</Text>
       {STARTER_IDEAS.map((idea) => (
         <Pressable
           key={idea.category}

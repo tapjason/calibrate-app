@@ -48,6 +48,14 @@ describe('practice db', () => {
     expect(all[2]).toEqual(answer(20_734, 1, { picked: 1, correct: false, confidence: 55 }));
   });
 
+  // 0–100 since 2026-11-23: migration 007 has no CHECK on confidence, so a
+  // number under 50 is stored and read back as said, 0 included.
+  it('keeps a confidence under 50 as said, 0 included', async () => {
+    await savePracticeAnswer(answer(20_733, 0, { confidence: 0, correct: false, picked: 1 }));
+    await savePracticeAnswer(answer(20_733, 1, { confidence: 35 }));
+    expect((await listPracticeAnswers()).map((a) => a.confidence)).toEqual([0, 35]);
+  });
+
   it('replaces an answer to the same day and slot', async () => {
     await savePracticeAnswer(answer(20_733, 0, { confidence: 60 }));
     await savePracticeAnswer(answer(20_733, 0, { confidence: 90 }));

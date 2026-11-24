@@ -15,12 +15,6 @@ export interface WarmupVerdict {
   detail: string;
   /** One line on what to do with that. */
   advice: string;
-  /**
-   * Said only when every answer carried the same number (roadmap step 49):
-   * someone who taps the same number through all ten reads as "75% on
-   * everything", and the verdict should say that plainly. Null otherwise.
-   */
-  sameNumber: string | null;
 }
 
 // Says "these ten", not "you run": ten random questions describe those ten,
@@ -36,46 +30,56 @@ const READS = {
 const NUMBER_WORDS: Record<number, string> = { 10: 'ten' };
 
 /**
- * Under the Warmup's chart: the headline reads all the answers together, so it
- * can name a lean over dots inside their bars, or none over a dot outside one
- * (blind playtests 2026-11-04 and 11-05).
+ * What to do next, by the lean and by which side of the coin flip the average
+ * sat (voice pass, 2026-11-23). The scale runs 0–100 now (the owner, that
+ * day), so an average under 50 can't be told "when you feel sure": it reads
+ * how the picks came out against the numbers instead. Plain words, no idioms
+ * ("shading down", "trusting your gut"): a second-language tester read "gut"
+ * as stomach (playtest 2026-11-05).
  */
-export function warmupChartNote(answered: number): string {
-  return `The read above takes all ${NUMBER_WORDS[answered] ?? answered} together, which says more than any one range.`;
-}
-
 const ADVICE = {
-  overconfident:
-    // Plain words, no idioms ("shading down", "trusting your gut"): a
-    // second-language tester read "gut" as stomach (playtest 2026-11-05).
-    "When you felt sure, you were right less often than you thought. Try a lower number when you feel sure.",
-  underconfident:
-    'You knew more than you thought. When you feel sure, try a higher number.',
+  overconfident: {
+    sure: 'You felt surer than you were. Next time you feel sure, go a little lower.',
+    unsure: 'Your picks came true less often than your numbers said. Go a little lower next time.',
+  },
+  underconfident: {
+    sure: 'You knew more than you thought. Next time you feel sure, go a little higher.',
+    unsure: 'Your picks came true more often than your numbers said. Go a little higher next time.',
+  },
 } as const;
+
+/** The average at or above which the advice speaks of feeling sure. */
+const SURE_FROM = 50;
+
+/**
+ * How many the numbers expected, in words: "about 7", "almost none" when it
+ * rounds to 0 ("about 0" read as a count nobody would say), "none" or "all 10"
+ * when every answer said 0% or 100%.
+ */
+function expectedWords(exact: number, n: number): string {
+  if (exact === 0) return 'none';
+  if (exact === n) return `all ${n}`;
+  const rounded = Math.round(exact);
+  return rounded === 0 ? 'almost none' : `about ${rounded}`;
+}
 
 /**
  * No clear lean, said as what did happen (roadmap D36): "no clear lean" alone,
  * at 9 of 10 right, read as "so… was I good?" (blind playtest 2026-11-01,
- * run 1). The expected count beside the real one is the plain read, and the
- * reason it isn't a verdict follows.
+ * run 1). The expected count beside the real one is the plain read; the voice
+ * pass (2026-11-23) cut the reason it isn't a verdict to "too close to call".
  */
-function noLeanAdvice(expected: number, right: number, n: number): string {
+function noLeanAdvice(meanConfidence: number, right: number, n: number): string {
   const word = NUMBER_WORDS[n] ?? String(n);
   const Word = word.charAt(0).toUpperCase() + word.slice(1);
-  // "Your numbers expected", as Insights says it (D57): "You expected about 6
-  // right" put a count in the mouth of someone who never said one, and "it
-  // says nothing either way" read as taking her 7 of 10 away; "lean" is said
-  // in plain words beside it (blind playtest 2026-11-13c, finding 2).
-  const counts = `Your numbers expected about ${expected} right, and you got ${right}`;
-  if (expected === right) {
-    return `${counts}: just what they said. ${Word} answers can't prove that, so your own predictions are the real test.`;
+  const questions = n === 1 ? 'question' : 'questions';
+  const exact = (meanConfidence / 100) * n;
+  const counts = `You expected ${expectedWords(exact, n)} and got ${right}.`;
+  if (Math.round(exact) === right) {
+    return `${counts} ${Word} ${questions} can't prove it, so your own predictions are the real test.`;
   }
-  return `${counts}. On ${word} answers luck often moves it that far, so it can't tell yet whether you run too sure, too cautious or about right. Your own predictions are the real test.`;
+  return `${counts} Too close to call on ${word} ${questions}.`;
 }
-
-const SAME_NUMBER_NOTE =
-  'One number for every question, the ones you knew and the ones you guessed. ' +
-  'Telling those apart is part of the skill too.';
 
 /** Below this many answers, "the same number on all of them" says nothing. */
 const MIN_ANSWERS_FOR_SAME_NUMBER = 3;
@@ -113,10 +117,8 @@ export function warmupVerdict(
         : `You said ${same}% on all ${n}. ${count}`,
     advice:
       result.direction === 'calibrated'
-        ? noLeanAdvice(Math.round((result.mean_confidence / 100) * n), right, n)
-        : ADVICE[result.direction],
-    // Nothing to tell apart when every answer was right.
-    sameNumber: same !== null && result.accuracy < 1 ? SAME_NUMBER_NOTE : null,
+        ? noLeanAdvice(result.mean_confidence, right, n)
+        : ADVICE[result.direction][stated >= SURE_FROM ? 'sure' : 'unsure'],
   };
 }
 

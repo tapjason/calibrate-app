@@ -11,7 +11,11 @@ interface ScoreBarProps {
    * soft band across the end of the fill. The engine computes it.
    */
   range?: { low: number; high: number } | null;
-  /** Say what the marks are beneath the bar: on Insights, not Today's hero (D54). */
+  /**
+   * Say what the marks are to a screen reader: on Insights, not Today's hero
+   * (D54). Nothing is printed under the bar (owner, 2026-11-23): the bars
+   * are in How scoring works, one tap away.
+   */
   caption?: boolean;
   /**
    * The 70 / 85 / 90 marks. Off on Today (step 173): they are a category's
@@ -54,6 +58,7 @@ export const SCORE_MARKS_CAPTION = `The marks are a category's badge bars: ${TIC
 ).join(', ')}, at its score's low end.`;
 
 export function ScoreBar({ score, range, caption = false, marks = true, testID }: ScoreBarProps) {
+  const spokenMarks = caption && marks;
   const clamped = Math.max(0, Math.min(100, score));
   const low = range ? Math.max(0, range.low) : 0;
   const high = range ? Math.min(100, range.high) : 0;
@@ -64,7 +69,12 @@ export function ScoreBar({ score, range, caption = false, marks = true, testID }
   const scale = Math.min(Math.max(fontScale, 1), LABEL_MAX_SCALE);
   const labelWidth = Math.ceil(LABEL_WIDTH * scale);
   return (
-    <View style={styles.wrap}>
+    <View
+      style={styles.wrap}
+      accessible={spokenMarks || undefined}
+      accessibilityRole={spokenMarks ? 'text' : undefined}
+      accessibilityLabel={spokenMarks ? SCORE_MARKS_CAPTION : undefined}
+    >
     <View
       testID={testID}
       aria-hidden
@@ -105,12 +115,6 @@ export function ScoreBar({ score, range, caption = false, marks = true, testID }
       </View>
       )}
     </View>
-      {/* What the marks are, on screen and to a screen reader (roadmap D54). */}
-      {caption && marks && (
-        <Text style={styles.caption} testID={testID ? `${testID}-caption` : undefined}>
-          {SCORE_MARKS_CAPTION}
-        </Text>
-      )}
     </View>
   );
 }
@@ -161,7 +165,6 @@ const styles = StyleSheet.create({
     width: 3,
   },
   labels: { marginTop: 10 },
-  caption: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },
   // Each label ends just left of its tick, or (90) starts just right of it.
   label: {
     ...type.caption,

@@ -7,7 +7,7 @@ import { createTestDb } from '@/db/testing';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { WarmupQuestion } from '@/types';
 
-import { WARMUP_TAP_TIP, WarmupQuiz } from './WarmupQuiz';
+import { TWO_CHOICE_HINT, WARMUP_TAP_TIP, WarmupQuiz } from './WarmupQuiz';
 
 const QUESTIONS: readonly WarmupQuestion[] = [
   {
@@ -61,6 +61,10 @@ describe('WarmupQuiz', () => {
     const tip = new RegExp(WARMUP_TAP_TIP.replace(/\./g, '\\.'));
     const first = render(<WarmupQuiz />);
     expect(screen.getByText(tip)).toBeTruthy();
+    // The approved words (voice pass, 2026-11-23).
+    expect(
+      screen.getByText('50% means no idea, a coin flip. Tap the bar to pick a number.'),
+    ).toBeTruthy();
     first.unmount();
     useWarmupStore.setState({
       questions: [...QUESTIONS, ...QUESTIONS].map((q, i) => ({ ...q, id: `q${i}` })),
@@ -69,6 +73,9 @@ describe('WarmupQuiz', () => {
     render(<WarmupQuiz />);
     expect(screen.getByText('Which is deeper?')).toBeTruthy();
     expect(screen.queryByText(tip)).toBeNull();
+    // What 50% means stays on every question.
+    expect(screen.getByText(TWO_CHOICE_HINT)).toBeTruthy();
+    expect(TWO_CHOICE_HINT).toBe('50% means no idea, a coin flip.');
   });
 
   // Roadmap step 44: Next swaps the question while focus stays on the button.
@@ -200,8 +207,8 @@ describe('WarmupQuiz', () => {
   // Roadmap D13: nothing preset. Tapping through used to answer "75%".
   it('starts with no confidence and waits for one before Next', () => {
     render(<WarmupQuiz />);
-    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('—%');
-    expect(screen.getByText('not set yet')).toBeTruthy();
+    // Empty, asking (the owner, 2026-11-23: no "—%").
+    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('Slide to set');
 
     fireEvent.press(screen.getByTestId('warmup-option-1'));
     expect(screen.getByTestId('warmup-next').props.accessibilityState).toMatchObject({
@@ -211,11 +218,25 @@ describe('WarmupQuiz', () => {
     expect(useWarmupStore.getState().answers).toEqual([]);
 
     // The first ±5 steps from the coin flip, where the thumb rests (D49): −5
-    // sets 50%, the scale's floor.
+    // sets 45%, since the scale runs 0–100 now.
     fireEvent.press(screen.getByTestId('warmup-confidence-decrement'));
-    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('50%');
+    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('45%');
     expect(screen.getByTestId('warmup-next').props.accessibilityState).toMatchObject({
       disabled: false,
+    });
+  });
+
+  // The owner, 2026-11-23: a number under 50 is taken as said, nothing flipped.
+  it('records a number under 50 as said', async () => {
+    render(<WarmupQuiz />);
+    fireEvent.press(screen.getByTestId('warmup-option-1')); // correct
+    fireEvent.press(screen.getByTestId('warmup-confidence-decrement')); // 45
+    fireEvent.press(screen.getByTestId('warmup-confidence-decrement')); // 40
+    fireEvent.press(screen.getByTestId('warmup-confidence-decrement')); // 35
+    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('35%');
+    fireEvent.press(screen.getByTestId('warmup-next'));
+    await waitFor(() => {
+      expect(useWarmupStore.getState().answers).toEqual([{ confidence: 35, correct: true }]);
     });
   });
 
@@ -258,16 +279,17 @@ describe('WarmupQuiz', () => {
 
     // Empty again, not carried over and not preset.
     await waitFor(() => {
-      expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('—%');
+      expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('Slide to set');
     });
   });
 
-  it('holds confidence inside the 50–100 range', () => {
+  it('holds confidence inside the 0–100 range', () => {
     render(<WarmupQuiz />);
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 14; i++) {
       fireEvent.press(screen.getByTestId('warmup-confidence-decrement'));
     }
-    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('50%');
+    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('0%');
+    expect(screen.getByTestId('warmup-confidence-readout')).not.toHaveTextContent('-');
 
     for (let i = 0; i < 20; i++) {
       fireEvent.press(screen.getByTestId('warmup-confidence-increment'));

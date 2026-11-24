@@ -803,16 +803,29 @@ export type Direction = 'overconfident' | 'underconfident' | 'calibrated';
 // Warmup data is stored separately and NEVER mixed into real UserStat /
 // CategoryStat (CLAUDE.md Warmup Module).
 
-/** One answered Warmup question: a binary-choice item with a 50–100% confidence. */
+/**
+ * The coin flip on a two-choice question: 50%, no idea which is right. What an
+ * unreadable Warm-up or practice number falls back to; the same point an unset
+ * ConfidenceControl rests on (its own COIN_FLIP, D49). No longer the floor:
+ * the owner, 2026-11-23 ("The minimum should never be 50%"), the two-choice
+ * control runs 0–100 like Log's.
+ */
+export const TWO_CHOICE_COIN_FLIP = 50;
+
+/**
+ * One answered Warmup question: a two-choice item and the stated chance, 0–100,
+ * that the pick is right. A number under 50 says the pick is probably wrong; it
+ * is kept and scored as said, against whether the pick was right, and never
+ * flipped to the other option. Answers stored before 2026-11-23 run 50–100.
+ */
 export interface WarmupAnswer {
-  confidence: number; // 50–100 stated confidence (50 = coin flip on a 2-way choice)
+  confidence: number; // 0–100, the stated chance the pick is right (50 = coin flip)
   correct: boolean;   // whether the user's pick was right
 }
 
 /**
- * A Warmup quiz item. Two options, one right — a binary choice is what makes
- * 50% the honest floor of the confidence slider, since a coin flip already
- * gets you there.
+ * A Warmup quiz item. Two options, one right; the confidence given with a pick
+ * is the chance that pick is right (WarmupAnswer).
  */
 export interface WarmupQuestion {
   id: string;
@@ -995,7 +1008,10 @@ export interface PracticeAnswer {
   question: PracticeQuestion;
   picked: 0 | 1;
   correct: boolean;
-  /** 50–100, as in the Warmup: two options make 50% the floor. */
+  /**
+   * 0–100, as in the Warmup: the stated chance the pick is right, scored as
+   * said. Answers stored before 2026-11-23 run 50–100.
+   */
   confidence: number;
   answered_at: string;
 }

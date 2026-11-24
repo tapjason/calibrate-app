@@ -46,6 +46,7 @@ import {
 import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 import { MilestoneCard, milestoneCopy } from './MilestoneCard';
+import { sameDayHeadsUp } from './sameDayWarned';
 import { StreakCheckpointCard } from './StreakCheckpointCard';
 
 interface ResolvePromptProps {
@@ -105,61 +106,59 @@ interface ResolvePromptProps {
 }
 
 /**
- * "In your 60–80% range, 6 of 9 have happened." Counts, not a verdict, so it
+ * "At 60–80%, 6 of your 9 calls happened." Counts, not a verdict, so it
  * is honest below min-N — and it is the natural-frequency habit applied at the
  * moment it means most (DESIGN_SYSTEM §7.10).
  *
  * From MIN_BUCKET_N_FOR_VERDICT resolved, the range's own comparison follows
- * (roadmap step 58): "That's 52%, against the 48% you said." Calibration
+ * (roadmap step 58): "You said about 48% and got 52%." Calibration
  * feedback, said against what happened, is what moved forecasters' calibration
  * in the studies; bare outcomes barely did (research/confidence-2026-10.md
  * §6). Both numbers come from the engine's bucket, as on the Stats table.
+ * Worded by D76 (the voice pass, 2026-11-23).
  */
 export function bucketLine(bucket: BucketStat): string {
   const range = `${bucket.low}–${bucket.high}%`;
   const n = bucket.total_resolved;
-  if (n === 1) return `That's your first call in the ${range} range.`;
-  // "1 of 2 has", not "have": the verb follows the one that happened.
-  const verb = bucket.resolved_yes === 1 ? 'has' : 'have';
-  const counts = `In your ${range} range, ${bucket.resolved_yes} of ${n} ${verb} happened.`;
+  if (n === 1) return `That's your first call at ${range}.`;
+  const counts = `At ${range}, ${bucket.resolved_yes} of your ${n} calls happened.`;
   if (n < MIN_BUCKET_N_FOR_VERDICT) return counts;
   const happened = Math.round(bucket.actual_rate * 100);
   const said = Math.round(bucket.stated_confidence_mean);
-  // "on average": the said figure is the range's mean, and a blind tester
-  // who'd said 40% read "the 47% you said" as a misquote (2026-10-09).
-  return `${counts} That's ${happened}%, against the ${said}% you said on average.`;
+  // "about": the said figure is the range's mean, and a blind tester who'd
+  // said 40% read "the 47% you said" as a misquote (2026-10-09).
+  return `${counts} You said about ${said}% and got ${happened}%.`;
 }
 
 /**
  * The first yes/no answer ever gets this in place of the bucket line (roadmap
- * D18, refined 2026-10-09): one sentence on what the stated number means,
- * identical for Yes and No. A first "it happened" otherwise reads as "I was
- * right" (outcome bias, Baron & Hershey 1988), which isn't what 70% means.
+ * D18, refined 2026-10-09): what the stated number means, identical for Yes
+ * and No. A first "it happened" otherwise reads as "I was right" (outcome
+ * bias, Baron & Hershey 1988), which isn't what 70% means. In D76's words
+ * (the owner, 2026-11-23): "70% means right about 7 times in 10. It takes
+ * around 20 answers before we can tell how you're doing."
  */
 export function firstAnswerLine(confidence: number): string {
   return (
-    `That's your first. ${callOften(confidence)}, so one answer ` +
-    `can't say much; ${MIN_N_OVERALL} can.`
+    `That's your first. ${numberMeans(confidence)} ` +
+    `It takes around ${MIN_N_OVERALL} answers before we can tell how you're doing.`
   );
 }
 
 /**
- * "A 70% call should come true about 7 times in 10", with the right article.
- * The slider's own words for the number, so 85% reads "8 or 9 times in 10"
- * here too, not a flat 9 (blind playtest 2026-11-04, third round).
+ * "70% means right about 7 times in 10." The slider's own words for the
+ * number, so 85% reads "8 or 9 times in 10" here too, not a flat 9 (blind
+ * playtest 2026-11-04, third round). Under 50% it says "it happens": "right"
+ * on a call someone thinks won't happen reads the other way round.
  */
-function callOften(confidence: number): string {
-  const often =
-    confidence >= 100
-      ? 'should always come true'
-      : confidence <= 0
-        ? 'should never come true'
-        : confidence === 50
-          ? 'should come true half the time'
-          : `should come true ${naturalFrequencyFor(confidence)}`;
-  // "An 8%", "an 11%", "an 18%", "an 80–89%": said aloud, they start with a vowel.
-  const article = /^(8|11|18|8\d)$/.test(String(confidence)) ? 'An' : 'A';
-  return `${article} ${confidence}% call ${often}`;
+function numberMeans(confidence: number): string {
+  if (confidence >= 100) return '100% means right every time.';
+  if (confidence <= 0) return '0% means it never happens.';
+  if (confidence === 50) return '50% means right half the time.';
+  const often = naturalFrequencyFor(confidence);
+  return confidence > 50
+    ? `${confidence}% means right ${often}.`
+    : `${confidence}% means it happens ${often}.`;
 }
 
 /**
@@ -171,11 +170,11 @@ function callOften(confidence: number): string {
  */
 export function meaningLine(confidence: number): string | null {
   if (confidence <= 0 || confidence >= 100) return null;
-  return `${callOften(confidence)}: one that doesn't isn't a mistake, and one that does isn't proof.`;
+  return `${numberMeans(confidence)} A miss isn't a mistake, and a hit isn't proof.`;
 }
 
 /** Why one answer only nudges the rating: said once per answer run. */
-export const RATING_WHY = 'One answer nudges it either way; the pattern over many is what counts.';
+export const RATING_WHY = 'One answer only nudges it. The pattern is what counts.';
 
 /**
  * Once the rating is unlocked, what this answer did to it, the same for Yes
@@ -186,7 +185,7 @@ export function ratingChangeLine(before: number, after: number, explain = true):
   const move =
     before === after
       ? `Your rating stays at ${after}.`
-      : `Your rating moved from ${before} to ${after}.`;
+      : `Your rating went from ${before} to ${after}.`;
   // Once a run has said why, the move alone: three in a row read as wallpaper
   // (blind playtest 2026-11-13b, run 3).
   return explain ? `${move} ${RATING_WHY}` : move;
@@ -210,16 +209,16 @@ function shownRating(): number | null {
  * clears it so a later screen doesn't celebrate the same answer again.
  */
 /**
- * After a same-day answer (roadmap D41), in place of the range's record, as
- * advice beside "Log it again" (D56): the button sat under "Answered the day
- * you logged it, so it isn't scored" and nothing tied the two together, so a
+ * After a same-day answer (roadmap D41), in place of the range's record,
+ * beside "Log it again" (D56): the button sat under "Answered the day you
+ * logged it, so it isn't scored" and nothing tied the two together, so a
  * tester tapped Done and retyped his walk (blind playtest 2026-11-10, run 2).
+ * Short since D76 (the voice pass, 2026-11-23): the rule was said once, before
+ * the answer, and the button sits right under it.
  */
-export const SAME_DAY_LINE =
-  'Not scored: you logged it today. Log the next one now, and its answer is scored from tomorrow.';
+export const SAME_DAY_LINE = 'Saved, but not scored, since you logged it today.';
 /** The same for a prediction whose words changed today (D45). */
-export const SAME_DAY_REWORDED_LINE =
-  'Not scored: you changed its words today. Log the next one now, and its answer is scored from tomorrow.';
+export const SAME_DAY_REWORDED_LINE = 'Saved, but not scored, since you reworded it today.';
 
 const isSameDayLine = (line: string | null) =>
   line === SAME_DAY_LINE || line === SAME_DAY_REWORDED_LINE;
@@ -936,13 +935,7 @@ export function ResolvePrompt({
       {/* Not when Answer it now's confirmation said it a moment ago (D56). */}
       {answerNowIsSameDay(prediction) && !sameDayWarned && (
         <Text style={styles.sameDayNote} testID="resolve-same-day">
-          {(rewordedLater(prediction)
-            ? 'You changed its words today, so an answer today isn’t scored. '
-            : 'You logged this today, so an answer today isn’t scored. ') +
-            // No word of the streak while it's off in You (step 173).
-            (streakShown
-              ? 'It still keeps your streak, and from tomorrow it counts.'
-              : 'From tomorrow it counts.')}
+          {sameDayHeadsUp(rewordedLater(prediction))}
         </Text>
       )}
 

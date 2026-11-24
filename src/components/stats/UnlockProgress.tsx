@@ -13,7 +13,8 @@ interface UnlockProgressProps {
   nextDue?: string | null;
   /**
    * Before anything has resolved, when the first answer comes (roadmap D30),
-   * shown above the bar so the nearest thing comes first. Null otherwise.
+   * a sentence ("Your first answer lands tomorrow evening."), shown above the
+   * bar so the nearest thing comes first. Null otherwise.
    */
   lead?: string | null;
   /** When it could unlock at the recent pace (roadmap D53), or null. */
@@ -36,6 +37,13 @@ interface UnlockProgressProps {
  *
  * A stand-in for the ring the design system describes: same three states,
  * drawn with Views so it renders identically on web for screenshots.
+ *
+ * One line of words with it (D76, the voice pass, 2026-11-23; it was three:
+ * "Your first answer: tomorrow evening" / "0 of 20 scored, 1 on its way" /
+ * "20 more scored answers and your score unlocks."). Before the first answer,
+ * above the bar: "Your first answer lands tomorrow evening. 20 answers unlock
+ * your score." After it, below: "15 more scored answers unlock your score.",
+ * with when the next one comes due. The bar draws what's scored and on its way.
  */
 export function UnlockProgress({
   resolved,
@@ -51,12 +59,12 @@ export function UnlockProgress({
   const onTheWay = Math.min(pending, total - done);
   const toGo = total - done;
 
-  const summary = [
-    `${done} of ${total} scored`,
-    onTheWay > 0 ? `${onTheWay} on ${onTheWay === 1 ? 'its' : 'their'} way` : null,
-  ]
-    .filter(Boolean)
-    .join(', ');
+  // Before the first answer the owner's words (D76) say "answers"; after it,
+  // the count is of scored ones, and says so.
+  const unlocks = lead
+    ? `${toGo} ${toGo === 1 ? 'answer unlocks' : 'answers unlock'} your score.`
+    : `${toGo} more scored ${toGo === 1 ? 'answer unlocks' : 'answers unlock'} your score.`;
+  const line = lead ? `${lead} ${unlocks}` : `${unlocks}${nextDue ? ` ${nextDue}` : ''}`;
 
   return (
     <View
@@ -64,13 +72,13 @@ export function UnlockProgress({
       testID={testID}
       accessible
       accessibilityRole="progressbar"
-      accessibilityLabel={`Calibrating. ${lead ? `${lead}. ` : ''}${summary}.${firstLook ? ` ${firstLook}` : ''}${estimate ? ` ${estimate}` : ''}`}
+      accessibilityLabel={`Calibrating. ${line}${firstLook ? ` ${firstLook}` : ''}${estimate ? ` ${estimate}` : ''}`}
       accessibilityValue={{ min: 0, max: total, now: done }}
     >
       <Text style={styles.title}>Calibrating</Text>
       {lead && (
         <Text style={styles.lead} testID={testID ? `${testID}-lead` : undefined}>
-          {lead}
+          {line}
         </Text>
       )}
       <View style={styles.bar}>
@@ -84,11 +92,11 @@ export function UnlockProgress({
           />
         ))}
       </View>
-      <Text style={styles.summary}>{summary}</Text>
-      <Text style={styles.caption}>
-        {toGo} more scored {toGo === 1 ? 'answer' : 'answers'} and your score unlocks.
-        {nextDue ? ` ${nextDue}` : ''}
-      </Text>
+      {!lead && (
+        <Text style={styles.summary} testID={testID ? `${testID}-line` : undefined}>
+          {line}
+        </Text>
+      )}
       {firstLook && (
         <Text style={styles.firstLook} testID={testID ? `${testID}-first-look` : undefined}>
           {firstLook}

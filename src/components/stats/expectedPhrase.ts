@@ -10,6 +10,7 @@
  */
 export function expectedPhrase(expected: number): string {
   const half = Math.round(expected * 2) / 2;
+  if (expected === 0) return 'none';
   if (half < 1) return 'less than\u00A01';
   if (expected < 10 && half % 1 !== 0) {
     const lo = Math.floor(half);

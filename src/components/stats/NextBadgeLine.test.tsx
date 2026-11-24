@@ -41,11 +41,31 @@ describe('NextBadgeLine', () => {
     });
     const onPress = jest.fn();
     render(<NextBadgeLine onPress={onPress} />);
+    // D76: Today's own words, aloud as on screen.
     expect(screen.getByTestId('home-next-badge')).toHaveTextContent(
-      'To reach Tracker or higher in health: 3 more scored answers.',
+      '3 more scored answers to your first badge in health.',
+    );
+    expect(screen.getByTestId('home-next-badge').props.accessibilityLabel).toBe(
+      '3 more scored answers to your first badge in health.',
     );
     fireEvent.press(screen.getByTestId('home-next-badge'));
     expect(onPress).toHaveBeenCalled();
+  });
+
+  it('says a score gate with room to spare, and the low-end rule stays behind the tap', () => {
+    // The words only: the line shows while no category has a badge, so a
+    // score gate is rare here, and the state is made up to reach it.
+    useStatsStore.setState({
+      userStat: user,
+      categoryStats: [{ ...stat('work', 25), calibration_score: 64.8, badge_level: 'guesser' }],
+      nextBadges: { work: { badge: 'forecaster', needResolved: 20, needScore: 70 } },
+      categoryRanges: { work: { giveOrTake: 5 } as never },
+    });
+    render(<NextBadgeLine onPress={jest.fn()} />);
+    expect(screen.getByTestId('home-next-badge')).toHaveTextContent(
+      "Forecaster in work needs a score that clears 70 with room to spare. You're at 64.",
+    );
+    expect(screen.getByTestId('home-next-badge')).not.toHaveTextContent(/give or take|low end/);
   });
 
   it('says nothing once a category has a badge (the identity line speaks)', () => {

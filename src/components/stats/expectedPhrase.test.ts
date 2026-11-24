@@ -3,6 +3,10 @@ import { expectedPhrase } from './expectedPhrase';
 // The words for an expected count, on Wrapped, practice, the chart's headline
 // and its counts table alike (roadmap D57).
 describe('expectedPhrase', () => {
+  it('says "none" for exactly 0', () => {
+    expect(expectedPhrase(0)).toBe('none');
+  });
+
   it('says "less than 1" below a half', () => {
     expect(expectedPhrase(0.4)).toBe('less than\u00A01');
   });

@@ -3,13 +3,10 @@ import { useEffect, useState } from 'react';
 import {
   askForReminders,
   reminderPermission,
-  reminderTimeFor,
   type ReminderPermission,
 } from '@/notifications/permission';
-import { localDate } from '@/components/ui/dates';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import type { Prediction } from '@/types';
 
 import { ReminderPromptCard } from './ReminderPromptCard';
 
@@ -62,24 +59,6 @@ export function shouldShowReminderPrompt(input: {
 }
 
 /**
- * The day of the soonest reminder still ahead, as "Tue, Oct 6", or null.
- * Reminders fire in the evening of the due day (roadmap D9), so one due at
- * noon today still counts until the evening.
- */
-export function firstReminderDay(pending: readonly Prediction[], now: Date): string | null {
-  const next = pending
-    .map((p) => reminderTimeFor(p.due_date).getTime())
-    .filter((t) => !Number.isNaN(t) && t > now.getTime())
-    .sort((a, b) => a - b)[0];
-  if (next === undefined) return null;
-  return localDate(new Date(next), {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }, now);
-}
-
-/**
  * Home's reminder prompt: reads the permission without asking, and shows the
  * card when it should. The system alert appears only from its button.
  */
@@ -128,8 +107,8 @@ export function ReminderPrompt() {
   };
 
   return (
+    // No first date (D76): the card asks about the time, not the day.
     <ReminderPromptCard
-      firstDue={firstReminderDay(pending, now)}
       busy={busy}
       onAllow={() => void allow()}
       onDismiss={() => void useSettingsStore.getState().dismissReminderPrompt()}

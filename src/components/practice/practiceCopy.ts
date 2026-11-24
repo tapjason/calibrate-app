@@ -26,9 +26,9 @@ export function practiceCardCopy(
   tally: PracticeDayTally,
   total: number,
   /**
-   * Nothing real answered yet (D62): the row says it's something with answers
-   * today, while the first prediction waits for its day (blind playtest
-   * 2026-11-13d, finding 4).
+   * Nothing real answered yet (D62): the title says "While you wait", while
+   * the first prediction waits for its day (blind playtest 2026-11-13d,
+   * finding 4).
    */
   beforeFirstAnswer = false,
 ): PracticeCardCopy {
@@ -39,10 +39,12 @@ export function practiceCardCopy(
   }
   const waiting = beforeFirstAnswer && tally.answered === 0;
   const title = waiting ? 'While you wait: today’s practice' : 'Today’s practice';
-  const detail = waiting
-    ? `${total} questions, answers today, about 30\u00A0seconds`
-    : tally.answered === 0
-      ? `${total} questions, about 30\u00A0seconds`
+  // The voice pass's words (2026-11-23), waiting or not: the title says
+  // "While you wait", so "answers today" (D62) went with the text load. No
+  // full stop at the end, like the row's other details.
+  const detail =
+    tally.answered === 0
+      ? `${total} quick questions. About 30\u00A0seconds`
       : `${tally.answered} of ${total} answered`;
   const action = tally.answered === 0 ? 'Start' : 'Continue';
   return { title, detail, action, spoken: `${title}. ${detail}.`, done: false };
@@ -91,6 +93,6 @@ export function practiceRecordCopy(record: PracticeRecord): { headline: string; 
   };
 }
 
-/** The line that keeps practice in its place. */
+/** The line that keeps practice in its place (voice pass, 2026-11-23). */
 export const PRACTICE_APART =
-  'Practice stays apart from your calibration rating, your badges and your streak.';
+  'Practice is just practice. It doesn’t touch your rating, badges or streak.';

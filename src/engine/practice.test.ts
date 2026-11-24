@@ -233,6 +233,15 @@ describe('practiceDayTally', () => {
       expected: expect.closeTo(2.4, 5),
     });
   });
+
+  // 0–100 since 2026-11-23: a number under 50 counts as said.
+  it('counts a stated chance under 50 as said', () => {
+    expect(practiceDayTally([answer(30, true), answer(20, false), answer(45, true)])).toEqual({
+      answered: 3,
+      correct: 2,
+      expected: expect.closeTo(0.95, 5),
+    });
+  });
 });
 
 describe('scorePractice', () => {
@@ -271,6 +280,37 @@ describe('scorePractice', () => {
     });
     expect(record.buckets).toHaveLength(1);
     expect(record.buckets[0]).toMatchObject({ low: 80, total_resolved: 20, resolved_yes: 12 });
+  });
+
+  // The owner, 2026-11-23: the control runs 0–100, and a number under 50 is
+  // the stated chance the pick is right, read as said, never flipped.
+  describe('confidences under 50', () => {
+    it('reads 20 at 30% with 6 right as no lean, charted at 20–40%', () => {
+      const record = scorePractice(Array.from({ length: 20 }, (_, i) => answer(30, i < 6)));
+      expect(record).toMatchObject({ mean_confidence: 30, accuracy: 0.3, direction: 'calibrated' });
+      expect(record.buckets).toHaveLength(1);
+      expect(record.buckets[0]).toMatchObject({ low: 20, total_resolved: 20, resolved_yes: 6 });
+    });
+
+    it('reads 20 at 30% with 12 right as underconfident (luck gives 3 to 9)', () => {
+      const record = scorePractice(Array.from({ length: 20 }, (_, i) => answer(30, i < 12)));
+      expect(record.direction).toBe('underconfident');
+    });
+
+    it('reads a mixed set across 50 in its own ranges', () => {
+      // Ten at 20% (2 right) and ten at 70% (7 right): 45% said, 45% right.
+      const record = scorePractice([
+        ...Array.from({ length: 10 }, (_, i) => answer(20, i < 2)),
+        ...Array.from({ length: 10 }, (_, i) => answer(70, i < 7)),
+      ]);
+      expect(record.mean_confidence).toBe(45);
+      expect(record.accuracy).toBeCloseTo(0.45, 9);
+      expect(record.direction).toBe('calibrated');
+      expect(record.buckets.map((b) => [b.low, b.total_resolved, b.resolved_yes])).toEqual([
+        [20, 10, 2],
+        [60, 10, 7],
+      ]);
+    });
   });
 });
 

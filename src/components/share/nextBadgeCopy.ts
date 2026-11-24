@@ -1,5 +1,6 @@
-// Presentation helper for the "next badge" line on Calibration Wrapped. Pure
-// and testable, like wrappedCopy.ts.
+// Presentation helper for the "next badge" line on Calibration Wrapped and on
+// Today (NextBadgeLine, in its own words since D76). Pure and testable, like
+// wrappedCopy.ts.
 //
 // The badge criteria and each category's next target are computed upstream
 // (evaluateBadge / nextBadge in the engine, via statsStore.nextBadges). This
@@ -20,8 +21,19 @@ export interface BadgeProgress {
   badge: BadgeLevel;
   /** Display label of the badge being worked toward, e.g. "Tracker". */
   badgeLabel: string;
-  /** "Tracker in health: 3 to go". */
+  /**
+   * The recap card's words: "To reach Tracker or higher in health: 3 more
+   * scored answers". Led by "To reach", since on a shared card a line led by
+   * the tier read as a claim to it (record audit 2026-11-12).
+   */
   text: string;
+  /**
+   * Today's words (D76, the voice pass, 2026-11-23), a full sentence or two:
+   * "3 more scored answers to your first badge in health.", "Forecaster in
+   * work needs a score that clears 70 with room to spare. You're at 64." The
+   * low-end rule and the give-or-take are behind the line's tap, at Badges.
+   */
+  line: string;
   /**
    * Share of the resolution requirement met, 0–1. Null when the next badge is
    * gated on score rather than on resolutions — a score isn't a distance you
@@ -83,14 +95,23 @@ export function nextBadgeProgress(
     // that resolving can't earn (roadmap step 47). Only the threshold is
     // printed, never the score itself.
     const scoreShort = next.needScore !== null && low(stat) <= next.needScore;
+    const label = categoryLabel(stat.category);
+    const answers = `${remaining} more scored ${remaining === 1 ? 'answer' : 'answers'}`;
     return {
       category: stat.category,
       badge: next.badge,
       badgeLabel,
+      // Today (D76). The first badge is named as the first, not as "Tracker
+      // or higher": at 20 a category can go straight to Forecaster.
+      line: scoreShort
+        ? `${badgeLabel} in ${label} needs ${answers} and a score that clears ${next.needScore} with room to spare.`
+        : next.badge === 'tracker'
+          ? `${answers} to your first badge in ${label}.`
+          : `${answers} to ${badgeLabel} in ${label}.`,
       text: scoreShort
         ? // "To reach": on a shared card "Sharp in work: …" read as a claim
           // to be Sharp in work (blind playtest 2026-11-05, run 5).
-          `To reach ${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} more scored ${remaining === 1 ? 'answer' : 'answers'} and a score above ${next.needScore} at its low end`
+          `To reach ${badgeLabel} in ${label}: ${answers} and a score above ${next.needScore} at its low end`
         : // "of what" (blind playtest 2026-11-12e, run 3: with two guesses
           // logged, "20 to go" read as if they hadn't been counted), and "To
           // reach" as the score-short line has it: on a shared card a line
@@ -99,7 +120,7 @@ export function nextBadgeProgress(
           // already clears 70 at its low end goes straight to Forecaster, and
           // "Tracker, 1 more" then read as a broken promise (blind playtest
           // 2026-11-13, run 8; Insights says it since step 172).
-          `To reach ${badgeLabel}${next.badge === 'tracker' ? ' or higher' : ''} in ${categoryLabel(stat.category)}: ${remaining} more scored ${remaining === 1 ? 'answer' : 'answers'}`,
+          `To reach ${badgeLabel}${next.badge === 'tracker' ? ' or higher' : ''} in ${label}: ${answers}`,
       progress: stat.predictions_resolved / (next.needResolved as number),
     };
   }
@@ -123,13 +144,15 @@ export function nextBadgeProgress(
     const spread = giveOrTake[stat.category] ?? 0;
     // One rule, said one way (blind playtest 2026-11-04): the score with its
     // give-or-take, since the low end is what has to clear the bar.
+    const now = Math.floor(stat.calibration_score);
     return {
       category: stat.category,
       badge: next.badge,
       badgeLabel,
-      text: `To reach ${badgeLabel} in ${categoryLabel(stat.category)}: a score above ${next.needScore} at its low end (now ${Math.floor(
-        stat.calibration_score,
-      )}${spread > 0 ? `, give or take ${spread}` : ''})`,
+      // Today (D76): "with room to spare" carries the low end; the rule and
+      // the give-or-take are at Badges, where the line's tap goes.
+      line: `${badgeLabel} in ${categoryLabel(stat.category)} needs a score that clears ${next.needScore} with room to spare. You're at ${now}.`,
+      text: `To reach ${badgeLabel} in ${categoryLabel(stat.category)}: a score above ${next.needScore} at its low end (now ${now}${spread > 0 ? `, give or take ${spread}` : ''})`,
       progress: null,
     };
   }

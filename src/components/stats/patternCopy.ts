@@ -9,22 +9,28 @@ import type { BadgeLevel, BucketStat } from '@/types';
 import { categoryTitle } from '@/store/categoryStore';
 
 /**
- * "Furthest off: finance. You said about 85%, and 9 of 21 happened. About 45%
- * would have matched." The number that would have matched is what happened,
- * to the nearest 5, said about the past: a power user wanted it plainly with
- * a number to aim for (blind playtest 2026-11-01, run 3).
+ * "Furthest off: finance. You said about 85%, and 9 of 21 happened." The
+ * line Insights shows (roadmap D37); what would have matched and how it fits
+ * the badge sit behind a tap on it since D76 (`furthestOffDetail`).
  */
 export function furthestOffLine(
   miss: CategoryMiss,
-  badge?: FurthestOffBadge | null,
   /** The name to show, when a screen hides it (D62); else its title. */
   name: string = categoryTitle(miss.category),
 ): string {
   const said = Math.round(miss.mean_stated);
-  const matched = matchedPercent(miss.actual_rate);
-  const line =
-    `Furthest off: ${name}. You said about ${said}%, and ${miss.happened} of ` +
-    `${miss.resolved} happened. About ${matched}% would have matched.`;
+  return `Furthest off: ${name}. You said about ${said}%, and ${miss.happened} of ${miss.resolved} happened.`;
+}
+
+/**
+ * "About 45% would have matched." and, beside a badge, how the two fit. The
+ * number that would have matched is what happened, to the nearest 5, said
+ * about the past: a power user wanted it plainly with a number to aim for
+ * (blind playtest 2026-11-01, run 3). Behind a tap on the furthest-off line
+ * since D76, in the words it had.
+ */
+export function furthestOffDetail(miss: CategoryMiss, badge?: FurthestOffBadge | null): string {
+  const line = `About ${matchedPercent(miss.actual_rate)}% would have matched.`;
   return badge ? `${line} ${badgeClause(badge)}` : line;
 }
 
@@ -58,7 +64,8 @@ function badgeClause({ level, score, giveOrTake }: FurthestOffBadge): string {
 /**
  * "Up 2 since last week, from 6 answers, within its give-or-take." Nothing free
  * showed change over time; the give-or-take beside it says when a change is
- * no more than luck could make.
+ * no more than luck could make. In How scoring works since D76; Insights'
+ * page shows the news alone (`weekChangeShortLine`).
  */
 export function weekChangeLine(change: WeekChange, giveOrTake: number): string {
   const delta = change.now - change.before;

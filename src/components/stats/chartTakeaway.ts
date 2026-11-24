@@ -2,8 +2,8 @@
 //
 // DESIGN_SYSTEM §7.2: the chart's title is its takeaway ("You're
 // overconfident at 80–100%"), and the subtitle says it in natural frequencies
-// ("Of 12 things you called 80–100% likely, 7 happened"). People read a
-// sentence before they read a plot.
+// ("You called 12 things 80–100% likely. 7 happened.", worded for D76). People
+// read a sentence before they read a plot.
 //
 // A verdict is only drawn from a bucket with enough in it to mean something.
 // Direction comes from the engine (`BucketStat.direction`); this file only
@@ -37,7 +37,11 @@ export function rangeLabel(b: Pick<BucketStat, 'low' | 'high'>): string {
   return `${b.low}–${b.high}%`;
 }
 
-/** "Of 12 things you called 80–100% likely, 7 happened", without the stop. */
+/**
+ * "Of 12 things you called 80–100% likely, 7 happened", without the stop. The
+ * both-sides subtitle's form, which says what would have matched for each
+ * side (D57) and keeps its words.
+ */
 function counted(b: BucketStat): string {
   const n = b.total_resolved;
   const things = n === 1 ? 'thing' : 'things';
@@ -45,9 +49,22 @@ function counted(b: BucketStat): string {
   return `Of ${n} ${things} you called ${rangeLabel(b)} likely, ${happened} happened`;
 }
 
-/** "Of 12 things you called 80–100% likely, 7 happened." */
+/** "You called 12 things 80–100% likely." (D76) */
+function called(b: BucketStat): string {
+  const n = b.total_resolved;
+  return `You called ${n} ${n === 1 ? 'thing' : 'things'} ${rangeLabel(b)} likely.`;
+}
+
+/** "7 happened", "All 3 happened", and for one, "It happened" or "It didn't happen". */
+function happenedWords(b: BucketStat): string {
+  const n = b.total_resolved;
+  if (n === 1) return b.resolved_yes === 1 ? 'It happened' : "It didn't happen";
+  return b.resolved_yes === n ? `All ${n} happened` : `${b.resolved_yes} happened`;
+}
+
+/** "You called 12 things 80–100% likely. 7 happened." (D76) */
 export function naturalFrequency(b: BucketStat): string {
-  return `${counted(b)}.`;
+  return `${called(b)} ${happenedWords(b)}.`;
 }
 
 /**
@@ -174,7 +191,9 @@ export function chartVerdict(
         : one
           ? `No clear lean at ${rangeLabel(shown)}`
           : 'No clear lean overall yet',
-      subtitle: `${counted(shown)}; your numbers expected ${expectedPhrase(shown.expected_yes)}.`,
+      // "You called 21 things 60–80% likely. 12 happened, and you'd expect
+      // about 14." (D76)
+      subtitle: `${called(shown)} ${happenedWords(shown)}, and you'd expect ${expectedPhrase(shown.expected_yes)}.`,
       lean: 'calibrated',
     };
   }

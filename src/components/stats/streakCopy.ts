@@ -99,6 +99,9 @@ export function checkpointCopy(
   return { title, body, spoken: `${localCount(days)}-day streak. ${title}. ${body}` };
 }
 
+/** The streak's length from which "A rest day comes with day 7" is said (D76). */
+const REST_LINE_FROM = 3;
+
 /**
  * What the reserve says today: a rest day just spent comes first (that's the
  * one the person needs to hear), then one just saved, then what's saved, then
@@ -123,6 +126,9 @@ function restLine(status: StreakStatus): string | null {
     return restDays > 1 ? 'Today saved a second rest day' : 'Today saved a rest day';
   }
   if (restDays > 0) return saved(restDays);
+  // Not before day 3 (D76; the text-load run, 2026-11-22): on a first day
+  // the promise of a rest day at day 7 was one more line before it mattered.
+  if (streak < REST_LINE_FROM) return null;
   return nextRestAt === null ? null : `A rest day comes with day\u00A0${localCount(nextRestAt)}`;
 }
 
@@ -138,7 +144,9 @@ function endedCopy(ended: NonNullable<StreakStatus['ended']>): StreakCopy {
       ? 'yesterday'
       : `on ${localDate(new Date(ended.on), { weekday: 'long' })}`;
   const headline = `Your ${localCount(ended.days)}-day streak ended ${when}`;
-  const detail = 'No rest day was left to cover it. One prediction today starts a new one';
+  // Why it ended (no rest day left) is said under Your streak in How
+  // scoring works (D76): here, only the fresh start.
+  const detail = 'One prediction today starts a new one';
   return {
     headline,
     // The streak that ended: the row keeps its sentence and draws no figure.

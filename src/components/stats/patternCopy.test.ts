@@ -1,19 +1,31 @@
 import type { BucketStat, Direction } from '@/types';
 
-import { coachSample, furthestOffLine, weekChangeLine } from './patternCopy';
+import { coachSample, furthestOffDetail, furthestOffLine, weekChangeLine } from './patternCopy';
 
 describe('furthestOffLine (roadmap D37)', () => {
-  it('names the category, what was said, what happened and what would have matched', () => {
-    expect(
-      furthestOffLine({
-        category: 'finance',
-        resolved: 21,
-        happened: 9,
-        mean_stated: 84.7,
-        actual_rate: 9 / 21,
-        direction: 'overconfident',
-      }),
-    ).toBe('Furthest off: Finance. You said about 85%, and 9 of 21 happened. About 45% would have matched.');
+  const finance = {
+    category: 'finance' as const,
+    resolved: 21,
+    happened: 9,
+    mean_stated: 84.7,
+    actual_rate: 9 / 21,
+    direction: 'overconfident' as const,
+  };
+
+  // D76: the page keeps what was said and what happened.
+  it('names the category, what was said and what happened', () => {
+    expect(furthestOffLine(finance)).toBe(
+      'Furthest off: Finance. You said about 85%, and 9 of 21 happened.',
+    );
+    expect(furthestOffLine(finance, 'Your own category')).toBe(
+      'Furthest off: Your own category. You said about 85%, and 9 of 21 happened.',
+    );
+  });
+
+  // D76: what would have matched moves behind a tap, in its own words.
+  it('keeps what would have matched for the detail', () => {
+    expect(furthestOffLine(finance)).not.toMatch(/would have matched/);
+    expect(furthestOffDetail(finance)).toBe('About 45% would have matched.');
   });
 });
 
@@ -104,15 +116,16 @@ describe('furthestOffLine with the badge it sits beside', () => {
     direction: 'overconfident' as const,
   };
   it('says the gap is already in the score, which still clears the tier', () => {
-    expect(furthestOffLine(miss, { level: 'forecaster', score: 80, giveOrTake: 6 })).toBe(
-      'Furthest off: Health. You said about 88%, and 15 of 22 happened. About 70% would have matched. That gap is already in its score, 80, which still clears Forecaster\'s 70 at its low end.',
+    expect(furthestOffLine(miss)).toBe('Furthest off: Health. You said about 88%, and 15 of 22 happened.');
+    expect(furthestOffDetail(miss, { level: 'forecaster', score: 80, giveOrTake: 6 })).toBe(
+      'About 70% would have matched. That gap is already in its score, 80, which still clears Forecaster\'s 70 at its low end.',
     );
   });
   it('says why it is only Tracker', () => {
-    expect(furthestOffLine(miss, { level: 'tracker', score: 64, giveOrTake: 6 })).toMatch(
+    expect(furthestOffDetail(miss, { level: 'tracker', score: 64, giveOrTake: 6 })).toMatch(
       / Its score, 64, give or take 6, isn't above 70 at its low end yet, so it's Tracker, which counts answers only\.$/,
     );
-    expect(furthestOffLine(miss, { level: 'tracker', score: 64, giveOrTake: 0 })).toMatch(
+    expect(furthestOffDetail(miss, { level: 'tracker', score: 64, giveOrTake: 0 })).toMatch(
       / Its score, 64, isn't above 70/,
     );
   });

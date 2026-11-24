@@ -65,7 +65,11 @@ export function scoringSections(): ScoringSection[] {
       title: 'What the score measures',
       paragraphs: [
         'How closely your confidence matches what happens. At 100, the things you call 70% likely happen 7 times in 10, and the things you call 90% likely happen 9 times in 10.',
-        "It isn't about being right. A 60% call that doesn't happen isn't a mistake: about 4 in 10 of them shouldn't happen.",
+        "It isn't about being right. If you say 60%, about 4 in 10 should miss.",
+        // The Warm-up's bridge says where people are most overconfident; the
+        // study behind it lives here since D76 (Buehler, Griffin & Ross 1994:
+        // 33.9 days predicted, 55.5 taken).
+        'People are most overconfident about their own plans. In one study, students who expected to finish a big school project in 34 days took 56.',
       ],
     },
     {

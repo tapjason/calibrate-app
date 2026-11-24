@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedProps,
   useReducedMotion,
@@ -18,7 +18,7 @@ import Svg, {
 } from 'react-native-svg';
 
 import { haptics } from '@/components/ui/haptics';
-import { colors, svgFontFamily, type } from '@/constants/theme';
+import { colors, space, svgFontFamily, type } from '@/constants/theme';
 import { MIN_N_BAND, type BucketStat, type Direction } from '@/types';
 
 import { describeCalibrationCurve } from './chartDescription';
@@ -156,6 +156,8 @@ export function CalibrationChart({
   const reduceMotion = useReducedMotion();
   const animate = animateIn && !reduceMotion;
   const [width, setWidth] = useState(0);
+  // The key is folded behind a toggle (owner, 2026-11-23: 85 words under the chart).
+  const [showKey, setShowKey] = useState(false);
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
   const height = width;
@@ -230,8 +232,8 @@ export function CalibrationChart({
   const tickGapY = (bottom - top) / (TICKS.length - 1);
 
   return (
+    <View style={styles.wrap}>
     <View
-      style={styles.wrap}
       onLayout={onLayout}
       testID="calibration-chart"
       accessible
@@ -482,7 +484,23 @@ export function CalibrationChart({
           </Svg>
         </View>
       ) : null}
+    </View>
 
+      {/* The key sits outside the chart's one accessible element, so its
+          button stays reachable. */}
+      <Pressable
+        onPress={() => setShowKey((v) => !v)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: showKey }}
+        aria-expanded={showKey}
+        hitSlop={8}
+        style={styles.keyToggle}
+        testID="chart-key-toggle"
+      >
+        <Text style={styles.keyToggleText}>{showKey ? 'Hide' : 'How to read this chart'}</Text>
+      </Pressable>
+      {showKey && (
+      <>
       {/* The key names only what's drawn: the ghost chart has no bars yet
           (roadmap step 68). */}
       <Text style={styles.caption} testID="chart-caption">
@@ -501,6 +519,8 @@ export function CalibrationChart({
           ' A grey dot has fewer than 10 answers, too few to read yet.'}
         {captionNote ? ` ${captionNote}` : null}
       </Text>
+      </>
+      )}
     </View>
   );
 }
@@ -510,6 +530,8 @@ const styles = StyleSheet.create({
   // would push everything else below the fold.
   wrap: { width: '100%', maxWidth: 480, alignSelf: 'center' },
   caption: { ...type.footnote, color: colors.textSecondary, marginTop: 4 },
+  keyToggle: { alignSelf: 'flex-start', marginTop: space.xs, paddingVertical: space.xs },
+  keyToggleText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
 });
 
 /** The connecting line, drawn in by animating its dash offset. */

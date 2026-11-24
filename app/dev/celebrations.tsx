@@ -116,7 +116,7 @@ export default function DevCelebrationsScreen() {
 
         {/* Native-only cards, previewed here because web never shows them. */}
         <Text style={styles.title}>Other cards</Text>
-        <ReminderPromptCard firstDue="Tue, Oct 6" onAllow={() => {}} onDismiss={() => {}} />
+        <ReminderPromptCard onAllow={() => {}} onDismiss={() => {}} />
         {/* The practice sheet's reminder offer (roadmap step 89), and after a choice. */}
         <PracticeReminderOfferCard onChoose={() => {}} onDismiss={() => {}} />
         <PracticeReminderOfferCard onChoose={() => {}} onDismiss={() => {}} confirmation="Set for 8:00 AM." />

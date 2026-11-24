@@ -40,6 +40,7 @@ describe('nextBadgeProgress', () => {
       badge: 'tracker',
       badgeLabel: 'Tracker',
       text: 'To reach Tracker or higher in health: 3 more scored answers',
+      line: '3 more scored answers to your first badge in health.',
       progress: 17 / 20,
     });
   });
@@ -95,6 +96,7 @@ describe('nextBadgeProgress', () => {
       badge: 'forecaster',
       badgeLabel: 'Forecaster',
       text: 'To reach Forecaster in work: a score above 70 at its low end (now 64)',
+      line: "Forecaster in work needs a score that clears 70 with room to spare. You're at 64.",
       progress: null,
     });
   });
@@ -106,6 +108,37 @@ describe('nextBadgeProgress', () => {
 
   it('says nothing at the top of the ladder', () => {
     expect(progressFor([stat('health', 120, 95)])).toBeNull();
+  });
+});
+
+// D76 (the voice pass, 2026-11-23): Today's own words. The recap card keeps
+// its "To reach" line, led away from the tier (record audit 2026-11-12).
+describe("nextBadgeProgress, Today's line", () => {
+  it('names the first badge as the first, never a tier it might skip', () => {
+    expect(progressFor([stat('work', 16, 60)])?.line).toBe(
+      '4 more scored answers to your first badge in work.',
+    );
+    expect(progressFor([stat('work', 19, 60)])?.line).toBe(
+      '1 more scored answer to your first badge in work.',
+    );
+  });
+
+  it('names a higher tier when only answers are short', () => {
+    expect(progressFor([stat('work', 30, 92)])?.line).toBe('20 more scored answers to Sharp in work.');
+  });
+
+  it('says both when the score is short too, without printing the score', () => {
+    expect(progressFor([stat('work', 30, 80)])?.line).toBe(
+      'Sharp in work needs 20 more scored answers and a score that clears 85 with room to spare.',
+    );
+  });
+
+  it('says the score gate with room to spare, and where the score is, never its give-or-take', () => {
+    const stats = [{ ...stat('health', 60, 87.4), badge_level: 'forecaster' as const }];
+    const next = { health: { badge: 'sharp' as const, needResolved: 50, needScore: 85 } };
+    expect(nextBadgeProgress(stats, next, { health: 4 })?.line).toBe(
+      "Sharp in health needs a score that clears 85 with room to spare. You're at 87.",
+    );
   });
 });
 

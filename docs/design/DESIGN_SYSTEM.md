@@ -416,37 +416,47 @@ The four tabs are *Today*, *Insights*, *History* and *You*, and Log is a sheet (
   they ran together as "8590" at 320pt (roadmap step 52).
 - **Provisional:** never put the countdown in the hero slot (baseline 04/05 do —
   "20" reads as a score of 20). Show a **20-segment ring or bar** (20 per category too, D46):
-  filled = resolved, hatched = pending "on their way", hollow = to go. Label:
-  "Calibrating · 4 on their way · 16 to go". Pending predictions really will count,
-  so this endowed progress is honest (Nunes & Drèze 2006: 19% → 34% completion).
-  After "N more scored answers and your score unlocks.", the caption gives the wait a
-  date (roadmap step 32): "The next one comes due Tue, Oct 6." ("The first one" before
-  any has resolved; the date never splits across lines), or "One is ready to resolve
-  now." Nothing when nothing is open.
-- **The first answer leads** (D30, 2026-10-10): until anything has resolved, the
-  block opens with one `headline` line above the bar naming the evening the first
-  reminder comes: "Your first answer: tomorrow evening", "…: Friday evening" within a
-  week, "…: Fri, Oct 16" beyond, "Your first answer is ready" when one is due. The
-  0-of-20 bar and its caption follow. The newcomer read Day 0 as "come back in a
-  week, then 20 more"; the nearest thing now comes first.
+  filled = resolved, hatched = pending "on their way", hollow = to go. Pending predictions
+  really will count, so this endowed progress is honest (Nunes & Drèze 2006: 19% → 34%
+  completion). "Calibrating" over the bar and **one line of words** (D76; it was three):
+  after the first answer, under the bar, "15 more scored answers unlock your score." with
+  the wait's date after it (roadmap step 32): "The next one comes due Tue, Oct 6." ("The
+  first one" on Insights before any has resolved; the date never splits across lines), or
+  "One is ready to resolve now." Nothing when nothing is open. The progress bar's spoken
+  label says the same line. On Insights "What does this mean?" sits under the block.
+- **The first answer leads** (D30, 2026-10-10): on Today, until anything has resolved,
+  the block's one line sits above the bar in `headline`, naming the evening the first
+  reminder comes and then what unlocks the score (D76): "Your first answer lands tomorrow
+  evening. 20 answers unlock your score." ("…lands Friday evening." within a week, "…lands
+  on Fri, Oct 16." beyond, "Your first answer is ready." when one is due). The bar
+  follows, with nothing under it. The newcomer read Day 0 as "come back in a week, then
+  20 more"; the nearest thing now comes first.
 - **Ghost chart** before unlock: the full frame, diagonal and labelled regions with
   empty bucket slots — never an italic placeholder line. Its key names only what's
   drawn, so the grey-bars sentence waits for the first dot (roadmap step 68).
 - **Unlock** = the `unlock` motion (§6.1).
-- **Give or take** (roadmap D4, step 62): on Insights, a soft band on the bar and the line
-  "Give or take 5 points with this many predictions." The engine bootstraps the
+- **Give or take** (roadmap D4, step 62): on Insights, a soft band on the bar, said with
+  the rating to VoiceOver ("Calibration rating, 88 out of 100, give or take 5."); since D76
+  the line "Give or take 5 points with this many predictions." is in How scoring works'
+  "Your rating" block (§7.17). The engine bootstraps the
   rating and sets half the spread of the middle 80% either side of it
   (`statsStore.ratingRange`); centred on the rating because resampling only adds
   error, so percentiles would sit below a calibrated user's own score.
-- **The lines under the rating on Insights** (D68, step 196): three groups, 12 apart
-  and 4 within, after the marks caption, which stays with the bar. What the number
-  means: the points line ("Range by range, …") leads in `subhead` ink, with the
-  perfect-calibration line under it, whose endings answer its figure. How firm it is:
-  the give-or-take, then since last week. Then the count ("153 scored, 9-day streak").
-  All but the lead stay `footnote` in `textSecondary`. Whichever line of a group comes
-  first takes the 12, and a group with none shown leaves no gap. Margins on the lines
-  themselves, no wrapper, so VoiceOver's order and stops are as before. Six equal lines
-  4 apart read as a wall in five playtest rounds.
+- **The lines under the rating on Insights** (D68, step 196; cut by D76, 2026-11-23: "Much
+  of the score calculation based explanations do not need to be on the main page next to
+  the score"): after the marks caption, which stays with the bar, one short line in
+  `subhead` ink, "On average you're about 14 points off." ("Your numbers match what
+  happened." at 100); under it, only where the full perfect-calibration line would say
+  "can't be told apart", "With 20 answers, that's about as good as anyone can tell.";
+  then **What does this mean?** (`actionText` subhead, semibold), which opens How scoring
+  works with the person's own lines on top (§7.17). Then, 12 below, the news: "Up 2 since
+  last week." ("Down 3 since last week.", "No change since last week."); then the count
+  ("153 scored, 9-day streak"); then "More about your record". All but the lead stay
+  `footnote` in `textSecondary`; groups 12 apart and 4 within, margins on the lines
+  themselves, no wrapper, so VoiceOver's order and stops hold. The full points line, the
+  perfect-calibration line with its verdict, the give-or-take and since last week in full
+  moved to How scoring works: six equal lines read as a wall in five playtest rounds, and
+  D68's three groups still crowded the score.
 - **Brier score** (D24): on Insights only, from 50 scored answers (`BRIER_MIN_N`, D62),
   one `footnote` line in `textSecondary` under "More about your record": "Brier score
   0.22, lower is better. Saying 64% every time, how often your calls came true, would
@@ -468,8 +478,9 @@ The four tabs are *Today*, *Insights*, *History* and *You*, and Log is a sheet (
   (`textTertiary` reads 4.4:1 there, `controlBorder` 2.8:1). A day counts with one prediction logged or answered
   (D17, §7.9); three is the goal. Gain framing only. Since D60 (2026-11-13), for a week after a streak of 2 days or more ends,
   while none runs, the row says so plainly with no pips ("Your 151-day streak ended
-  on Thursday" / "No rest day was left to cover it. One prediction today starts a
-  new one"); after that it isn't shown until the next one starts.
+  on Thursday" / "One prediction today starts a new one"; why it ended is said under
+  Your streak in How scoring works since D76); after that it isn't shown until the next
+  one starts.
 - **Streak checkpoints** (step 64; 7, 30, 100, 365, then yearly): once today counts,
   the row names the next one ("Today counts. Next milestone: 30 days"). The day before
   one says so as a gain ("1 more today makes it 7: a full week"; "Today counts.
@@ -480,12 +491,15 @@ The four tabs are *Today*, *Insights*, *History* and *You*, and Log is a sheet (
   A full month, Triple digits, A full year, Two full years… Static until the
   celebration is built (§6.2).
 
+- **The bar's caption is spoken only** (D76, 2026-11-23): Insights' bar keeps its 70 / 85 / 90 marks; what they are is in the bar's accessibility label and under Badges in How scoring works, not printed under the bar. "What does this mean?" is a link row: regular weight, `actionText`, a trailing `chevron.right`.
+
+
 ### 7.2 Calibration chart (`CalibrationChart`)
 
 Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
 
 1. **Title = takeaway** ("You're overconfident at 80%+"); subtitle in natural
-   frequencies ("Of 12 things you called 80–100% likely, 7 happened"). With a range
+   frequencies ("You called 12 things 80–100% likely. 7 happened.", D76). With a range
    leaning each way (D37, step 142), the title names both: "You're too sure at
    80–100% and too cautious at 60–80%", subtitle "Of 20 things you called 80–100%
    likely, 8 happened; about 40% would have matched. Of 55 at 60–80%, 42 happened;
@@ -498,21 +512,24 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    recaps' rule); otherwise "No clear lean at 60–80%" ("No clear lean overall
    yet" over several, and "You're well calibrated overall", since D62, naming the range
    furthest off in the subtitle), and the
-   subtitle gives the expected count: "Of 21 things you called
-   60–80% likely, 12 happened; your numbers expected about 14." **A lean** adds what
-   would have matched, rounded to 5 as the category line is: "…, 38 happened. You
+   subtitle gives the expected count: "You called 21 things
+   60–80% likely. 12 happened, and you'd expect about 14." (D76). **A lean** adds what
+   would have matched, rounded to 5 as the category line is: "… 38 happened. You
    said about 88%; about 65% would have matched."; both sides, one figure each. Today
    shows any of these titles (`chartVerdict`), never the chart's fallback, with the
    dot of its direction (`lean`), and no dot for a read both ways. On Insights,
    "More about your record" says "No answers are Can't tell." when there are none
    (D59, D62).
    **Furthest off** (D37): the first line under Category badges, `subhead` in
-   `textPrimary`: "Furthest off: finance. You said about 85%, and 9 of 21 happened.
-   About 45% would have matched." Only for a category past `MIN_N_CATEGORY` whose
-   lean passes the one rule (D35); the matching number is what happened, to the
-   nearest 5. **Since last week** (D37): a quiet line under the give-or-take, once the
+   `textPrimary`: "Furthest off: finance. You said about 85%, and 9 of 21 happened."
+   Only for a category past `MIN_N_CATEGORY` whose lean passes the one rule (D35).
+   Since D76 the whole row is a button (44 pt at least) with a `textTertiary` chevron,
+   and a tap unfolds under it, in `textSecondary`, what would have matched ("About 45%
+   would have matched.", what happened to the nearest 5) and how it fits the badge.
+   **Since last week** (D37): a quiet line under "What does this mean?", once the
    rating is unlocked a week ago and now and something was answered since: "Up 2
-   since last week, from 6 answers given since then, within its give-or-take."
+   since last week." (D76; "Up 2 since last week, from 6 answers given since then,
+   within its give-or-take." in How scoring works).
 2. **Regions labelled in place:** below the diagonal lightly warm-tinted, labelled
    *Overconfident*; above lightly cool-tinted, *Underconfident*; the diagonal labelled
    *Perfectly calibrated*. Position + tint + text = three channels. Each word sits on a
@@ -523,7 +540,9 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
 4. **Coverage row** under the chart: five bucket chips with counts, empty ones hatched
    ("You've never logged anything under 40%"): sunken, with "none" and a dashed
    `textTertiary` edge (step 195). This is the spec's range-coverage caveat
-   made visible; it links to the `CoverageNudge`. On Insights each filled chip is a
+   made visible; it links to the `CoverageNudge`. With no scored answer under 40%, a
+   note under the row: "No scored answers under 40% yet, so your score doesn’t cover
+   things you thought were unlikely." (D76). On Insights each filled chip is a
    button with the control outline ("80–100%: 57 scored. Show them.") that opens
    History filtered to that range, under the line "Tap a range to see the predictions
    behind it." (roadmap step 51). Empty chips stay inert, and so does the Warmup's.
@@ -549,7 +568,7 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    from perfect calibration.", and, only while a grey dot is drawn, "A grey dot has
    fewer than 10 answers, too few to read yet.", owner 2026-11-10) and spoken
    description say what it is. The Warm-up's chart follows the same rule, so its
-   dots are nearly always grey: its read takes all ten together, and its note says so. "Show the counts" opens each range's said / happened / chance numbers and an
+   dots are nearly always grey: its read takes all ten together (the caption note saying so went with D76). "Show the counts" opens each range's said / happened / chance numbers and an
    icon array: a dot per prediction (ink when it happened, hollow when not), an
    upright `textSecondary` bar at the expected count (`expected_yes`), and "40 of 52
    happened; your numbers expected about 36." Above 60 predictions each dot stands
@@ -557,6 +576,9 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    only draw it.
 
 Error bars with caps are banned — lay readers treat the caps as hard limits.
+
+- **The key is folded** (D76, 2026-11-23): the chart's key sits behind "How to read this chart" ("Hide" when open), closed to start, on Insights, the Warm-up result and the practice record. Its words and their conditions are unchanged, and the toggle sits outside the chart's image element so VoiceOver can reach it.
+
 
 ### 7.3 Confidence input (Log and Warmup)
 
@@ -574,18 +596,26 @@ small ±5 buttons).
   regress VoiceOver. They sit on the readout's row, right-aligned, from 360pt wide
   and up to 1.15× text; narrower or larger, under the slider (step 110). On their
   own row they cost ~60pt and pushed Next and Save below the fold on a 667pt phone.
-- Warmup range stays 50–100 (spec).
-- **Starts empty** (roadmap D13, built as step 54): the readout shows "—%" in
-  `textTertiary` at full size (so setting a number doesn't shift the layout) with "not
-  set yet" beside it, the slider's thumb rests at the coin flip, 50%, in
-  `controlBorder` grey with no fill (the left end of the Warmup's and practice's
-  50–100 track), and the first drag, tap on the track (`tapToSeek`), touch of the thumb
-  or ±5 sets a real number. The first ±5 steps from where the grey thumb rests, to 45 or
-  55 on Log and 50 or 55 in the Warmup and practice, as VoiceOver's first swipe does
-  (D49, step 163: resting mid-range at 75 made 70 one tap and a coin flip five; D36,
-  step 141: three blind testers expected 55 from +5). VoiceOver hears "not set". Next
+- **One scale** (D77, the owner, 2026-11-23: "the minimum should never be 50%"): Log, the
+  Warmup and practice all run 0–100 in steps of 5. On a two-choice question a number
+  under 50 is the stated chance the picked answer is right, taken as said and never
+  flipped; the hint under the control reads "50% means no idea, a coin flip." (the
+  Warmup adds "Tap the bar to pick a number." on its first three questions).
+- **Starts empty** (roadmap D13, built as step 54): the readout's slot says "Slide to
+  set" (`title3`, `textSecondary`, centred in a slot held at the number's line height,
+  so setting a number doesn't shift the layout; D77, 2026-11-23: it was "—%" with "not
+  set yet", which "makes no sense in the UI"), the slider's thumb rests at the coin
+  flip, 50%, in `controlBorder` grey with no fill (the middle of every track since D77),
+  and the first drag, tap on the track (`tapToSeek`), touch of the thumb or ±5 sets a
+  real number. The first ±5 steps from where the grey thumb rests, to 45 or 55
+  everywhere, as VoiceOver's first swipe does (D49, step 163: resting mid-range at 75
+  made 70 one tap and a coin flip five; D36, step 141: three blind testers expected 55
+  from +5; 50 or 55 on the two-choice scales until D77). VoiceOver hears "not set". Next
   (Warmup) and Save (Log) wait for a number. With a preset number, "didn't touch it"
   couldn't be told from "chose it" (research: `confidence-2026-10.md` §2).
+
+- **One height in every state** (D77, 2026-11-23): the readout is a fixed block of the number's line plus one gloss line. Empty, "Slide to set" sits on the number's line and the gloss line is kept as space, so nothing below moves when the first number arrives; the gloss never sits beside the number.
+
 
 ### 7.4 Badges — the "Lens" emblem
 
@@ -819,6 +849,33 @@ filters are its way forward.
 
 ### 7.9 Copy and tone
 
+**The voice** (D76, decided 2026-11-23 by the owner: "use less fancy words maybe, but not
+by too much … use less text overall"; the approved lines are in
+`research/voice-sample-sheet-2026-11-23.md`):
+
+- **Short sentences, the fact first.** "On average you're about 14 points off." The
+  reason is one tap away in How scoring works (§7.17), not beside the number: "What does
+  this mean?" opens it with the person's own lines on top.
+- **Plain words, with the app's own kept.** "Heads up", "locked in", "Stuck? Try one:",
+  but *calibration*, *overconfident* and *underconfident*, and the badge names stay: they
+  are what the app teaches.
+- **One word per thing.** "Scored" for an answer that counts; "too sure" and "too
+  cautious" for a lean said in a sentence, beside the chart's *overconfident* and
+  *underconfident*; "range" for a band of confidence (D62).
+- **Warmth at the moments that matter, not on every line:** the first answer, a miss, a
+  streak that ended, coming back ("Welcome back. 2 predictions are waiting. Go with what
+  you remember.").
+- **A next step where a person might stall:** "Start with one about tomorrow.", "One
+  prediction today starts a new one", "Try one you think probably won't happen."
+- **A main surface gains a sentence only by losing one.** Today, Insights, Log, Resolve
+  and the Warm-up's result; the explanation lives in How scoring works.
+- **What no rewording drops** (D76's limits): no number before 20 scored answers; a
+  same-day answer is said to be unscored once, before it is given; the lean rule's words;
+  the integrity counts, reachable under "More about your record". Consent, billing and
+  legal wording keeps every fact.
+
+The rules that came before it, still true:
+
 - Blunt and human ("On these ten, you were overconfident"), and about the evidence,
   never the person, until the evidence is enough (D18). Lead with
   the sentence; the chart comes second.
@@ -832,12 +889,13 @@ filters are its way forward.
   ("Today counts. Goal: 1 of 3") with the pips, then "Today's goal met". The goal is
   never a condition: no line suggests the streak needs three.
 - **Rest days** (roadmap step 87) are said as a relief, never as a miss: "Yesterday
-  was a rest day", "1 rest day saved", "A rest day comes with day 7", "Today saved a
-  rest day". A third line on the streak row, `caption` in `textTertiary` (`textSecondary`
-  on the milestone tint), and part of
-  the row's one spoken sentence. The words *missed*, *lost* and *broke* never appear.
+  was a rest day", "1 rest day saved", "A rest day comes with day 7" (from day 3 of a
+  streak since D76), "Today saved a rest day". A third line on the streak row, `caption`
+  in `textTertiary` (`textSecondary` on the milestone tint), and part of the row's one
+  spoken sentence. The words *missed*, *lost* and *broke* never appear.
 - Sentence case everywhere; no ALL-CAPS labels.
-- Badge gating is a trust feature — say it: "Badges need receipts."
+- Badge gating is a trust feature, and the app says so in plain words: "Badges follow
+  how well your numbers match what happens, not how often you’re right." (D62).
 - **Things that read as one never split across lines** (roadmap step 70, checked at
   320pt): a range keeps its dash (`holdRanges`, a word joiner either side, applied
   wherever a range is drawn: the chart title and subtitle, Today's takeaway, Resolve's
@@ -869,19 +927,20 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   line "It won't count toward your score." Equal weight would make skipping a miss as
   cheap as recording it. (Built 2026-10-04, roadmap D10.)
 - **After the tap:** the `resolve` motion (§6.1), then one factual line about the bucket
-  it landed in: "In your 60–80% range, 6 of 9 have happened." ("1 of 2 has" when
-  one has: roadmap step 77). Counts, not a verdict, so safe below min-N. The count comes from the store; the component doesn't compute buckets.
+  it landed in: "At 60–80%, 6 of your 9 calls happened." ("That's your first call at
+  60–80%." for the first; D76). Counts, not a verdict, so safe below min-N. The count comes from the store; the component doesn't compute buckets.
   From 10 resolved in the range (the chart title's threshold), the range's own
-  comparison follows: "That's 77%, against the 69% you said on average." (roadmap
-  step 58; "on average" since step 121, as the figure is the range's mean).
+  comparison follows: "You said about 69% and got 77%." (roadmap step 58; "about", and
+  "on average" from step 121 until D76, as the figure is the range's mean).
   Said-against-happened is the feedback that moved calibration in the studies; bare
   outcomes barely did (`research/confidence-2026-10.md` §6).
   Then the optional one-line reflection ("Anything to remember about this one?", D50),
   never before the answer.
 - **The first answer ever** (step 107) gets a teaching line in place of the range
   line, built from the stated number and identical for Yes and No: "That's your
-  first. A 70% call should come true about 7 times in 10, so one answer can't say
-  much; 20 can." A first "it happened" otherwise reads as *I was right* (outcome
+  first. 70% means right about 7 times in 10. It takes around 20 answers before we can
+  tell how you're doing." (D76; under 50, "30% means it happens about 3 times in 10.")
+  A first "it happened" otherwise reads as *I was right* (outcome
   bias, Baron & Hershey 1988), which isn't what 70% means
   (`research/day0-2026-10.md` §6). From the second answer, the range line.
 - **Changing the answer** (D34, step 139): the text button under the recorded answer
@@ -912,13 +971,14 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   the old number. Not offered inside a run. **Its label names the date it brings**
   (D56, step 169): "Log it again, due tomorrow", "…due in a week", "…due in a month",
   else as Save says it (`logAgainWords`, from the same draft Log opens with).
-  **After a same-day answer** (D41) the line in place of the range's record is advice,
-  "Not scored: you logged it today. Log the next one now, and its answer is scored
-  from tomorrow." ("you changed its words today" after a rewording), and the button
+  **After a same-day answer** (D41) the line in place of the range's record is short,
+  "Saved, but not scored, since you logged it today." ("…since you reworded it today"
+  after a rewording; D76: the rule was said once, before the answer), and the button
   sits right under it, above Done: a tester tapped Done under the old line and
   retyped his walk (blind playtest 2026-11-10, run 2). The same after Yes and No.
-- **The note before Yes and No** for a same-day answer ("You logged this today, so an
-  answer today isn't scored…") isn't repeated when Resolve opens from Answer it now's
+- **The note before Yes and No** for a same-day answer ("Heads up: an answer today won't
+  count, because you logged it today. Tomorrow it will.", `sameDayHeadsUp`: Answer it
+  now's words too since D76, which dropped its word of the streak) isn't repeated when Resolve opens from Answer it now's
   confirmation, which said it a moment before (D56): the route carries that day's key
   (`?warned=2026-11-10`, `sameDayWarned`), and every other route, and any later day,
   shows the note.
@@ -963,7 +1023,7 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   ready the open predictions still come first and the daily rows follow "Later"
   (D48, step 159): at 320 × 568 the score, streak and practice rows filled the
   screen and a card just saved couldn't be seen; with nothing open they follow the
-  empty state. The reminder card ("Want a reminder when it's due?") stays right
+  empty state. The reminder card ("Want a nudge at 7 PM on the day it's due?") stays right
   under the score either way, beside what it's about: on Day 0 it's the ask that
   brings someone back for the first answer (D19; owner, 2026-11-10).
 - **After a save** (D48, step 159): on the focus after Log's sheet closes, Today
@@ -1036,8 +1096,7 @@ the control reads the chosen category.)
   when Edit opens on a prediction due on a picked date (step 138; Edit showed the chip
   chosen and no field until a second tap).
 - **Starter ideas** (roadmap step 40): only before the first prediction ever, five
-  quiet rows under the empty title field ("Not sure where to start? Try one, then
-  make it yours:"), one per category with its icon. A tap fills title, category and
+  quiet rows under the empty title field ("Stuck? Try one:", D76), one per category with its icon. A tap fills title, category and
   the due date its words imply, never confidence. Since D18 (4), step 99, all five
   resolve by tomorrow evening ("I'll get outside for a walk tomorrow"), and the first
   prediction's due date starts on **Tomorrow**, so the first real answer lands on
@@ -1045,11 +1104,11 @@ the control reads the chosen category.)
   a week" caught five of eight testers who meant tomorrow or a weekday (blind
   playtest 2026-11-10). A starter idea and "Log it again" bring their own date.
 - **Track record** (roadmap step 19): one `footnote` line in `textSecondary` under
-  the confidence control, "Of your 12 scored finance calls at 60–80%, 7 happened."
+  the confidence control, "12 scored finance calls at 60–80% so far. 7 happened." (D76).
   The category's band from 10 scored, then all categories from 10, then all
-  categories **from 5** with "Too few to read yet" ("Of your 9 scored calls at
-  40–60%, 4 happened. Too few to read yet.", D57, step 170; it was the one line
-  that moved testers' numbers, and it vanished below 10). Nothing below 5
+  categories **from 5** with "Early days." ("9 scored calls at 40–60% so far. 4
+  happened. Early days.", D57, step 170, D76; it was the one line that moved testers'
+  numbers, and it vanished below 10). Nothing below 5
   (`TRACK_RECORD_MIN_N`). Counts, never advice: it must not say what to pick.
   Free, because this is the core loop.
 - **Its own record** (D32, step 135): when the typed title matches predictions
@@ -1060,9 +1119,10 @@ the control reads the chosen category.)
   "Log it again" always shows it. Outcomes only, never the earlier confidences,
   which would anchor the new number; skips and open ones don't count. From the
   first answer, since it's the person's own record, not a score. Free.
-- **Coverage nudge:** a quiet inline card on `surfaceSunken` above the title field. Its
-  accept button is secondary; Save is the only primary action on the screen. Keep the
-  current copy and the "Not now" cooldown.
+- **Coverage nudge:** a quiet inline card on `surfaceSunken` above the title field: the
+  fact, then the ask, "Everything lately is above 40%." over "Try one you think probably
+  won't happen." (D76, in place of a title and a 45-word reason). Its accept button is
+  secondary; Save is the only primary action on the screen. Keep the "Not now" cooldown.
 - **Save:** one primary capsule, disabled until the title is non-empty and a
   confidence is set (§7.3), `commit` motion. **Pinned** under the scrolling fields
   over a hairline (step 111), so it is always on screen; the keyboard may cover it,
@@ -1082,7 +1142,7 @@ the control reads the chosen category.)
   changes** doesn't name one (out of scope).
 - **A new form starts at the top** (roadmap step 75): after a save, and when "Log it
   again" fills it. The tab keeps its scroll offset otherwise, and on a short phone the
-  next visit opened on an empty "—%" with the title field out of sight.
+  next visit opened on an empty confidence control with the title field out of sight.
 
 ### 7.13 Coach cards
 
@@ -1157,8 +1217,9 @@ the same thing, no instructions, title-style titles without ending punctuation.
 - **Permission in context** (roadmap step 38). Launch only checks; it never shows the
   iOS alert (HIG: "Avoid requesting permission at launch unless the data or resource
   is required for your app to function"). Once there is an open prediction, Today shows
-  a quiet sunken card, "Want a reminder when it's due?", saying when the first one
-  would come, with a secondary **Turn on reminders** (which shows the alert) and
+  a quiet sunken card, "Want a nudge at 7 PM on the day it's due?" (the person's own
+  reminder time, D38) over "Plus a quiet weekly summary. Nothing else." (D76; one
+  permission covers both, and it no longer names the first day), with a secondary **Turn on reminders** (which shows the alert) and
   **Not now**. The first "Not now" holds the card until 06:00 the next morning, so a
   Day-0 refusal doesn't cost the first prediction's Day-1 reminder; from the second,
   a week (D19, step 108). You's Notifications group adds **Allow
@@ -1202,15 +1263,29 @@ own n, and a row below its threshold shows counts, never a score.
 
 ### 7.17 How scoring works
 
-A full-height reading sheet (roadmap step 29), opened by "How is this scored?" under
-the Insights rating, by Today's rating (D59) and by a row in You; never shown unasked, since the pitch is
-identity, not statistics. Sections in `headline` with `body` text in
-`textSecondary`: what the score measures, how it's worked out (the five bands and
+A full-height reading sheet (roadmap step 29), opened by **What does this mean?** with
+the Insights rating (under the progress while calibrating; it was "How is this scored?"
+under the fine print until D76), by Today's rating (D59) and by a row in You; never shown
+unasked, since the pitch is identity, not statistics. **Opened from a rating**
+(`?section=rating`, from Today's rating and Insights' link) it starts with "Your rating"
+in a sunken block, a heading of its own, and the person's own lines, one paragraph each
+(`ratingDetailLines`, D76): "Your rating is 86." with the full points line ("Range by
+range, what you said averaged about 14 points away from how often those things
+happened, each range counting by how many answers it holds."), what perfect calibration
+scores on the same answers with its verdict (`perfectLine`, every ending), the
+give-or-take ("Give or take 5 points with this many predictions.") and since last week
+in full ("Up 2 since last week, from 6 answers given since then, within its
+give-or-take."). Nothing Insights' page dropped is lost from the app; none of it shows
+while the rating is provisional. Sections in `headline` with `body` text in
+`textSecondary`: what the score measures (with "It isn't about being right. If you say
+60%, about 4 in 10 should miss." and, since D76, the planning study the Warm-up's bridge
+used to quote), how it's worked out (the five bands and
 their edges, that bigger bands count for more, one worked example from `CLAUDE.md`),
 the Brier score in one paragraph (D24: what it adds, that lower is better, and since
 D35 the yardstick of saying your own base rate every time), why it waits, badges (a legend of the five emblems with their
-criteria), the whole range (log unlikely things too), your streak, what doesn't count (skips, the Warmup and, since step 95, the
-daily practice). The chance-bar sentence says what it is: a perfectly calibrated
+criteria), the whole range (log unlikely things too), your streak (rest days and why a streak ends, which the streak row
+no longer says since D76), what doesn't count (skips, the Warmup and, since step 95, the daily practice, then the
+integrity counts in full, with the category-move rule an answer's details shorten since D76). The chance-bar sentence says what it is: a perfectly calibrated
 forecaster's dot lands inside it 8 times in 10, and the app calls a lean only for a
 dot outside it (D35). Opened with `?section=badges` (from Today's identity line, D27) it
 scrolls to Badges.
@@ -1225,13 +1300,15 @@ on 2026-10-09 (104–107). Day 0 is for calibration, so the result describes *th
 ten*, never the person. In order: eyebrow "Your warm-up"; the read in `title1` ("On
 these ten, you were overconfident" / "…underconfident" / "On these ten, no clear
 lean"); the counts ("You said 78% on average. 6 of 10 were right."); the line of
-advice under them (since D59; "Your numbers expected about 8 right, and you got 9…");
-the bridge ("Trivia is the warm-up. People are most overconfident about their own
-plans: students who expected to finish a big school project in 34 days took 56. Make
-your first one about tomorrow."); **Make a real prediction** and **Share my result**,
-on the first screen even at 320 × 568 (step 118); then the mini chart, one
-note ("This is a warm-up, not your calibration rating. That one needs 20 of your own
-predictions.") and the answer key. The quiz before it pins **Next** under the
+advice under them (since D59; D76's words: "You expected about 8 and got 9. Too close
+to call on ten questions."); the bridge ("That was the warm-up. The real thing is your
+own plans, where people are most overconfident. Start with one about tomorrow.", D76;
+the study's figures moved to How scoring works); **Make a real prediction** and **Share
+my result**, on the first screen even at 320 × 568 (step 118); "It isn't about being
+right"; then the mini chart and the answer key. D76 cut three things from the text
+load: the box "This is a warm-up, not your calibration rating. That one needs 20 of
+your own predictions." (Today says the 20), the one-number note, and the chart's
+caption note ("The read above takes all ten together…"). The quiz before it pins **Next** under the
 scrolling question, with **Skip for now** as a text button (step 117). It opens at its top (step 72).
 
 - **A lean only beyond luck** (step 104). Ten answers move accuracy in steps of 10
@@ -1239,15 +1316,20 @@ scrolling question, with **Skip for now** as a text button (step 117). It opens 
   calibrated people. The engine names one only outside the central 80% of
   `chanceRange` at n and the mean confidence (`WARMUP_LEAN_MASS`); since D35 that is
   the one rule everywhere, and the chart's grey bars draw the same 80%.
-  Inside it the advice says what did happen, plainly (D36, worded by D61): "Your
-  numbers expected about 8 right, and you got 9. On ten answers luck often moves it
-  that far, so it can't tell yet whether you run too sure, too cautious or about
-  right. Your own predictions are the real test." ("Ten answers can't tell a small
-  lean from luck" alone read as "so… was I good?" at 9 of 10.)
+  Inside it the advice says what did happen, plainly (D36, worded by D61 and D76):
+  "You expected about 8 and got 9. Too close to call on ten questions." When the count
+  matches: "You expected about 7 and got 7. Ten questions can't prove it, so your own
+  predictions are the real test." ("almost none", "none" or "all 10" at the ends of the
+  scale.) ("Ten answers can't tell a small lean from luck" alone read as "so… was I
+  good?" at 9 of 10.) With a lean, what to try, by which side of 50 the average sat
+  (D77): "You felt surer than you were. Next time you feel sure, go a little lower." or
+  "You knew more than you thought. Next time you feel sure, go a little higher."; under
+  50, "Your picks came true less often than your numbers said. Go a little lower next
+  time." or "…more often… Go a little higher next time."
   (`research/day0-2026-10.md` §2.)
 - **"It isn't about being right"** (D36, step 141): under the two buttons, before the
-  chart, the How scoring works line "It isn't about being right. A 60% call that
-  doesn't happen isn't a mistake: about 4 in 10 of them shouldn't happen."
+  chart, the How scoring works line "It isn't about being right. If you say 60%, about
+  4 in 10 should miss." (D76)
 - **No 0–100 number** (D20, step 105). Ten answers can't carry one; the counts lead
   and the chart shows them.
 - **Which ten** (steps 97, 102, 106). Drawn from the practice tables, the same ten
@@ -1261,10 +1343,10 @@ scrolling question, with **Skip for now** as a text button (step 117). It opens 
   confidence at the right. The mark is the Resolve glyph pair in ink
   (`checkmark.circle.fill` / `xmark.circle`), not ✓/✗ text, and each row is one stop
   for VoiceOver.
-- **One number everywhere** (roadmap step 49): when all answers share a confidence,
-  the counts say it ("You said 75% on all 10. 5 of 10 were right.") and a second
-  line notes that one number for the known and the guessed leaves part of the skill
-  unused. Not shown when every answer was right, or under three answers.
+- **One number everywhere** (roadmap step 49): when all answers share a confidence
+  (from three answers), the counts say it ("You said 75% on all 10. 5 of 10 were
+  right."). The second line, on one number for the known and the guessed, went with
+  D76's text load.
 
 ---
 
@@ -1311,7 +1393,7 @@ doesn't serve.
 | The one thing to do on a screen | One filled capsule | Two filled capsules | HIG Buttons: "one or two prominent buttons per view". |
 | A minor alternative to the main action (Change answer, Can't tell, Restore purchases) | A text button, `actionText` subhead, 44pt target | An outlined capsule beside the primary | Step 78. |
 | Confirm something irreversible | A screen that says what goes, an outlined capsule with a `destructive` label, Cancel beneath | A filled red primary | HIG Buttons: never give a destructive action the primary role. Step 81. |
-| Explain a number | A text link beside it ("How is this scored?") opening a reading sheet | A tooltip, a long-press | WHOOP, Oura and Bevel put an ⓘ in the header of each score's screen; Fairly Sure's link does the same job with a word. |
+| Explain a number | A text link beside it ("What does this mean?", D76) opening a reading sheet | A tooltip, a long-press | WHOOP, Oura and Bevel put an ⓘ in the header of each score's screen; Fairly Sure's link does the same job with a word. |
 | Ask for a rating | The system prompt after a finished run, never in the Warmup | A custom "Enjoying Fairly Sure?" pre-prompt; a button | HIG Ratings and reviews. D15, built: `src/review/ratingPrompt.ts`. |
 
 ### 7.21 You: settings as a grouped list (built as roadmap step 80)
@@ -1432,21 +1514,22 @@ Three two-choice questions a day, the same for everyone on the same day, kept ap
 from everything real (`CLAUDE.md`, Daily practice).
 
 - **On Today:** one row under the streak, the streak row's shape: a target symbol,
-  "Today’s practice" over "3 questions, about 30 seconds", and **Start** in `actionText` with
+  "Today’s practice" over "3 quick questions. About 30 seconds" (D76; "While you wait:
+  today’s practice" before the first answer, D62), and **Start** in `actionText` with
   a chevron; "1 of 3 answered" and **Continue** partway; done, a check, "Practice
   done" over "2 of 3 right. New ones tomorrow", and the chevron alone. The whole row
   opens the sheet. Not shown before the first prediction: on Day 0 the Warmup has
   just asked ten questions, and the next thing is the first real one.
 - **The sheet:** full height like Log, title and the round ×. The Warmup's question
   form (segments: answered in `action`, the current one in `controlBorder`, those to
-  come in `hairline`, step 137; `title2` prompt, `ChoiceList`, the confidence control from 50%,
-  nothing preset), one question at a time, answers held to the end like the Warmup.
+  come in `hairline`, step 137; `title2` prompt, `ChoiceList`, the confidence control, 0–100% since D77
+  with "50% means no idea, a coin flip." under it, nothing preset), one question at a time, answers held to the end like the Warmup.
 - **The answers:** "2 of 3 right" in `title1`, never display size (a practice number
   must not look like the rating), "You expected about 2." under it, then the Warmup's
   answer key in a surface card, "Three new questions tomorrow.", the reminder offer
   (native only), and *Your practice so far*: counts and how many more until 20, then
-  which way it leans, the two percentages and the chart. It ends on "Practice stays
-  apart from your calibration rating, your badges and your streak."
+  which way it leans, the two percentages and the chart. It ends on "Practice is
+  just practice. It doesn’t touch your rating, badges or streak." (D76)
 - **Never:** a practice streak (one counter is enough, and it stays about real
   predictions), a claim that practice improves the score, red or green for a wrong or
   right answer, or a share card (a scope call, not made).
@@ -1474,13 +1557,13 @@ sheet with the round ×:
   was logged (new words don't move that day), and "Delete this prediction? It’s due, so
   Insights will count it as deleted. This can’t be undone." on the day it was logged once
   it is already due (`canRenumber` tells the two apart, on one clock).
-- **Answer it now** (text button, `actionText`): opens Resolve after one line, "It's due
-  Fri, Oct 16. Answering early is fine; just answer what you know now." with
+- **Answer it now** (text button, `actionText`): opens Resolve after one line, "It's not
+  due until Fri, Oct 16. Know already? Go ahead." (D76) with
   **Answer now** and **Not yet**. Early answers count like any other. **On the day it
-  was logged** the line says the rule once, with what to do (D56, step 169): "It's due
-  Wed, Nov 11. You logged it today, so an answer today isn't scored. From tomorrow it
-  is. For something you do every day, log the next one the evening before." ("You
-  changed its words today, …" after a rewording, without the advice).
+  was logged** the line says the rule once, with what to do (D56, step 169; D76's
+  words): "Heads up: an answer today won't count, because you logged it today. Tomorrow
+  it will. For something you do every day, log the next one the evening before." ("…
+  because you reworded it today…" after a rewording, without the advice).
 - A prediction that's due skips this sheet and opens Resolve, as before: the evening
   run stays two taps.
 - **Once it's due anyway** (step 133): an edit can move the date to today, and a link
@@ -1492,8 +1575,8 @@ sheet with the round ×:
   after the answer: "Until 6:00 PM tomorrow you can change the answer, move it to
   another category or delete it. After that it's part of your record.", then **Change
   to: it happened** (secondary capsule), the category chips (a tap moves it), and
-  **Delete** with the usual confirmation. After the day, one line instead: "Answers
-  can be changed for a day after they're given. This one is part of your record now."
+  **Delete** with the usual confirmation. After the day, one line instead: "This one’s
+  locked in. Answers can be changed for a day, then they’re part of your record." (D76)
   At any time, under the outcome, **Log it again, due tomorrow** (secondary capsule,
   12 pt below the outcome; D56, step 169), or "Logged again, due Wed, Nov 11." while
   the same words are open (`openRepeatOf`; "Logged again, ready to answer." once its

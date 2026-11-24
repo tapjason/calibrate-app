@@ -24,6 +24,7 @@ import { localDayNumber } from '@/engine/localTime';
 import { practiceDayTally, practiceQuestions, scorePractice } from '@/engine/practice';
 import {
   PRACTICE_PER_DAY,
+  TWO_CHOICE_COIN_FLIP,
   type PracticeAnswer,
   type PracticeDayTally,
   type PracticeFacts,
@@ -31,8 +32,13 @@ import {
   type PracticeRecord,
 } from '@/types';
 
-/** Two options: 50% is a coin flip, so the scale starts there, as in the Warmup. */
-export const MIN_PRACTICE_CONFIDENCE = 50;
+/**
+ * 0 to 100, as in the Warmup (the owner, 2026-11-23: "The minimum should never
+ * be 50%"). A number under 50 is kept as said, the stated chance that the pick
+ * is right, and scored against whether it was. Answers kept from before run
+ * 50–100 and read as ever.
+ */
+export const MIN_PRACTICE_CONFIDENCE = 0;
 export const MAX_PRACTICE_CONFIDENCE = 100;
 
 interface PracticeState {
@@ -64,8 +70,9 @@ interface PracticeState {
   clear: () => Promise<void>;
 }
 
+/** An unreadable number is the coin flip, as in the Warmup, never the floor. */
 function clampConfidence(confidence: number): number {
-  if (!Number.isFinite(confidence)) return MIN_PRACTICE_CONFIDENCE;
+  if (!Number.isFinite(confidence)) return TWO_CHOICE_COIN_FLIP;
   return Math.min(MAX_PRACTICE_CONFIDENCE, Math.max(MIN_PRACTICE_CONFIDENCE, Math.round(confidence)));
 }
 

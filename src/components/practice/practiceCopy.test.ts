@@ -1,6 +1,6 @@
 import { PRACTICE_MIN_N, type PracticeRecord } from '@/types';
 
-import { practiceCardCopy, practiceDayCopy, practiceRecordCopy } from './practiceCopy';
+import { PRACTICE_APART, practiceCardCopy, practiceDayCopy, practiceRecordCopy } from './practiceCopy';
 
 const record = (over: Partial<PracticeRecord>): PracticeRecord => ({
   answered: 0,
@@ -14,12 +14,13 @@ const record = (over: Partial<PracticeRecord>): PracticeRecord => ({
 });
 
 describe('practiceCardCopy (roadmap step 88)', () => {
+  // The voice pass's words (2026-11-23).
   it('says what is waiting', () => {
     expect(practiceCardCopy({ answered: 0, correct: 0, expected: 0 }, 3)).toEqual({
       title: 'Today’s practice',
-      detail: '3 questions, about 30\u00A0seconds',
+      detail: '3 quick questions. About 30\u00A0seconds',
       action: 'Start',
-      spoken: 'Today’s practice. 3 questions, about 30\u00A0seconds.',
+      spoken: 'Today’s practice. 3 quick questions. About 30\u00A0seconds.',
       done: false,
     });
   });
@@ -88,14 +89,28 @@ describe('practiceRecordCopy', () => {
 });
 
 describe('practiceCardCopy before the first answer (D62)', () => {
-  it('says it has answers today while the first prediction waits', () => {
-    expect(practiceCardCopy({ answered: 0, correct: 0, expected: 0 }, 3, true)).toMatchObject({
+  // The title says "While you wait"; the detail is the usual one since the
+  // voice pass (2026-11-23).
+  it('says "While you wait" while the first prediction waits', () => {
+    expect(practiceCardCopy({ answered: 0, correct: 0, expected: 0 }, 3, true)).toEqual({
       title: 'While you wait: today’s practice',
-      detail: '3 questions, answers today, about 30\u00A0seconds',
+      detail: '3 quick questions. About 30\u00A0seconds',
+      action: 'Start',
+      spoken: 'While you wait: today’s practice. 3 quick questions. About 30\u00A0seconds.',
+      done: false,
     });
     // Started: the usual words.
     expect(practiceCardCopy({ answered: 1, correct: 1, expected: 0.8 }, 3, true).title).toBe(
       'Today’s practice',
+    );
+  });
+});
+
+describe('PRACTICE_APART', () => {
+  // The voice pass's words (2026-11-23): practice touches nothing real.
+  it('keeps practice in its place', () => {
+    expect(PRACTICE_APART).toBe(
+      'Practice is just practice. It doesn’t touch your rating, badges or streak.',
     );
   });
 });

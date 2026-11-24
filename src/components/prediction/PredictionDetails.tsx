@@ -8,6 +8,7 @@ import { CategoryChips } from '@/components/prediction/CategoryChips';
 import { datePresets, DueDateChips } from '@/components/prediction/DueDateChips';
 import { daysUntilDue } from '@/components/prediction/dueGroups';
 import { stillNeeded } from '@/components/prediction/stillNeeded';
+import { sameDayHeadsUp } from '@/components/resolution/sameDayWarned';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
 import { CategoryIcon } from '@/components/ui/Icon';
@@ -328,11 +329,13 @@ export function PredictionDetails({
   // 2026-11-10, run 2). Resolve doesn't repeat it when opened from here.
   const sameDayNow = answerNowIsSameDay(prediction);
   const dueOn = shortDate(prediction.due_date);
+  // In D76's words (the voice pass, 2026-11-23). The same-day note is
+  // Resolve's too (`sameDayHeadsUp`), which it skips when opened from here.
   const earlyText = !sameDayNow
-    ? `It's due ${dueOn}. Answering early is fine; just answer what you know now.`
+    ? `It's not due until ${dueOn}. Know already? Go ahead.`
     : reworded
-      ? `It's due ${dueOn}. You changed its words today, so an answer today isn’t scored. From tomorrow it is.`
-      : `It's due ${dueOn}. You logged it today, so an answer today isn’t scored. From tomorrow it is.${
+      ? sameDayHeadsUp(true)
+      : `${sameDayHeadsUp(false)}${
           answeredBefore(prediction, resolvedList)
             ? ' For something you do every day, log the next one the evening before.'
             : ''
@@ -542,7 +545,9 @@ export function PredictionDetails({
 
       {mode === 'early' && (
         <View style={styles.confirm} testID="details-early">
-          <Text style={styles.body}>{earlyText}</Text>
+          <Text style={styles.body} testID="details-early-text">
+            {earlyText}
+          </Text>
           <Button
             label="Answer now"
             onPress={() => onAnswer(prediction.id, { warned: sameDayNow })}

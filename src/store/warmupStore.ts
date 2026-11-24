@@ -31,11 +31,21 @@ import {
 } from '@/db/warmup';
 import { warmupQuestions } from '@/engine/practice';
 import { scoreWarmup } from '@/engine/warmup';
-import type { WarmupAnswer, WarmupQuestion, WarmupResult } from '@/types';
+import {
+  TWO_CHOICE_COIN_FLIP,
+  type WarmupAnswer,
+  type WarmupQuestion,
+  type WarmupResult,
+} from '@/types';
 
-/** The slider floor. On a two-way question, 50% is a coin flip — you cannot
- *  honestly be less sure than that, so the scale starts there. */
-export const MIN_WARMUP_CONFIDENCE = 50;
+/**
+ * The confidence scale: 0 to 100, like Log's (the owner, 2026-11-23: "The
+ * minimum should never be 50%"). It started at 50, the coin flip, until then.
+ * A number under 50 is kept as said, the stated chance that the pick is right;
+ * the engine scores it against whether the pick was right and never flips it
+ * to the other option. Answers kept from before run 50–100 and read as ever.
+ */
+export const MIN_WARMUP_CONFIDENCE = 0;
 export const MAX_WARMUP_CONFIDENCE = 100;
 
 interface WarmupState {
@@ -91,9 +101,14 @@ function questionsFor(ids: readonly string[] | undefined): readonly WarmupQuesti
   return ordered;
 }
 
-/** Guard against a slider (or a future caller) handing us an out-of-range value. */
+/**
+ * Guard against a slider (or a future caller) handing us an out-of-range value.
+ * An unreadable one is the coin flip, the claim that says least, as it was
+ * while the scale started there; never the new floor, 0, which would say the
+ * pick is surely wrong.
+ */
 function clampConfidence(confidence: number): number {
-  if (!Number.isFinite(confidence)) return MIN_WARMUP_CONFIDENCE;
+  if (!Number.isFinite(confidence)) return TWO_CHOICE_COIN_FLIP;
   return Math.min(
     MAX_WARMUP_CONFIDENCE,
     Math.max(MIN_WARMUP_CONFIDENCE, Math.round(confidence)),

@@ -40,7 +40,7 @@ describe('WelcomeBackCard', () => {
     usePredictionStore.setState({ pending: [base], resolved: [] });
     render(<WelcomeBackCard />);
     expect(screen.getByText('Welcome back')).toBeTruthy();
-    expect(screen.getByText(/^One prediction is ready to answer\./)).toBeTruthy();
+    expect(screen.getByText('One prediction is waiting. Go with what you remember.')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('welcome-back-dismiss'));
     await waitFor(() => expect(screen.queryByTestId('welcome-back')).toBeNull());

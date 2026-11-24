@@ -1,6 +1,61 @@
 # Handoff
 
-**Now, 2026-11-23: branch `master`, three commits ahead of `origin/master`, not pushed. 1.0.0 is on
+**Now, 2026-11-23: branch `builder/voice-pass`, off `master` (`be1b5c1`), committed, not merged or
+pushed. The voice and text pass (D76, step 212) and the two-choice control at 0 to 100% (D77, step
+213), both the owner's that day.** `check.sh` exit 0: 254 suites, 5,474 tests. JS only, no migration,
+nothing new leaves the phone. Build 15 on TestFlight has none of it.
+- **D76, his words:** wording that sounds less like AI, "more personality, and hand-holding … less
+  fancy words maybe, but not by too much … less text overall. Much of the score calculation based
+  explanations do not need to be on the main page next to the score". He approved the sample sheet
+  whole ("I like all your drafts, make the changes"):
+  `docs/design/research/voice-sample-sheet-2026-11-23.md`; the plan and what is left of it:
+  `voice-and-text-plan-2026-11-23.md` beside it.
+  - *Built:* about 60 lines reworded on the Warm-up, Today, Log, open predictions, Resolve, Insights,
+    practice and two recap lines. Insights' rating is the number, the bar, "On average you're about
+    13 points off.", "What does this mean?", "Up 1 since last week." and the count; the full
+    sentences sit on top of How scoring works. The furthest-off row unfolds its detail on a tap; the
+    chart's key folds behind "How to read this chart".
+  - *The main session's calls, his to overturn:* the coverage line keeps "scored" and says "things
+    you thought were unlikely" (not the approved "things you felt sure about"); "Up 2 since last
+    week." stays on the page; the practice chart's key is folded too; the recap card's next-badge
+    row keeps "To reach …".
+  - *For a record audit, if he calls one:* "On average you're about 14 points off." no longer says
+    the average is over ranges; "Up 2 since last week." no longer says "within its give-or-take";
+    "First look … 6 of 12 happened." no longer says "scored".
+- **D77, his words**, against the main session's advice (two answers' chances add to 100): "the
+  minimum should never be 50%. It should also not default to -%, since that makes no sense in the
+  UI". The Warm-up's and practice's control runs 0 to 100; a number under 50 is scored as said, never
+  flipped.
+  - *The main session's reading of "not default to -%":* every control still starts empty and Next
+    and Save still wait (D13); the empty readout reads "Slide to set" instead of "—%, not set yet",
+    on Log too. If he meant a starting number, that reverses D13 and is his to say.
+  - *Seen in the web build:* a Warm-up with numbers on both sides of 50 spreads ten answers over
+    five ranges, so its small chart zig-zags between dots of one to three answers.
+- **Web playtest** (`web-playtester`, Sonnet): works, no console errors from app code; captures in
+  `.tooling/web/2026-11-23-voice/`. Its three layout findings are fixed (the readout's height, the
+  link's look, the long chart key). Old, not from this pass: at 320 x 568 the Warm-up's first
+  question needs a scroll to reach the control, and the chart's "n=" labels sit on the dots.
+- **Not run on any device:** everything above. The reminder ask ("Want a nudge at 7 PM on the day
+  it's due?") can't show on web. VoiceOver on the new folds, the empty control and the rating's
+  spoken give-or-take; Dynamic Type on the readout block and the furthest-off row.
+  `HUMAN_VERIFICATION.md`'s unchecked items still quote old wording (the docs agent listed the
+  lines); `/device-check` rewrites them for the next build.
+- **Who built it:** `core-domain` (Opus, xhigh) for D77's data layer; `mobile-ui` (Opus, xhigh) three
+  times (the control and Warm-up, Insights and How scoring works, Today to Resolve); `mobile-ui`
+  (Sonnet) twice for exact follow-ups; a general-purpose agent (Opus) for the docs. No review was
+  called.
+- **Left from the plan:** the Warm-up's answer key folded to the misses, its intro, three starter
+  ideas, Insights' empty boxes on Day 0 and the Plus card (the rest of the text-load cuts); a pass
+  over You, the paywall and the account screens; the next-step line; the reminder promised before
+  permission (`PredictionDetails.tsx`); the Brier line and the badge rows still read in the old
+  voice.
+- **Store listing:** a draft for 1.0.1 in `docs/design/research/store-listing-draft-1.0.1.md`
+  (description 529 to 398 words, promotional text, What's New), not entered anywhere. Apple's rule,
+  checked that day: the description changes only with a new version; promotional text at any time.
+- **His:** a yes on the listing draft; whether build 15 is submitted as 1.0.1 first or a new build
+  with this pass is (`eas build` on his confirmation, after a merge); the phone checks.
+
+**Before it, 2026-11-23: branch `master`, three commits ahead of `origin/master`, not pushed. 1.0.0 is on
 the App Store. `builder/lock-after` (which holds `builder/share-campaign-token`) is merged into
 `master` (fast-forward) on the owner's words: "Merge for now, and you can bulid with testflight if
 it doesn't impact the current release version please."**

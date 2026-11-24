@@ -32,15 +32,15 @@ export function CoverageNudge({
 }: CoverageNudgeProps) {
   return (
     <View style={styles.wrap} testID="coverage-nudge">
-      <Text style={styles.title}>Try one you think won't happen</Text>
-      <Text style={styles.body}>
-        {/* Plain, and no more than true: "the confident half of you… tells
-            us far more" read as self-help, and a 25% call says what a 75% one
-            does (blind playtest 2026-11-09b, finding 6). */}
-        Everything you've logged lately sits above {LOW_END_LABEL}%, so your
-        recent calls add nothing to the low end of your chart. A call you'd put
-        at {suggestedConfidence}% does, and counts as much as one at{' '}
-        {100 - suggestedConfidence}%.
+      {/* Plain, and no more than true: "the confident half of you… tells us
+          far more" read as self-help (blind playtest 2026-11-09b, finding 6).
+          D76 (the voice pass, 2026-11-23): the fact, then the ask, read in
+          that order, in place of a title and a 45-word reason. */}
+      <Text style={styles.title} testID="coverage-nudge-fact">
+        Everything lately is above {LOW_END_LABEL}%.
+      </Text>
+      <Text style={styles.body} testID="coverage-nudge-ask">
+        Try one you think probably won&apos;t happen.
       </Text>
       <View style={styles.actions}>
         {/* Secondary on purpose: Save is the one primary action on Log

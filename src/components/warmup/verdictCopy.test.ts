@@ -1,7 +1,7 @@
 import { scoreWarmup } from '@/engine/warmup';
 import type { WarmupAnswer } from '@/types';
 
-import { answerKeyRow, warmupChartNote, warmupVerdict } from './verdictCopy';
+import { answerKeyRow, warmupVerdict } from './verdictCopy';
 
 const run = (confidence: number, n: number, correct: number): WarmupAnswer[] =>
   Array.from({ length: n }, (_, i) => ({ confidence, correct: i < correct }));
@@ -34,14 +34,44 @@ describe('warmupVerdict', () => {
     // 70% on ten, 6 right: the old ±5 rule called this overconfident.
     const v = warmupVerdict(scoreWarmup(run(70, 10, 6)));
     expect(v?.title).toBe('On these ten, no clear lean');
-    // Roadmap D36: what did happen, plainly, then why it's no verdict.
-    expect(v?.advice).toBe(
-      "Your numbers expected about 7 right, and you got 6. On ten answers luck often moves it that far, so it can't tell yet whether you run too sure, too cautious or about right. Your own predictions are the real test.",
-    );
+    // Roadmap D36: what did happen, plainly, then why it's no verdict. The
+    // approved words of the voice pass (2026-11-23).
+    expect(v?.advice).toBe('You expected about 7 and got 6. Too close to call on ten questions.');
     expect(warmupVerdict(scoreWarmup(run(70, 10, 7)))?.advice).toBe(
-      "Your numbers expected about 7 right, and you got 7: just what they said. Ten answers can't prove that, so your own predictions are the real test.",
+      "You expected about 7 and got 7. Ten questions can't prove it, so your own predictions are the real test.",
     );
     expect(warmupVerdict(scoreWarmup(TWO))?.title).toBe('On these 2, no clear lean');
+  });
+
+  // The scale runs 0–100 (the owner, 2026-11-23): an expected count can round
+  // to 0, and every answer can say 0% or 100%.
+  describe('the expected count at the ends of the scale', () => {
+    it('says "almost none" for a count that rounds to 0, never "about 0"', () => {
+      const answers: WarmupAnswer[] = [
+        ...run(0, 9, 0),
+        { confidence: 5, correct: false },
+      ];
+      const result = scoreWarmup(answers);
+      expect(result.direction).toBe('calibrated');
+      const advice = warmupVerdict(result, answers)?.advice;
+      expect(advice).toBe(
+        "You expected almost none and got 0. Ten questions can't prove it, so your own predictions are the real test.",
+      );
+      expect(advice).not.toMatch(/about 0/);
+    });
+
+    it('says "none" and "all 10" when every answer said 0% or 100%', () => {
+      const none = run(0, 10, 0);
+      expect(scoreWarmup(none).direction).toBe('calibrated');
+      expect(warmupVerdict(scoreWarmup(none), none)?.advice).toMatch(
+        /^You expected none and got 0\. /,
+      );
+      const all = run(100, 10, 10);
+      expect(scoreWarmup(all).direction).toBe('calibrated');
+      expect(warmupVerdict(scoreWarmup(all), all)?.advice).toMatch(
+        /^You expected all 10 and got 10\. /,
+      );
+    });
   });
 
   it('rounds the reported figures for display', () => {
@@ -58,31 +88,35 @@ describe('warmupVerdict', () => {
     );
   });
 
-  // Roadmap step 49: tapping straight through leaves every answer at the
-  // slider's 75%, and the verdict should say so rather than read as a choice.
+  // Roadmap step 49: tapping straight through leaves every answer at one
+  // number, and the headline says so rather than an average. The note that
+  // followed ("One number for every question\u2026") was cut in the voice pass
+  // (2026-11-23).
   describe('one number on every answer', () => {
     const tapThrough = (correct: number): WarmupAnswer[] =>
       Array.from({ length: 10 }, (_, i) => ({ confidence: 75, correct: i < correct }));
 
-    it('says the shared number instead of an average', () => {
+    it('says the shared number instead of an average, and adds no note', () => {
       const answers = tapThrough(5);
       const v = warmupVerdict(scoreWarmup(answers), answers);
       expect(v?.detail).toBe('You said 75% on all 10. 5\u00A0of\u00A010\u00A0were\u00A0right.');
-      expect(v?.sameNumber).toMatch(/^One number for every question/);
+      expect(v).not.toHaveProperty('sameNumber');
+      expect(Object.values(v ?? {}).join(' ')).not.toMatch(/One number for every question/);
     });
 
-    it('stays quiet when the numbers vary, or when every answer was right', () => {
+    it('says an average when the numbers vary', () => {
       const varied: WarmupAnswer[] = [
         { confidence: 75, correct: true },
         { confidence: 75, correct: false },
         { confidence: 90, correct: true },
       ];
-      expect(warmupVerdict(scoreWarmup(varied), varied)?.sameNumber).toBeNull();
-
+      expect(warmupVerdict(scoreWarmup(varied), varied)?.detail).toBe(
+        'You said 80% on average. 2\u00A0of\u00A03\u00A0were\u00A0right.',
+      );
       const allRight = tapThrough(10).map((a) => ({ ...a, confidence: 100 }));
-      const v = warmupVerdict(scoreWarmup(allRight), allRight);
-      expect(v?.detail).toBe('You said 100% on all 10. 10\u00A0of\u00A010\u00A0were\u00A0right.');
-      expect(v?.sameNumber).toBeNull();
+      expect(warmupVerdict(scoreWarmup(allRight), allRight)?.detail).toBe(
+        'You said 100% on all 10. 10\u00A0of\u00A010\u00A0were\u00A0right.',
+      );
     });
 
     it('needs at least three answers to call it a pattern', () => {
@@ -92,19 +126,46 @@ describe('warmupVerdict', () => {
     });
   });
 
-  it("says the overconfident advice the way it's meant", () => {
-    expect(warmupVerdict(scoreWarmup(OVERCONFIDENT))?.advice).toBe(
-      "When you felt sure, you were right less often than you thought. Try a lower number when you feel sure.",
-    );
-  });
-});
+  // The voice pass (2026-11-23): the approved words for an average of 50 or
+  // more, and the same voice under 50, where "when you feel sure" can't apply.
+  describe('what to do next, by the lean and the side of the coin flip', () => {
+    it("says the overconfident advice the way it's meant", () => {
+      expect(warmupVerdict(scoreWarmup(OVERCONFIDENT))?.advice).toBe(
+        'You felt surer than you were. Next time you feel sure, go a little lower.',
+      );
+    });
 
-describe('warmupChartNote', () => {
-  it('names the count the headline reads together', () => {
-    expect(warmupChartNote(10)).toBe(
-      'The read above takes all ten together, which says more than any one range.',
-    );
-    expect(warmupChartNote(2)).toMatch(/^The read above takes all 2 together/);
+    it('reads picks against numbers when an overconfident average sat under 50', () => {
+      const answers = run(40, 10, 0);
+      const result = scoreWarmup(answers);
+      expect(result.direction).toBe('overconfident');
+      expect(warmupVerdict(result, answers)?.advice).toBe(
+        'Your picks came true less often than your numbers said. Go a little lower next time.',
+      );
+    });
+
+    it('says the underconfident advice for an average of 50 or more', () => {
+      const answers = run(55, 10, 10);
+      expect(warmupVerdict(scoreWarmup(answers), answers)?.advice).toBe(
+        'You knew more than you thought. Next time you feel sure, go a little higher.',
+      );
+    });
+
+    it('reads picks against numbers when an underconfident average sat under 50', () => {
+      const answers = run(20, 10, 6);
+      const result = scoreWarmup(answers);
+      expect(result.direction).toBe('underconfident');
+      expect(warmupVerdict(result, answers)?.advice).toBe(
+        'Your picks came true more often than your numbers said. Go a little higher next time.',
+      );
+    });
+
+    it('counts an average of exactly 50 as the sure side', () => {
+      const answers = run(50, 10, 10);
+      const result = scoreWarmup(answers);
+      expect(result.direction).toBe('underconfident');
+      expect(warmupVerdict(result, answers)?.advice).toMatch(/^You knew more than you thought\./);
+    });
   });
 });
 

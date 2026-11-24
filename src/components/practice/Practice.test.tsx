@@ -116,6 +116,26 @@ describe('PracticeQuiz', () => {
     render(<PracticeQuiz day={today()} slot={2} />);
     expect(screen.getByTestId('practice-next')).toHaveTextContent('See answers');
   });
+
+  // The owner, 2026-11-23: the scale runs 0–100, empty reads "Slide to set", and
+  // a number under 50 is taken as said.
+  it('starts empty, says what 50% means, and keeps a number under 50 as said', async () => {
+    const day = today();
+    render(<PracticeQuiz day={day} slot={0} />);
+    expect(screen.getByTestId('practice-confidence-readout')).toHaveTextContent('Slide to set');
+    expect(screen.getByText('50% means no idea, a coin flip.')).toBeTruthy();
+    const q = usePracticeStore.getState().questionsFor(day)[0]!;
+    fireEvent.press(screen.getByTestId(`practice-option-${q.correctIndex}`));
+    fireEvent.press(screen.getByTestId('practice-confidence-decrement')); // 45, a step from the coin flip
+    fireEvent.press(screen.getByTestId('practice-confidence-decrement')); // 40
+    expect(screen.getByTestId('practice-confidence-readout')).toHaveTextContent('40%');
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('practice-next'));
+    });
+    expect(usePracticeStore.getState().answersFor(day)).toMatchObject([
+      { slot: 0, confidence: 40, correct: true },
+    ]);
+  });
 });
 
 describe('PracticeResult', () => {
@@ -130,7 +150,9 @@ describe('PracticeResult', () => {
     expect(screen.getByTestId('practice-record-detail')).toHaveTextContent(
       `${PRACTICE_MIN_N - 3} more and this shows which way you lean.`,
     );
-    expect(screen.getByText(/stays apart from your calibration rating/)).toBeTruthy();
+    expect(
+      screen.getByText('Practice is just practice. It doesn’t touch your rating, badges or streak.'),
+    ).toBeTruthy();
   });
 
   it('says which way the record leans once there are enough', async () => {

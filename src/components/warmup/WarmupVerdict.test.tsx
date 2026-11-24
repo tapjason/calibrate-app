@@ -66,7 +66,9 @@ describe('WarmupVerdictScreen', () => {
     const expected = ids.indexOf('warmup-expected');
     expect(expected).toBeGreaterThan(-1);
     expect(expected).toBeLessThan(ids.indexOf('warmup-continue'));
-    expect(screen.getByTestId('warmup-expected')).toHaveTextContent(/Your numbers expected about/);
+    expect(screen.getByTestId('warmup-expected')).toHaveTextContent(
+      'You expected about 2 and got 1. Too close to call on 2 questions.',
+    );
   });
 
   // Release-gate playtest 2026-11-20: VoiceOver can jump by headings (DESIGN_SYSTEM §8).
@@ -81,7 +83,9 @@ describe('WarmupVerdictScreen', () => {
   it('says it is not about being right', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
-    expect(screen.getByTestId('warmup-not-right')).toHaveTextContent(/^It isn’t about being right. /);
+    expect(screen.getByTestId('warmup-not-right')).toHaveTextContent(
+      'It isn’t about being right. If you say 60%, about 4 in 10 should miss.',
+    );
   });
 
   it('headlines the counts, the read of these answers and the chart', () => {
@@ -96,33 +100,46 @@ describe('WarmupVerdictScreen', () => {
     expect(screen.getByTestId('calibration-chart')).toBeTruthy();
   });
 
-  // Blind playtests 2026-11-04 and 11-05: the headline and the chart's bars
-  // seemed to disagree. The chart says the headline reads all ten together.
-  it('says the read takes the answers together, not band by band', () => {
+  // The chart keeps its own caption (the grey-dot rule) and no longer adds
+  // "The read above takes all ten together…" (voice pass, 2026-11-23).
+  it("keeps the chart's own caption, without the cut note", () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
+    expect(screen.queryByTestId('chart-caption')).toBeNull();
+    fireEvent.press(screen.getByTestId('chart-key-toggle'));
     expect(screen.getByTestId('chart-caption')).toHaveTextContent(
-      /can't be told apart from perfect calibration. A grey dot has fewer than 10 answers, too few to read yet. The read above takes all 2 together/,
+      /A grey dot has fewer than 10 answers, too few to read yet\./,
     );
+    expect(screen.getByTestId('chart-caption')).not.toHaveTextContent(/The read above/);
   });
 
-  // Roadmap D18 (3).
+  // Roadmap D18 (3), in the voice pass's words (2026-11-23); the study's
+  // figures moved to How scoring works.
   it('bridges to the person\'s own plans', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
-    expect(screen.getByTestId('warmup-bridge')).toHaveTextContent(/big school project in 34 days took 56/);
-    expect(screen.getByTestId('warmup-bridge')).toHaveTextContent(/first one about tomorrow/);
+    expect(screen.getByTestId('warmup-bridge')).toHaveTextContent(
+      'That was the warm-up. The real thing is your own plans, where people are most overconfident. Start with one about tomorrow.',
+    );
+    expect(screen.getByTestId('warmup-bridge')).not.toHaveTextContent(/34 days/);
     expect(screen.getByTestId('warmup-continue')).toHaveTextContent('Make a real prediction');
   });
 
-  // CLAUDE.md: the Warmup delivers the aha, but it is not the user's real
-  // calibration rating — the screen has to say so.
-  it('marks the result as a warm-up, not a calibration rating', () => {
-    seed(ANSWERS);
+  // Cut outright in the voice pass (2026-11-23): Today says the 20, and the
+  // one-number note went with the text load.
+  it('drops the warm-up disclaimer and the one-number note', () => {
+    const tapThrough: WarmupAnswer[] = Array.from({ length: 10 }, (_, i) => ({
+      confidence: 75,
+      correct: i < 5,
+    }));
+    seed(tapThrough);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
-
-    expect(screen.getByText(/warm-up, not your calibration rating/)).toBeTruthy();
-    expect(screen.getByText(/20 of your own predictions/)).toBeTruthy();
+    expect(screen.queryByText(/not your calibration rating/)).toBeNull();
+    expect(screen.queryByText(/of your own predictions/)).toBeNull();
+    expect(screen.queryByText(/One number for every question/)).toBeNull();
+    expect(screen.queryByTestId('warmup-same-number')).toBeNull();
+    // The headline still says the shared number.
+    expect(screen.getByText(/^You said 75% on all 10\./)).toBeTruthy();
   });
 
   it('shows the answer key with the fact behind each question', () => {

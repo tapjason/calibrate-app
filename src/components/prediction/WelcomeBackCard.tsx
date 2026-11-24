@@ -11,8 +11,8 @@ import { welcomeBackLines } from './welcomeBackCopy';
 
 /**
  * Today's card for someone back after two weeks or more with nothing logged
- * or answered (roadmap D51): how long, what's waiting, the streak, and that
- * the rating moves as they catch up. A tester back after two months was told
+ * or answered (roadmap D51): what's waiting, the streak, and that the rating
+ * moves as they catch up (D76 took out how long). A tester back after two months was told
  * nothing, and read a silent drop in the rating and a missing streak as
  * something taken away (blind playtest 2026-11-09b, finding 4). Shown all day
  * on the return, until "Got it".
@@ -45,7 +45,6 @@ export function WelcomeBackCard() {
     ready: pending.filter((p) => isReadyToResolve(p, now)).length,
     todayCounts: store.streakNow(now).todayCounts,
     rated,
-    activeToday: store.streakNow(now).today > 0,
   });
 
   return (

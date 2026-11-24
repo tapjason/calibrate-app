@@ -15,8 +15,8 @@ interface NextBadgeLineProps {
 }
 
 /**
- * The closest badge, on Today, while no category has one (step 173): "To reach
- * Tracker in finance: 13 more scored answers." A bettor with 73 answers over 13
+ * The closest badge, on Today, while no category has one (step 173): "13 more
+ * scored answers to your first badge in finance." (D76). A bettor with 73 answers over 13
  * categories saw no badge line at all and nothing saying why (blind playtest
  * 2026-11-12f, finding 6). The weekly recap's words, a count, never a score
  * built on noise. It aims only at a category Log still offers (one hidden
@@ -44,7 +44,8 @@ export function NextBadgeLine({ onPress }: NextBadgeLineProps) {
     giveOrTake,
   );
   if (!next) return null;
-  const line = `${next.text}.`;
+  // Today's own words (D76); the recap card keeps its "To reach" line.
+  const { line } = next;
   return (
     <Pressable
       onPress={onPress}

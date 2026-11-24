@@ -3,6 +3,16 @@
 // check Resolve makes on it. Today only: a restored link on a later day shows
 // Resolve's own note again.
 
+/**
+ * The warning itself, before a same-day answer (roadmap D41): Answer it now's
+ * confirmation and Resolve's own note say it in the same words (D76, the voice
+ * pass, 2026-11-23). A prediction reworded on a later day than it was logged
+ * says so (D45).
+ */
+export function sameDayHeadsUp(reworded: boolean): string {
+  return `Heads up: an answer today won't count, because you ${reworded ? 'reworded' : 'logged'} it today. Tomorrow it will.`;
+}
+
 /** "2026-11-10": the local calendar day, with no spaces to encode. */
 export function warnedKey(now: Date = new Date()): string {
   const m = String(now.getMonth() + 1).padStart(2, '0');

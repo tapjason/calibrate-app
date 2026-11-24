@@ -1,17 +1,14 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
+import { __setDeviceLocaleForTests, __setPhoneClockForTests } from '@/constants/locale';
 import { colors } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
 import type { Prediction } from '@/types';
 
-import {
-  firstReminderDay,
-  ReminderPrompt,
-  shouldShowReminderPrompt,
-} from './ReminderPrompt';
-import { ReminderPromptCard } from './ReminderPromptCard';
+import { ReminderPrompt, shouldShowReminderPrompt } from './ReminderPrompt';
+import { nudgeTime, ReminderPromptCard } from './ReminderPromptCard';
 
 const mockPermission = { current: 'undetermined' as string, answer: 'granted' as string };
 const mockAsk = jest.fn(async () => mockPermission.answer);
@@ -83,25 +80,37 @@ describe('shouldShowReminderPrompt (roadmap step 38)', () => {
   });
 });
 
-describe('firstReminderDay', () => {
-  it('names the soonest due date still ahead, skipping overdue ones', () => {
-    const ahead = open('b', '2026-10-09T12:00:00.000Z');
-    const day = new Date(ahead.due_date).toLocaleDateString(undefined, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
-    expect(firstReminderDay([open('a', '2026-10-01T12:00:00.000Z'), ahead], NOW)).toBe(day);
-    expect(firstReminderDay([open('a', '2026-10-01T12:00:00.000Z')], NOW)).toBeNull();
+// D76 (the voice pass, 2026-11-23): "Want a nudge at 7 PM on the day it's
+// due?" in the person's own time, then "Plus a quiet weekly summary. Nothing
+// else." No date it starts on.
+describe('ReminderPromptCard words', () => {
+  afterEach(() => {
+    __setPhoneClockForTests(null);
+    __setDeviceLocaleForTests(null);
   });
 
-  // Roadmap D9: the reminder is that evening, so noon having passed doesn't
-  // mean it has.
-  it('counts a prediction due earlier today until its evening reminder', () => {
-    const now = new Date('2026-10-05T15:00:00.000Z');
-    const dueToday = open('t', '2026-10-05T12:00:00.000Z');
-    expect(firstReminderDay([dueToday], now)).not.toBeNull();
-    expect(firstReminderDay([dueToday], new Date('2026-10-05T19:30:00.000Z'))).toBeNull();
+  it('asks at the reminder time, the hour alone on the hour, and names the summary', () => {
+    __setDeviceLocaleForTests('en-US');
+    __setPhoneClockForTests(true);
+    useSettingsStore.setState({ dueReminderTime: { hour: 19, minute: 0 } });
+    const { unmount } = render(<ReminderPromptCard onAllow={jest.fn()} onDismiss={jest.fn()} />);
+    expect(screen.getByTestId('reminder-prompt-title')).toHaveTextContent(
+      /^Want a nudge at 7\sPM on the day it's due\?$/,
+    );
+    expect(screen.getByTestId('reminder-prompt-body')).toHaveTextContent(
+      'Plus a quiet weekly summary. Nothing else.',
+    );
+    expect(screen.queryByText(/starting/)).toBeNull();
+    unmount();
+  });
+
+  it('keeps the minutes off the hour, and on a 24-hour clock', () => {
+    __setDeviceLocaleForTests('en-US');
+    __setPhoneClockForTests(true);
+    expect(nudgeTime({ hour: 19, minute: 30 })).toMatch(/^7:30\sPM$/);
+    expect(nudgeTime({ hour: 8, minute: 0 })).toMatch(/^8\sAM$/);
+    __setPhoneClockForTests(false);
+    expect(nudgeTime({ hour: 19, minute: 0 })).toBe('19:00');
   });
 });
 
@@ -133,7 +142,7 @@ describe('ReminderPrompt', () => {
   // Step 195: the card is sunken, where controlBorder is 2.93:1 in light.
   it('outlines its button for the sunken card', () => {
     const { unmount } = render(
-      <ReminderPromptCard firstDue="Tue, Oct 6" onAllow={jest.fn()} onDismiss={jest.fn()} />,
+      <ReminderPromptCard onAllow={jest.fn()} onDismiss={jest.fn()} />,
     );
     const allow = StyleSheet.flatten(screen.getByTestId('reminder-prompt-allow').props.style);
     expect(allow.borderColor).toBe(colors.textTertiary);
