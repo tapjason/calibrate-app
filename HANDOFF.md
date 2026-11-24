@@ -1,7 +1,27 @@
 # Handoff
 
-**Now, 2026-11-23: branch `builder/lock-after`, off `builder/share-campaign-token` (`316428d`),
-committed, not merged or pushed. 1.0.0 is on the App Store; both branches are for 1.0.1.**
+**Now, 2026-11-23: branch `master`, three commits ahead of `origin/master`, not pushed. 1.0.0 is on
+the App Store. `builder/lock-after` (which holds `builder/share-campaign-token`) is merged into
+`master` (fast-forward) on the owner's words: "Merge for now, and you can bulid with testflight if
+it doesn't impact the current release version please."**
+- **Production build 1.0.1 (15)** (`fc8d843e`, from `393a680`, the version bump on top of `111bebb`):
+  https://expo.dev/accounts/tapjason/projects/calibrate/builds/fc8d843e-8326-4c83-8c20-79cba6c71a1c
+  - *For TestFlight only.* It doesn't touch the live 1.0.0: nothing reaches the store until a 1.0.1
+    version is made on the App Store tab and sent for review. 1.0.0's train is closed, hence 1.0.1.
+  - *Pre-flight:* `release-auditor` (Opus) said GO: `check.sh --release` exit 0 (254 suites, 5,411
+    tests; doctor 20/20; no drift; bundle 7.24 MB, export 7.65 MB; both pages 200); JS only since
+    `submitted-1.0.0` (only `app.json`'s version changed among the native files; no migration);
+    `eas whoami` and the three production environment names in place. He confirmed the command
+    ("Yes, run it"), which waived `/release-gate` for an internal TestFlight build.
+  - *His to do:* `npx eas submit --profile production --platform ios`, choosing build 15; add it to
+    the internal group; then the phone checks (the release audit's nine: the "Lock after" row, a
+    return inside and outside the time, Immediately, a relaunch after swiping the app away, the
+    cover in the app switcher, the age-range sheet behind the lock, the share link ending
+    `?pt=129758335&ct=share-card-text&mt=8`), recorded through `/device-check`. `git push origin
+    master` is his too.
+  - *Before a 1.0.1 App Store submission:* What's New (say that the lock now waits 5 minutes for
+    people who already had it on), the demo account's re-seed, a clause on "Lock after" in the
+    review notes, and a review of D75 if he calls one.
 - **"Lock after", D75, step 211** (the owner: "users should not have to unlock the phone if they
   are already opening the app … Only if they step away"; asked, he chose the "Lock after"
   choice): the app lock locks only after the person has been away longer than Immediately, 1, 5
