@@ -1,8 +1,11 @@
-# Store listing draft for 1.0.1 (2026-11-23)
+# Store listing draft for the next App Store version, 1.1.0 (2026-11-23)
+
+The file keeps its first name. The owner chose 1.1.0 for the build that carries this pass (2026-11-23);
+build 15 stays 1.0.1.
 
 A draft in the voice the owner approved on 2026-11-23 (`voice-sample-sheet-2026-11-23.md`). Not
 entered anywhere: `docs/APP_STORE_LISTING.md` stays the record of what is live until he approves
-this and it goes in with the 1.0.1 version. No new claim is made; every sentence restates one the
+this and it goes in with the 1.1.0 version. No new claim is made; every sentence restates one the
 live description already makes, and the subscription paragraph and the two links (Guideline 3.1.2)
 are unchanged. The practice line doesn't say practice improves anything (`CLAUDE.md` §9).
 
@@ -49,7 +52,7 @@ while setting a number, "the same for everyone that day", the list of Trends' co
 
 > Write down what you think will happen and how sure you are. Then find out if you were right to be. Sharp in health, shaky with money? Now you'll know.
 
-## What's New in 1.0.1 [4000]
+## What's New in 1.1.0 [4000]
 
 > • Simpler, friendlier wording, and a lot less of it.
 > • The fine print behind your score now sits one tap away.
@@ -61,7 +64,8 @@ The slider line stays only if that change ships in the build submitted.
 ## Review notes: two additions owed before submission (Guideline 2.3.1 a)
 
 The notes in `docs/APP_STORE_LISTING.md` §4 are still build 7's (3,833 of 4,000 bytes). These two
-additions come to about 400 bytes, so about 240 have to come out of the current text first.
+additions come to about 400 bytes, so about 290 bytes (260 characters) have to come out of the current text first (the release
+audit's count, 2026-11-23).
 
 > (after the app-lock paragraph's first sentence) "Lock after" under the switch sets how long the app can be away before it locks: Immediately, 1, 5 or 15 minutes (5 by default). Choose Immediately to see it lock at once.
 
