@@ -21,8 +21,9 @@ interface DuePickerProps {
   /**
    * Takes the open request a tap on "Pick a date" left, true once per tap
    * (DueDateChips): on web the browser's own calendar then opens at once, as
-   * the iPhone's inline one shows at once. Never for an Edit that opens on a
-   * picked date.
+   * the iPhone's inline one shows at once. The picker appears only after such
+   * a tap (review 2026-11-25); taking the request, not reading it, keeps an
+   * effect run twice from opening the calendar twice.
    */
   takeOpenRequest?: () => boolean;
 }
@@ -72,7 +73,7 @@ export function clampPicked(picked: Date, earliest: Date, latest: Date): Date {
 
 /**
  * "Pick a date" for the Log form (DESIGN_SYSTEM §7.12): the iPhone's inline
- * calendar, shown whole as soon as "Pick a date" is chosen (the owner,
+ * calendar, shown whole as soon as "Pick a date" is tapped (the owner,
  * 2026-11-24: the compact picker's small date button took a second tap), the
  * system dialog on Android, and the browser's own date input on web, its
  * calendar opened at once after the tap. Earliest choice is `earliest`: never

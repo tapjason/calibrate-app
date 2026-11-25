@@ -657,16 +657,9 @@ const KEEP: Fixture[] = [
     insight: { type: 'pattern', category: 'finance', message: 'Your finance score slipped by 6.5 points.\nSharp drops can follow very sure calls.', evidence: -6.5 },
   },
 
-  // --- D80 (2026-11-25): the medal names, as ordinary words. Each has a dropped twin below. ---
-  {
-    name: 'D80 "the gold standard"',
-    insight: { type: 'strength', category: 'work', message: 'Work scores 88, the gold standard in your record.', evidence: 88 },
-  },
-  { name: 'D80 "a silver lining"', insight: over(BASE, { suggestion: 'The silver lining: lower finance numbers are easy to try.' }) },
-  {
-    name: 'D80 "Gold standard" opening a line',
-    insight: { type: 'strength', category: 'work', message: 'Gold standard work: a score of 88.', evidence: 88 },
-  },
+  // D80's medal names as ordinary words ("the gold standard", "a silver
+  // lining") moved to DROP (record audit 2026-11-25): beside a score they read
+  // as the tier, so the medals are tiers wherever they appear.
 
   // === Round 7 (2026-11-19, final Coach re-review). Each has a dropped twin below. ===
 
@@ -1371,6 +1364,28 @@ const DROP: Fixture[] = [
   { name: 'D80 "Platinum" opening a sentence, with no ordinary noun after it', insight: { type: 'strength', category: 'work', message: 'Platinum for work: a score of 88.', evidence: 88 } },
   // The old names stay forbidden beside the medals.
   { name: 'D80 an old name still dropped: Oracle', insight: { type: 'strength', category: 'work', message: 'Work is near Oracle at 88.', evidence: 88 } },
+  // Record audit 2026-11-25: the medals as ordinary words are tiers too (all
+  // three kept until then), and "medal" or "badge" names one without its name.
+  {
+    name: 'D80 "the gold standard" (kept until 2026-11-25)',
+    insight: { type: 'strength', category: 'work', message: 'Work scores 88, the gold standard in your record.', evidence: 88 },
+  },
+  {
+    name: 'D80 "a silver lining" (kept until 2026-11-25)',
+    insight: over(BASE, { suggestion: 'The silver lining: lower finance numbers are easy to try.' }),
+  },
+  {
+    name: 'D80 "Gold standard" opening a line (kept until 2026-11-25)',
+    insight: { type: 'strength', category: 'work', message: 'Gold standard work: a score of 88.', evidence: 88 },
+  },
+  { name: 'D80 "a bronze rush"', insight: { type: 'strength', category: 'work', message: 'Work had a bronze rush, scoring 88.', evidence: 88 } },
+  { name: '"a medal" with no tier named', insight: { type: 'strength', category: 'work', message: 'Work earns a medal at 88.', evidence: 88 } },
+  { name: '"badges" with no tier named', insight: { type: 'strength', category: 'work', message: 'Work at 88 is where badges come from.', evidence: 88 } },
+  // Review round 3 (2026-11-25): a tier said without a medal's name.
+  { name: '"golden" with no tier named', insight: { type: 'strength', category: 'work', message: 'Work is golden at 88.', evidence: 88 } },
+  { name: '"top tier" with no tier named', insight: { type: 'strength', category: 'work', message: 'Work is top tier at 88.', evidence: 88 } },
+  { name: '"top-tier" with no tier named', insight: { type: 'strength', category: 'work', message: 'Work is top-tier at 88.', evidence: 88 } },
+  { name: '"Top tier" opening a line', insight: { type: 'strength', category: 'work', message: 'Top tier work: a score of 88.', evidence: 88 } },
 
   // === Round 7 (2026-11-19). The twins of the round-7 KEEP fixtures. ===
 

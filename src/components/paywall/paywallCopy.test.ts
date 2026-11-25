@@ -72,12 +72,20 @@ describe('trialLabel', () => {
 });
 
 describe('trialTermsLine', () => {
-  it('warns that the trial converts, and names the 24-hour deadline', () => {
-    const line = trialTermsLine([annualMonthTrial, monthly]);
-    expect(line).toContain('turns into a paid subscription');
-    // Apple only stops the charge if you cancel a day early. Saying "before
-    // it ends" would be a promise the platform does not keep.
-    expect(line).toContain('24 hours');
+  it('warns that the trial converts', () => {
+    expect(trialTermsLine([annualMonthTrial, monthly])).toBe(
+      'Your free trial turns into a paid subscription when it ends.',
+    );
+  });
+
+  // Policy review 2026-11-25: the renewal line carries the 24 hours for every
+  // plan now, so the trial's line doesn't say it again. Apple only stops the
+  // charge if you cancel a day early: "before it ends" alone would be a
+  // promise the platform does not keep.
+  it('leaves the 24 hours to the renewal line under it, said once', () => {
+    const finePrint = `${trialTermsLine([annualMonthTrial])} ${termsLine([annualMonthTrial])}`;
+    expect(finePrint).toContain('turns into a paid subscription');
+    expect(finePrint.match(/24 hours/g)).toHaveLength(1);
   });
 
   it('is empty when nothing on offer has a trial', () => {
@@ -185,8 +193,15 @@ describe('planAccessibilityLabel', () => {
 });
 
 describe('termsLine', () => {
-  it('discloses auto-renewal when a subscription is offered', () => {
-    expect(termsLine([annual, monthly])).toMatch(/renew automatically/);
+  // Policy review 2026-11-25 (FAIL): "until cancelled … any time" left out
+  // Apple's 24-hour rule. Every subscription plan carries it, trial or not.
+  it("states Apple's 24-hour rule for every subscription plan, trial or not", () => {
+    const renewal =
+      'Subscriptions renew automatically unless cancelled at least 24 hours before the end of ' +
+      'the current period. Manage or cancel in your App Store account settings.';
+    expect(termsLine([annual, monthly])).toBe(renewal);
+    expect(termsLine([monthly])).toBe(renewal);
+    expect(termsLine([annualMonthTrial])).toBe(renewal);
   });
 
   // Telling a one-time buyer their purchase auto-renews is the kind of copy

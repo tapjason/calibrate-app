@@ -24,8 +24,9 @@ The two primary goals:
 2. **Self-knowledge** — Did your confidence level reflect reality?
 
 The product framing is **identity, not statistics**: "Gold in health, Bronze in money"
-is a personality-test result with receipts. The badges are medals since D80 (2026-11-25), and
-each says how far you can trust your gut in that category. The math is the engine, never the pitch.
+is a personality-test result with receipts. The badges are medals since D80 (2026-11-25):
+Bronze comes with 20 scored answers, and Silver and up say how far you can trust your gut in
+that category. The math is the engine, never the pitch.
 
 ---
 
@@ -381,7 +382,10 @@ due date uses the same words (`relativeDay`, the owner, 2026-11-24): cards ("due
 "answered yesterday"), Log, Edit, details and Resolve. An open prediction due today reads
 "due today by 11:59 PM" (`dueDay`, D80; "by 23:59" on a 24-hour phone): the due day runs
 until midnight. The reminder stays at 7 PM. "Pick a date" opens the full calendar
-at once (inline on iOS).
+when tapped (inline on iOS). A date no preset holds shows folded, on Log and Edit alike:
+"Pick a date" chosen and the date in words, the calendar one tap on the chip away (the
+review of 2026-11-25: on Edit it pushed "Save changes" off the sheet). When new words move
+Edit's earliest due day past the chosen one, the line shows the earliest, as Save stores it.
 
 **"Log it again"** (step 22; on History's details too, D56) is offered after an answer on Resolve and on an answered
 prediction's details in History at any time. Its label names the date it brings ("Log it
@@ -755,10 +759,10 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
   You expected about 2." The trivia record says which way it leans only from 20
   answers (the same floor as the rating), and draws its chart from there. Its headline
   follows the chart's per-range rule (the review of 2026-11-23): it names the ranges
-  ("In practice, you run overconfident at 80–100%"; both sides as "In practice, you’re too
+  ("In trivia, you run overconfident at 80–100%"; both sides as "In trivia, you’re too
   sure at 80–100% and too cautious at 0–20%"), "close to calibrated" only when every range
   with 10 answers is within 5 points and the pooled read is close too, the pooled lean
-  ("In practice, you run overconfident") when no range has 10, and otherwise "In practice,
+  ("In trivia, you run overconfident") when no range has 10, and otherwise "In trivia,
   no clear lean yet".
 - On Today as one row under the streak, from the first logged prediction on (not on
   Day 0, where the next thing is the first real prediction). Before the first answer
@@ -955,8 +959,10 @@ coverage nudge instead (Range coverage caveat).
 wanted "sharp" out of the app, so the tiers read as medals. Display names only: ids, bars, sync and the
 Coach context don't change. Where badges are introduced (the top of Insights' badge
 section, the opening of How scoring works → Badges) one line says what they are: "Badges
-go Bronze, Silver, Gold, Platinum. Each one says how far you can trust your gut in that
-category." The word "sharp" appears nowhere in the app. Chips stay grey for Getting
+go Bronze, Silver, Gold, Platinum. Bronze comes with 20 scored answers; Silver and up say
+how far you can trust your gut in that category." (Bronze is earned by count alone, the
+review of 2026-11-25.) The word "sharp" appears nowhere in the app, and the Coach drops
+the medal words wherever they appear, "medal" and "badge" too. Chips stay grey for Getting
 started, Bronze and Silver, gold for Gold, and ink for Platinum, the strongest; no bronze,
 orange, blue or green (DESIGN_SYSTEM §7.4).
 
@@ -976,7 +982,8 @@ Bronze in health: after this answer its score's low end is no longer above Silve
 70. A badge follows the record both ways."), never after "Change answer" (D50's reason).
 No hysteresis. A badge earned says "New badge: Silver in health", with "Badges follow
 how well your numbers match what happens, not how often you're right." after Yes and No
-alike (D62). One card shows per answer; when the rating unlocks on the same answer, its
+alike (D62); a new Bronze says "Bronze comes with 20 scored answers. Silver and up follow
+how well your numbers match what happens." instead (the review of 2026-11-25). One card shows per answer; when the rating unlocks on the same answer, its
 card names the badge too ("New badge, too: Silver in health.").
 
 **How hard the bars are** (D62): a perfectly calibrated forecaster on a typical 55–95% mix

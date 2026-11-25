@@ -321,7 +321,7 @@ describe('SYSTEM_PROMPT', () => {
     ['a comparison only in an over/under card', /only in an overconfidence or underconfidence card/],
     ['each number with its word', /"answers" for a count[^]*Never call a count a score/],
     ['one category a sentence', /Name one category per sentence/],
-    ['no badge words', /never use the words\s+Getting started, Bronze, Silver, Gold, Platinum, Tracker, Forecaster, Sharp or Oracle/],
+    ['no badge words', /never use the words\s+Getting started, Bronze, Silver, Gold, Platinum, Tracker, Forecaster, Sharp, Oracle, medal or badge\./],
   ])('says %s', (_name, pattern) => {
     expect(SYSTEM_PROMPT).toMatch(pattern);
   });

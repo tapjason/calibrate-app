@@ -4,7 +4,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { haptics } from '@/components/ui/haptics';
 import { FLIP_MS } from '@/components/ui/TierFlip';
 
-import { MilestoneCard, milestoneCopy } from './MilestoneCard';
+import { BADGE_FOLLOWS, badgeFollows, MilestoneCard, milestoneCopy } from './MilestoneCard';
 
 // Reduce Motion is a system setting; mock only that hook. The default export
 // (Animated) has to be carried over by hand, since spreading a module object
@@ -88,6 +88,43 @@ describe('MilestoneCard — tier-up (DESIGN_SYSTEM §6.1 tierUp)', () => {
       /Badges follow how well your numbers match what happens, not how often you’re right\.$/,
     );
   });
+
+  // Record audit 2026-11-25: Bronze comes with the count alone, so a new
+  // Bronze says so; every other tier keeps the line above.
+  it('says what Bronze comes with, under a new Bronze only', () => {
+    const bronze = { ...TIER_UP, from: 'guesser' as const, badge: 'tracker' as const };
+    render(<MilestoneCard milestone={bronze} />);
+    const label = screen.getByTestId('milestone-tier_up').props.accessibilityLabel;
+    expect(label).toMatch(/^New badge: Bronze in health\./);
+    expect(label).toMatch(
+      /Bronze comes with 20 scored answers\. Silver and up follow how well your numbers match what happens\.$/,
+    );
+    expect(label).not.toMatch(/not how often you’re right/);
+    expect(label).toBe(
+      'New badge: Bronze in health. Bronze comes with 20 scored answers. Silver and up follow how well your numbers match what happens.',
+    );
+    for (const badge of ['forecaster', 'sharp', 'oracle'] as const) {
+      expect(badgeFollows(badge)).toBe(BADGE_FOLLOWS);
+    }
+  });
+
+  // Review round 3 (2026-11-25): with the unlock, the card already says "20
+  // scored answers in", so a new Bronze there is named and nothing more.
+  it('names a Bronze that came with the unlock, without its own line', () => {
+    const milestone = {
+      kind: 'rating_unlocked' as const,
+      rating: 86,
+      badge: { category: 'health' as const, badge: 'tracker' as const },
+    };
+    expect(milestoneCopy(milestone).body).toBe(
+      '20 scored answers in. Here’s your rating. It’s rough for now and settles as you answer more. New badge, too: Bronze in health.',
+    );
+    render(<MilestoneCard milestone={milestone} />);
+    const label = screen.getByTestId('milestone-rating_unlocked').props.accessibilityLabel;
+    expect(label).toMatch(/New badge, too: Bronze in health\.$/);
+    expect(label).not.toMatch(/Bronze comes with/);
+    expect(label).not.toMatch(/Badges follow/);
+  });
 });
 
 describe('MilestoneCard — score unlock', () => {
@@ -121,6 +158,12 @@ describe('milestoneCopy (step 179)', () => {
       badge: { category: 'health', badge: 'forecaster' },
     });
     expect(unlocked.body).toMatch(/New badge, too: Silver in health\. Badges follow/);
+    // Every tier but Bronze keeps its line beside the unlock.
+    for (const badge of ['forecaster', 'sharp', 'oracle'] as const) {
+      expect(
+        milestoneCopy({ kind: 'rating_unlocked', rating: 86, badge: { category: 'health', badge } }).body,
+      ).toMatch(new RegExp(`New badge, too: .+ in health\\. ${BADGE_FOLLOWS}$`));
+    }
     expect(milestoneCopy({ kind: 'rating_unlocked', rating: 86 }).body).not.toMatch(/New badge/);
     render(<MilestoneCard milestone={TIER_UP} />);
     expect(screen.getByTestId('milestone-tier_up').props.accessibilityLabel).toMatch(

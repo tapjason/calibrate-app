@@ -640,8 +640,9 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
 **Medals** (D80, the owner, 2026-11-25): the tiers read Bronze, Silver, Gold, Platinum
 (Tracker, Forecaster, Sharp, Oracle until then; the ids stay). One line introduces them,
 small and plain, under Insights' "Category badges" header and opening How scoring works
-→ Badges: "Badges go Bronze, Silver, Gold, Platinum. Each one says how far you can trust
-your gut in that category." No bronze or brown tint: a medal's name is in its label and
+→ Badges: "Badges go Bronze, Silver, Gold, Platinum. Bronze comes with 20 scored answers;
+Silver and up say how far you can trust your gut in that category." (Bronze is earned by
+count alone, the review of 2026-11-25.) No bronze or brown tint: a medal's name is in its label and
 its rings, never in a hue that means a lean. Platinum's gradient stops are plain hex
 (`paletteFor`): react-native-svg drops a stop it can't read as a number, and with the
 dynamic tokens the face drew empty in the app.
@@ -915,7 +916,9 @@ The rules that came before it, still true:
   spoken sentence. The words *missed*, *lost* and *broke* never appear.
 - Sentence case everywhere; no ALL-CAPS labels.
 - Badge gating is a trust feature, and the app says so in plain words: "Badges follow
-  how well your numbers match what happens, not how often you’re right." (D62).
+  how well your numbers match what happens, not how often you’re right." (D62). Under a
+  new Bronze, which comes with the count alone: "Bronze comes with 20 scored answers.
+  Silver and up follow how well your numbers match what happens." (review 2026-11-25).
 - **Things that read as one never split across lines** (roadmap step 70, checked at
   320pt): a range keeps its dash (`holdRanges`, a word joiner either side, applied
   wherever a range is drawn: the chart title and subtitle, Today's takeaway, Resolve's
@@ -1133,9 +1136,13 @@ the control reads the chosen category.)
   system dialog on Android. Under the chips, the date in words (§7.11): "Due in 3
   days", "Due Oct 16 (Friday)". One chip is chosen
   at a time (roadmap step 93): while the picker is open "Pick a date" is the choice,
-  even before the date moves off a preset's. Whenever "Pick a date" is the choice its calendar shows, including
-  when Edit opens on a prediction due on a picked date (step 138; Edit showed the chip
-  chosen and no field until a second tap). When a tap brings the calendar in, Log and
+  even before the date moves off a preset's. The calendar shows only after a tap on "Pick
+  a date", which also puts the keyboard away (review 2026-11-25): a date no preset holds,
+  as when Edit opens on one, shows the chip chosen and the date in words with the
+  calendar folded, and one tap on the chosen chip opens it (it showed at once from step
+  138, and on Edit the inline month pushed "Save changes" off the sheet). When new words
+  move Edit's earliest due day past the chosen one, the line shows the earliest, as Save
+  stores it. When a tap brings the calendar in, Log and
   Edit scroll just far enough to show the date block's bottom, or its top when the block
   is taller than the view, so the month and its arrows show (`useScrollReveal`); not when
   it already shows.

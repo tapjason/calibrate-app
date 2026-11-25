@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { StrictMode } from 'react';
-import { AccessibilityInfo, Platform, ScrollView } from 'react-native';
+import { AccessibilityInfo, AppState, Platform, ScrollView } from 'react-native';
 
 import { useScrollReveal } from '@/components/ui/useScrollReveal';
 import { setDbForTests } from '@/db/client';
@@ -28,6 +28,7 @@ import {
   EDIT_NUMBER_NOTE,
   PredictionDetails,
   REWORD_COUNTED,
+  REWORD_SPOKEN,
 } from './PredictionDetails';
 
 const USER = 'local-user-v1';
@@ -167,15 +168,63 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect(onDirtyChange).toHaveBeenLastCalledWith(false);
   });
 
-  // Blind playtest 2026-11-01: a picked due date showed "Pick a date" chosen
-  // and no date field until a second tap.
-  it('shows the date field at once for a picked due date', async () => {
-    await insertPrediction(open());
+  // Review 2026-11-25: Edit opened on a picked date with the whole month
+  // grid showing, which pushed Save changes off the sheet. The calendar
+  // waits for a tap on "Pick a date" (D78: at once, when tapped); the chip
+  // stays chosen and the date is said in words meanwhile, so it isn't a
+  // chosen chip with nothing beside it (blind playtest 2026-11-01).
+  it('opens Edit on a picked due date folded, and a tap on Pick a date opens it', async () => {
+    const inTen = new Date();
+    inTen.setDate(inTen.getDate() + 10);
+    inTen.setHours(12, 0, 0, 0);
+    await insertPrediction(open({ due_date: inTen.toISOString() }));
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
     fireEvent.press(screen.getByTestId('details-edit-button'));
     expect(screen.getByTestId('due-pick').props.accessibilityState.selected).toBe(true);
+    expect(screen.queryByTestId('due-picker')).toBeNull();
+    expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due (?!in\s|today|tomorrow)\S/);
+    expect(screen.getByTestId('details-save')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('due-pick'));
     expect(screen.getByTestId('due-picker')).toBeTruthy();
+    expect(screen.getByTestId('due-pick').props.accessibilityState.selected).toBe(true);
+  });
+
+  // Record audit 2026-11-25 (minor 1): new words move the earliest due day to
+  // tomorrow (D45) and `update` stores tomorrow, but Edit still said the day
+  // chosen before. The line names what Save keeps, as Log's does at midnight.
+  it('moves a date new words rule out up to the earliest, and says what Save keeps', async () => {
+    const todayNoon = new Date();
+    todayNoon.setHours(12, 0, 0, 0);
+    const tomorrowNoon = new Date(todayNoon);
+    tomorrowNoon.setDate(tomorrowNoon.getDate() + 1);
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    await insertPrediction(
+      open({ created_at: threeDaysAgo.toISOString(), due_date: todayNoon.toISOString() }),
+    );
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-edit-button'));
+    expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due today by /);
+
+    fireEvent.changeText(screen.getByTestId('details-title-field'), 'Ship the beta to ten people');
+    expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due tomorrow$/);
+    expect(screen.getByTestId('due-tomorrow').props.accessibilityState.selected).toBe(true);
+
+    // The words put back bring the day chosen back, not a later one counted
+    // as a late move; an empty field moves nothing either (Save waits).
+    fireEvent.changeText(screen.getByTestId('details-title-field'), 'Ship the beta');
+    expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due today by /);
+    expect(screen.queryByTestId('details-late-move')).toBeNull();
+    fireEvent.changeText(screen.getByTestId('details-title-field'), '');
+    expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due today by /);
+
+    fireEvent.changeText(screen.getByTestId('details-title-field'), 'Ship the beta to ten people');
+    await waitFor(() => expect(screen.getByTestId('details-save')).toBeEnabled());
+    fireEvent.press(screen.getByTestId('details-save'));
+    await waitFor(() => expect(screen.getByTestId('details')).toBeTruthy());
+    expect((await getPrediction('p1'))?.due_date).toBe(tomorrowNoon.toISOString());
   });
 
   // The owner, 2026-11-24: the inline calendar shows at once; the sheet
@@ -623,6 +672,80 @@ describe('PredictionDetails (roadmap D25)', () => {
     fireEvent.press(screen.getByTestId('details-save'));
     await waitFor(() => expect(screen.getByTestId('details-reworded')).toBeTruthy());
     expect((await getPrediction('p1'))?.title_edited_at).toBeTruthy();
+  });
+
+  // Review round 3 (2026-11-25): VoiceOver hears the printed note whole,
+  // the earliest due date included.
+  it('says the rewording note aloud as printed, the earliest due date too', async () => {
+    await insertPrediction(open());
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    announce.mockClear();
+    try {
+      renderDetails();
+      await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+      fireEvent.press(screen.getByTestId('details-edit-button'));
+      fireEvent.changeText(screen.getByTestId('details-title-field'), "Don't ship the beta");
+      const NOTE =
+        'Changing the words makes this a new prediction from today: an answer today isn’t scored, and the earliest due date is tomorrow.';
+      expect(REWORD_SPOKEN).toBe(NOTE);
+      expect(screen.getByTestId('details-reword-note')).toHaveTextContent(NOTE);
+      await waitFor(() => expect(announce).toHaveBeenCalledWith(NOTE));
+    } finally {
+      announce.mockRestore();
+    }
+  });
+
+  // Review round 3 (2026-11-25): Edit reads the clock at render, so it
+  // re-renders when the day turns (useLocalDay, as Log does): a move later
+  // that wasn't counted yesterday is said once it's the eve of the due day.
+  it('follows the clock when the day turns while Edit is open', async () => {
+    // The listeners are kept and passed on: a spy's restore would leave the
+    // setup's AppState mock with no implementation for the tests after this.
+    const listeners: ((state: string) => void)[] = [];
+    const realAdd = AppState.addEventListener;
+    AppState.addEventListener = ((type, listener) => {
+      if (type === 'change') listeners.push(listener as (state: string) => void);
+      return realAdd.call(AppState, type, listener);
+    }) as typeof AppState.addEventListener;
+    // Only the clock is faked: the database and waitFor keep real timers.
+    jest.useFakeTimers({
+      now: new Date(2026, 10, 25, 10, 0, 0),
+      doNotFake: [
+        'hrtime',
+        'nextTick',
+        'performance',
+        'queueMicrotask',
+        'requestAnimationFrame',
+        'cancelAnimationFrame',
+        'requestIdleCallback',
+        'cancelIdleCallback',
+        'setImmediate',
+        'clearImmediate',
+        'setInterval',
+        'clearInterval',
+        'setTimeout',
+        'clearTimeout',
+      ],
+    });
+    try {
+      await insertPrediction(open({ due_date: new Date(2026, 10, 27, 12, 0, 0).toISOString() }));
+      renderDetails();
+      await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+      fireEvent.press(screen.getByTestId('details-edit-button'));
+      fireEvent.press(screen.getByTestId('due-week'));
+      // Due in two days: not yet the eve, so nothing is counted.
+      expect(screen.queryByTestId('details-late-move')).toBeNull();
+
+      // The phone comes back the next morning, the eve of its due day.
+      jest.setSystemTime(new Date(2026, 10, 26, 9, 0, 0));
+      act(() => listeners.forEach((listener) => listener('active')));
+      expect(screen.getByTestId('details-late-move')).toHaveTextContent(
+        'It’s due tomorrow, so moving it later is counted on Insights: the outcome may already be known. It doesn’t change your score.',
+      );
+    } finally {
+      jest.useRealTimers();
+      AppState.addEventListener = realAdd;
+    }
   });
 
   // Step 173 (aggregate B1): a move later on the eve or after is counted.

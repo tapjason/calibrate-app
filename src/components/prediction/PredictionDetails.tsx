@@ -14,6 +14,7 @@ import { haptics } from '@/components/ui/haptics';
 import { CategoryIcon } from '@/components/ui/Icon';
 import { TextButton } from '@/components/ui/TextButton';
 import { TextField } from '@/components/ui/TextField';
+import { useLocalDay } from '@/components/ui/useLocalDay';
 import type { ScrollReveal } from '@/components/ui/useScrollReveal';
 import { colors, FONT_FAMILY, space, tabularNums, type } from '@/constants/theme';
 import {
@@ -23,6 +24,7 @@ import {
   categoryChangeCountedIfAnswered,
   categoryChangeIsCounted,
   deleteIsCounted,
+  dueDateSavedForEdit,
   earliestDueForEdit,
   madeAt,
   moveIsCounted,
@@ -79,8 +81,13 @@ const shortDate = (iso: string) =>
 // (blind playtest 2026-11-13, run 2).
 const LATE_MOVE_SPOKEN =
   'Moving it later is counted on Insights: the outcome may already be known. It doesn’t change your score.';
-const REWORD_SPOKEN =
-  'Changing the words makes this a new prediction from today: an answer today isn’t scored.';
+/**
+ * The rewording note (D45), printed and spoken in the same words: VoiceOver
+ * heard it without the earliest due date (review round 3, 2026-11-25).
+ * Exported for tests.
+ */
+export const REWORD_SPOKEN =
+  'Changing the words makes this a new prediction from today: an answer today isn’t scored, and the earliest due date is tomorrow.';
 /**
  * New words on the eve or after are counted (D62), said before Save as a late
  * move is: the date stays, so a call whose outcome was in sight could be
@@ -156,6 +163,11 @@ export function PredictionDetails({
   dateReveal,
 }: PredictionDetailsProps) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
+  // Re-render when the day turns, as Log does: the date Save keeps, the late
+  // move's note and the rewording's quiet day read the clock at render, and
+  // nothing else redrew a sheet left open past midnight (review round 3,
+  // 2026-11-25).
+  useLocalDay();
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<Mode>('view');
@@ -203,7 +215,10 @@ export function PredictionDetails({
   // live region, so VoiceOver users never heard them (code review
   // 2026-11-12). The late move is step 173's; the rewording D45's.
   const editing = mode === 'edit' && prediction !== null;
-  const lateMoveNow = editing && moveIsCounted(prediction, dueDate, title);
+  // The words the date follows: the draft's, or the stored ones while the
+  // field is empty (Save waits for words then), so clearing it moves nothing.
+  const dueTitle = prediction !== null && title.trim().length === 0 ? prediction.title : title;
+  const lateMoveNow = editing && moveIsCounted(prediction, dueDate, dueTitle);
   // Quiet on the day it was logged while it isn't due yet (D63): it already
   // counts as made today, its date can't be before tomorrow, and the
   // rewording isn't counted. Due today (a clock or time-zone change, a
@@ -288,6 +303,8 @@ export function PredictionDetails({
     setBusy(true);
     setError(null);
     try {
+      // The chosen date: `update` moves it up by the same rule as the line
+      // under the chips (dueDateSavedForEdit), on its own clock.
       await usePredictionStore.getState().update(prediction.id, {
         title,
         category,
@@ -428,7 +445,12 @@ export function PredictionDetails({
     const changingWords = title.trim().length > 0 && rewords(prediction.title, title);
     // A due date moved later on its eve or after is counted (step 173), said
     // before Save as a counted delete is.
-    const lateMove = moveIsCounted(prediction, dueDate, title);
+    const lateMove = moveIsCounted(prediction, dueDate, dueTitle);
+    // The date Save will keep (record audit 2026-11-25): new words move the
+    // earliest day to tomorrow, and a date chosen before it moves up with it,
+    // as Log's does at midnight. Derived, not set: words put back bring the
+    // chosen date back, rather than leave a later one counted as a late move.
+    const savedDue = dueDateSavedForEdit(prediction, dueTitle, dueDate);
     const daysLeft = daysUntilDue(prediction, new Date());
     return (
       <View style={styles.wrap} testID="details-edit" onLayout={dateReveal?.onParentLayout}>
@@ -461,8 +483,7 @@ export function PredictionDetails({
             (blind playtest 2026-11-14, run 1). */}
         {changingWords && !rewordQuiet && (
           <Text style={styles.note} testID="details-reword-note" accessibilityLiveRegion="polite">
-            Changing the words makes this a new prediction from today: an answer today
-            isn’t scored, and the earliest due date is tomorrow.
+            {REWORD_SPOKEN}
             {/* Not when the move line below says it already (due today). */}
             {rewordIsCounted(prediction, title) && !lateMove ? ` ${REWORD_COUNTED}` : ''}
           </Text>
@@ -497,11 +518,11 @@ export function PredictionDetails({
         <View onLayout={dateReveal?.onTargetLayout} testID="details-due-block">
           <DueDateChips
             presets={presets}
-            value={dueDate}
+            value={savedDue}
             picking={picking}
             onChange={setDueDate}
             onPickingChange={setPicking}
-            earliest={earliestDueForEdit(prediction, title)}
+            earliest={earliestDueForEdit(prediction, dueTitle)}
             onPickerReveal={dateReveal?.reveal}
           />
         </View>

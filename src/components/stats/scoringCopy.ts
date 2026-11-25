@@ -54,11 +54,15 @@ export const BADGE_LADDER: readonly BadgeLevel[] = [
  * Where badges are introduced (D80, the owner, 2026-11-25: the tier names
  * were confusing at first): the top of Insights' badge section and the
  * opening of How scoring works → Badges. "Badges go Bronze, Silver, Gold,
- * Platinum. Each one says how far you can trust your gut in that category."
+ * Platinum. Bronze comes with 20 scored answers; Silver and up say how far
+ * you can trust your gut in that category." Bronze is earned by count alone,
+ * so it says nothing about the gut (record audit 2026-11-25).
  */
 export const BADGES_INTRO = `Badges go ${BADGE_LADDER.slice(1)
   .map((b) => BADGE_META[b].label)
-  .join(', ')}. Each one says how far you can trust your gut in that category.`;
+  .join(', ')}. ${BADGE_META.tracker.label} comes with ${MIN_N_CATEGORY} scored answers; ${
+  BADGE_META.forecaster.label
+} and up say how far you can trust your gut in that category.`;
 
 /** The five badges with what each takes, as the badge legend shows them. */
 export function badgeRows(): { badge: BadgeLevel; label: string; criteria: string }[] {

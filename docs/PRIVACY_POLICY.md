@@ -13,7 +13,7 @@ What each claim rests on, and what would change the text next: PRIVACY_POLICY.no
 
 # Fairly Sure Privacy Policy
 
-**Effective:** November 20, 2026 · **Contact:** tapjason-dev@gmail.com
+**Effective:** November 25, 2026 · **Contact:** tapjason-dev@gmail.com
 
 Fairly Sure ("the app") is made by Jason Zou. This policy says what
 the app collects, why, who else handles it, and how to delete it. It's written
@@ -141,10 +141,10 @@ last reworded it. An answer given on the day you made the prediction doesn't
 count toward your score, and that day is judged where you made it, so moving to
 another time zone doesn't change which answers count. If your version of the
 app backs these offsets up, they're stored with the prediction on our server
-too. Your warm-up and daily practice answers are not predictions:
+too. Your warm-up and daily trivia answers are not predictions:
 the answers themselves stay on your device, signed in or not. What is sent is a
 tally: when you finish the warm-up, its 0–100 score and how many questions it
-had; when you finish a day's practice, how many you got right out of how many
+had; when you finish a day's trivia, how many you got right out of how many
 (§2.3).
 
 **2.3 Usage events.** A small, fixed list of in-app events, such as "warmup
@@ -158,7 +158,7 @@ was shared. They tell us whether the app works for people. The full list:
 `prediction_logged`, `prediction_resolved`, `paywall_viewed`,
 `purchase_completed`, `purchase_abandoned`, `coverage_nudge_shown`,
 `coverage_nudge_accepted`, `practice_started`, `practice_completed`,
-`practice_reminder_set` (sent only by versions before 1.1.0), `coach_requested`, `data_exported`.
+`practice_reminder_set` (recorded only by versions before 1.1.0), `coach_requested`, `data_exported`.
 
 These are linked to your account. The sign-in screen says so before you sign
 in, including that events recorded before you signed in and still on the phone
@@ -245,6 +245,9 @@ policies.
 Reminders are scheduled **on your device**. We don't collect a push token and
 we don't send notifications from a server. From version 1.1.0, a due-day reminder shows only
 the day you made the prediction and the confidence you gave it, never its words.
+Before 1.1.0, a reminder showed the words only if "Show the words in reminders" was
+turned on (it was off by default), and reminders an earlier version already scheduled
+change to the new form the first time you open 1.1.0.
 The weekly digest shows only how many predictions are open.
 
 ## 6. How long we keep it
@@ -291,7 +294,7 @@ In the app: **You → Delete account** (at the bottom). This permanently deletes
 - your usage events, purchase status and Coach usage count on our server,
 - and this phone's copy of your data: predictions, categories and their icons,
   the counts of deleted, late-changed and moved predictions, warm-up and
-  practice answers, the age band, a prediction you were still typing, and the
+  trivia answers, the age band, a prediction you were still typing, and the
   exported files, card images and pictures the app left in the phone's cache. Your settings (switches and reminder times), which hold
   nothing you wrote, stay (unless they can't be read at that moment; then they
   are replaced, as described under Erase below).
@@ -359,7 +362,7 @@ doesn't come back to the phone while that lasts, and the app says so, §9.)
 Signing back in brings back your predictions and reflections from our server.
 Category names, icons and hiding are kept only on the phone, so they don't come
 back, and neither do the time-zone offsets in §2.2 unless your version of the
-app backs them up. Your warm-up, daily practice and age band belong to the
+app backs them up. Your warm-up, daily trivia and age band belong to the
 phone rather than the account, and stay, as do your settings (unless they
 can't be read when you sign out; then they are replaced, as described under
 Erase below). Reminders for the
@@ -384,7 +387,7 @@ the app counts any changes that accounts signed in here before never sent to
 our server, and says how many would be lost, or, if it can't count them, that
 there may be some. If any part of the erase doesn't complete, the app says it
 couldn't finish, and you can run it again. So it removes predictions and
-reflections, categories and their icons, warm-up and practice answers, the age
+reflections, categories and their icons, warm-up and trivia answers, the age
 band, a prediction you were still typing, usage events not yet sent, the counts of
 deleted, late-changed and
 moved predictions that signing out leaves, and anything else an account signed

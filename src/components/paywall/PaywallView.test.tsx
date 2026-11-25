@@ -174,12 +174,14 @@ describe('PaywallView', () => {
     expect(screen.queryByTestId('plan-annual-equivalent')).toBeNull();
   });
 
+  // Policy review 2026-11-25: the trial's line says it converts; the renewal
+  // line under it carries the 24 hours, for every subscription plan.
   it('states that the trial converts, and the 24-hour cancel deadline', () => {
     seed();
     render(<PaywallView />);
     const terms = screen.getByTestId('paywall-trial-terms');
-    expect(terms).toBeTruthy();
-    expect(terms.props.children).toContain('24 hours');
+    expect(terms.props.children).toContain('turns into a paid subscription');
+    expect(screen.getByText(/at least 24 hours before the end of the current period/)).toBeTruthy();
   });
 
   it('omits the trial terms when no plan on offer has a trial', () => {
@@ -196,7 +198,8 @@ describe('PaywallView', () => {
     expect(screen.getByText(/renew automatically/)).toBeTruthy();
     fireEvent.press(screen.getByTestId('plan-monthly'));
     expect(screen.queryByTestId('paywall-trial-terms')).toBeNull();
-    expect(screen.getByText(/renew automatically/)).toBeTruthy();
+    // With no trial too, the 24 hours (policy review 2026-11-25).
+    expect(screen.getByText(/renew automatically unless cancelled at least 24 hours/)).toBeTruthy();
     fireEvent.press(screen.getByTestId('plan-lifetime'));
     expect(screen.queryByTestId('paywall-trial-terms')).toBeNull();
     expect(screen.queryByText(/renew automatically/)).toBeNull();

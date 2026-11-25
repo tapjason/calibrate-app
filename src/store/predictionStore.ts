@@ -671,10 +671,9 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     const now = new Date();
     const rewordedAt = rewords(current.title, title) ? now.toISOString() : undefined;
     const rewordedUtcOffsetMin = rewordedAt !== undefined ? utcOffsetMinutes(now) : undefined;
-    const from = rewordedAt ?? scoredFrom(current);
-    const fromOffset = rewordedAt !== undefined ? rewordedUtcOffsetMin : scoredFromOffset(current);
-    // The picker's floor, held here too: a typed date can get past it.
-    const due_date = clampDueDate(edit.due_date, new Date(from), now, fromOffset);
+    // The picker's floor, held here too: a typed date can get past it. The
+    // one rule Edit shows its date by (dueDateSavedForEdit), on this clock.
+    const due_date = dueDateSavedForEdit(current, title, edit.due_date, now);
     // A late move later is counted on Insights (step 173), held here so a
     // deep link or a typed date is caught as the picker is.
     // Only an open one: an answer landing meanwhile leaves the row unchanged
@@ -955,6 +954,24 @@ export function earliestDueForEdit(p: Prediction, draftTitle: string, now: Date 
     : earliestDueDay(new Date(scoredFrom(p)), now, scoredFromOffset(p));
 }
 
+/**
+ * The due date `update` will store for an edit of `p` to `draftTitle` with
+ * `dueIso` chosen (D41, D45): the chosen day, or the earliest Edit allows when
+ * that is later, the day after it was made, or after today when the words are
+ * new. Edit shows this one, so its line never names a date Save won't keep
+ * (record audit 2026-11-25); `update` and moveIsCounted clamp by it too.
+ */
+export function dueDateSavedForEdit(
+  p: Prediction,
+  draftTitle: string,
+  dueIso: string,
+  now: Date = new Date(),
+): string {
+  return rewords(p.title, draftTitle.trim())
+    ? clampDueDate(dueIso, now, now, utcOffsetMinutes(now))
+    : clampDueDate(dueIso, new Date(scoredFrom(p)), now, scoredFromOffset(p));
+}
+
 /** When the prediction, as it now reads, was made: logged or last reworded (D45). */
 export function madeAt(p: Prediction): string {
   return scoredFrom(p);
@@ -1077,10 +1094,7 @@ export function moveIsCounted(
   // The date Save will keep, clamped as `update` clamps it, so a rewording on
   // the due day that pushes the date on is warned about too (record audit
   // 2026-11-12).
-  const reworded = rewords(p.title, title.trim());
-  const from = reworded ? now.toISOString() : scoredFrom(p);
-  const fromOffset = reworded ? utcOffsetMinutes(now) : scoredFromOffset(p);
-  const saved = clampDueDate(newDueIso, new Date(from), now, fromOffset);
+  const saved = dueDateSavedForEdit(p, title, newDueIso, now);
   return postponementCounts(p.due_date, saved, now, scoredFrom(p), scoredFromOffset(p));
 }
 

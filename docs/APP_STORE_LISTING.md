@@ -1,13 +1,14 @@
 # Fairly Sure — App Store Listing
 
-**As of:** 2026-11-20 · The source for the App Store Connect record's fields, drafted from
-`CLAUDE.md` and the shipped code, and read against production build 1.0.0 (7) (commit
-`590ab75`) by the release gate of 2026-11-20: its policy audit rewrote the review notes'
-opening (§4) and its release audit counted every field. Earlier revisions: the age-rating
-answers and review notes from the policy audits of 2026-11-14 and 2026-11-15, the security
-and policy review of 2026-11-18, and the under-13 rule (D70) and its review on 2026-11-19.
-Every feature claimed below is in `master` and in build 7, the under-13 rule included;
-✨ Refine is cut and appears nowhere.
+**As of:** 2026-11-25 · The source for the App Store Connect record's fields, drafted from
+`CLAUDE.md` and the code, and read against `master` for 1.1.0 (the review of 2026-11-25,
+after D79 and D80), not against build 7. Before that, the release gate of 2026-11-20 read it
+against production build 1.0.0 (7) (commit `590ab75`): its policy audit rewrote the review
+notes' opening (§4) and its release audit counted every field. Earlier revisions: the
+age-rating answers and review notes from the policy audits of 2026-11-14 and 2026-11-15, the
+security and policy review of 2026-11-18, and the under-13 rule (D70) and its review on
+2026-11-19. Every feature claimed below is in `master` for 1.1.0, the under-13 rule
+included; ✨ Refine is cut and appears nowhere.
 The limits in brackets are Apple's, and every field was counted against them.
 
 ---
@@ -77,8 +78,30 @@ Connect at the 1.1.0 submission;* the line above is the record's until then.
 > Sharp in health, shaky with money? Your calibration score shows you where.
 
 *Needs the owner's word at 1.1.0:* the second line plays on the old tier name, and the app
-no longer says "sharp" (D80). His slogan above can take its place ("Learn when to trust your
-gut, category by category." is one way).
+no longer says "sharp" (D80). **The main session's suggestion, for the owner to confirm**
+(2026-11-25), the medals in the same shape:
+
+> Gold in health, Bronze with money? Your calibration score shows you where.
+
+(152 of 170 with the first line.) His slogan above can take its place instead ("Learn
+when to trust your gut, category by category." is one way).
+
+**What's New in 1.1.0** [4000] (a draft for the owner, 2026-11-25; not entered anywhere)
+
+> • Badges are medals now: Bronze, Silver, Gold and Platinum.
+> • Due dates are in plain words, like "due in 3 days". One due today reads "due today by
+> 11:59 PM".
+> • "Pick a date" opens the full calendar.
+> • Reminders never show your words, and they don't have Happened and Didn't buttons any
+> more. Tap one to answer in the app.
+> • "Hide the words" is gone: your predictions show as you wrote them, and category names
+> show on your card too. Leave a category off the card before you share it if you'd rather.
+> • Practice is now Trivia, and its reminder is gone.
+> • Fairly Sure Plus is here: Coach, Trends and extra card themes.
+
+His draft of 2026-11-23 (`docs/design/research/store-listing-draft-1.0.1.md`) has four more
+lines that also ship in 1.1.0: the shorter wording, the fine print one tap away, the warm-up
+and trivia sliders at 0 to 100%, and "Lock after". Merge them in when he picks the final text.
 
 **Keywords** [100 bytes, comma-separated, no spaces, no words already in the name]
 
@@ -150,9 +173,9 @@ leaves that judgement to the developer), so getting it right first time matters.
 > confidence compared with how many you got right.
 >
 > **THREE QUESTIONS A DAY**
-> On days when nothing comes due, there's daily practice: three quick
+> On days when nothing comes due, there's daily trivia: three quick
 > either-or questions, the same for everyone that day, each with how sure you
-> are. Practice stays apart from your real score.
+> are. Trivia is just for fun and stays apart from your real score.
 >
 > **GOLD IN HEALTH, BRONZE IN MONEY**
 > Calibration isn't one number. Fairly Sure scores you separately for work,
@@ -222,7 +245,12 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 
 ## 4. App Review notes
 
-Paste-ready for build 7 (3,833 of Apple's 4,000 characters). The opening was rewritten by
+Paste-ready for 1.1.0 (3,972 of Apple's 4,000 characters; 3,998 bytes as UTF-8, also under 4,000;
+counted by script 2026-11-25, the block between the fences, line breaks included). Since build
+7's notes: + is on Today only, a "New in 1.1.0" line (Guideline 2.3.1(a)) that also names
+what 1.1.0 removes ("Hide the words", the practice reminder, "Got a friend's card?"; the
+review of 2026-11-25, round 3), the "Lock after" clause, and shorter Coach, usage-count and
+age lines to make room. The opening was rewritten by
 the release gate's policy audit (2026-11-20, Guideline 2.1): the purchase flow is shown
 before signing in, since the demo account already has Plus and its Plus screen has no
 plans; the reviewer is asked to delete an account of their own, not the demo one; and the
@@ -231,11 +259,13 @@ email and password go in App Store Connect's **Sign-In Information** (tick "Sign
 required"), never in these notes and never in the repo.
 
 ```text
-Fairly Sure works fully without an account. To try the core loop on a fresh install: log a prediction with +, then tap it on Today and choose Answer it now. A new prediction is due tomorrow at the earliest, and an answer given the day it was logged is kept but not scored, by design. The demo account shows a scored record.
+Fairly Sure works fully without an account. To try the core loop on a fresh install: log a prediction with + on Today, then tap it and choose Answer it now. A new prediction is due tomorrow at the earliest, and an answer given the day it was logged is kept but not scored, by design. The demo account shows a scored record.
+
+New in 1.1.0: badges read Bronze to Platinum; reminders show only the date and confidence, no words or answer buttons; practice is now Trivia, with no reminder; "Hide the words" and "Got a friend's card?" are gone; "Lock after" (below); first Plus subscriptions.
 
 Fairly Sure Plus: before signing in, open You → Fairly Sure Plus and buy any plan with your sandbox account (Annual offers new subscribers a free month; Restore purchases is on the same screen). The demo account already has Plus, so while signed in to it that screen says "You're on Fairly Sure Plus" instead of the plans.
 
-Coach: sign in with the demo account (You → Sign in; the email and password are under Sign-In Information). It holds 153 answered predictions and has Plus. Turn on You → Coach (AI), then Insights → Get feedback. The Coach needs an account because our server checks the subscription per account. The app doesn't offer creating an account by email yet (confirmation emails aren't being sent), so the email form signs in to existing accounts only. Sign in with Apple and Continue with Google also work. Signing out removes the account's predictions from the phone; signing back in brings them back.
+Coach: sign in with the demo account (You → Sign in; the email and password are under Sign-In Information). It holds 153 answered predictions and has Plus. Turn on You → Coach (AI), then Insights → Get feedback. The Coach needs an account: our server checks Plus per account. Creating an account by email is off for now, so the email form signs in to existing accounts only; Sign in with Apple and Continue with Google also work. Signing out removes the account's predictions from the phone; signing back in brings them back.
 
 Account deletion: You → Delete account (at the bottom, once signed in). Please test it with an account you create with Sign in with Apple, so the demo account stays available.
 
@@ -243,11 +273,11 @@ Notifications are local reminders only; no push server is involved.
 
 The Coach sends only computed statistics (counts, scores and percentages), never the user's text or account id, to OpenAI through our server, and only after the user turns it on in You → Coach (AI), which says a third-party AI service writes the feedback (the privacy policy names OpenAI). Sign in with Apple asks for the email only. Continue with Google sits below Sign in with Apple; it opens Google in the system sign-in sheet (no Google SDK is in the app), and our database removes the name and picture Google sends as they arrive.
 
-After the first screen appears, the app asks Apple's Declared Age Range API for an age band, once at each launch, in case the band has changed. Declining changes nothing. If the band includes ages under 13, the app keeps everything on the phone: no sign-in, backup, usage counts or Coach, and Plus isn't offered; You explains it under "Kept on this phone". Until Apple has answered at a launch with no band stored, sign-in ("Sign-in isn't ready yet. Try again in a moment.") and the Plus plans wait. To see it, set the device's Sandbox Apple Account to Under 13 (Settings → Developer → Sandbox Apple Account → Manage → Age Assurance), then, signed out, You → Erase your data on this phone if a band was already shared, and relaunch.
+At each launch, after the first screen appears, the app asks Apple's Declared Age Range API for an age band. Declining changes nothing. If the band includes ages under 13, the app keeps everything on the phone: no sign-in, backup, usage counts or Coach, and Plus isn't offered; You explains it under "Kept on this phone". Until Apple has answered at a launch with no band stored, sign-in ("Sign-in isn't ready yet. Try again in a moment.") and the Plus plans wait. To see it, set the device's Sandbox Apple Account to Under 13 (Settings → Developer → Sandbox Apple Account → Manage → Age Assurance), then, signed out, You → Erase your data on this phone if a band was already shared, and relaunch.
 
-Usage counts: before any is sent from a phone without an account, the Warm-up's first screen says "Fairly Sure sends a few usage counts, with no account or device id, to see how the app is used. You can turn this off here or in You." with a switch (also in You → Usage stats). On a phone set to Canada the switch starts off and the line says so. Without an account they carry no account, device or install id; the sign-in screen says what goes with an account, with the same switch.
+Usage counts: before any is sent from a phone without an account, the Warm-up's first screen says "Fairly Sure sends a few usage counts, with no account or device id, to see how the app is used. You can turn this off here or in You." with a switch (also in You → Usage stats). On a phone set to Canada the switch starts off and the line says so. The sign-in screen says what goes with an account, with the same switch.
 
-Optional app lock: You → Lock with Face ID (named for the phone's unlock method; off by default). It uses LocalAuthentication with LAPolicy.deviceOwnerAuthentication, so the device passcode is always offered as the alternative to Face ID. The app never receives biometric data or the passcode, only whether the check passed and which unlock methods the phone has set up, to name the switch. It is not account sign-in, and nothing requires it.
+Optional app lock: You → Lock with Face ID (named for the phone's unlock method; off by default). "Lock after", under it, is 5 minutes by default; set it to Immediately to see the lock at once. It uses LocalAuthentication with LAPolicy.deviceOwnerAuthentication, so the device passcode is always offered as the alternative to Face ID. The app never receives biometric data or the passcode, only whether the check passed and which unlock methods the phone has set up, to name the switch.
 
 There is no gambling, no stakes and no currency. Predictions are private notes about the user's own life ("I'll finish the report by Friday").
 ```
@@ -332,6 +362,16 @@ can’t luck into": luck can still clear a bar about 1 time in 10); share
 card "Gold in health. Bronze in finance." (captured before D80 as "Sharp in health.
 Tracker in finance.": the share card needs a new capture for 1.1.0); year "Your year in predictions". They are
 web renders: no SF Symbols or glass. The table and "How" below are the earlier plan.
+
+**For 1.1.0, all six need a retake** (the `final-1206/` images, read
+2026-11-25): `01-today` has the old tier names ("Sharp in health", "Tracker in finance"),
+the "Today's practice" row and the old date words ("due Wed, Nov 18"); `03-log` the old
+date words ("Due Friday, Nov 27", "Save, due Fri, Nov 27"); `04-badges` the old tier names
+and the "+" on Insights; `05-card` the old tier names and the old card footer ("What are you
+sharp at?"); `06-year` "New this year: Sharp in health." and the old footer; `02-curve` the
+"+" on Insights (gone since D79), the chart's caption in full (behind "How to read this
+chart" since D76) and the old subtitle wording ("Of 61 things you called 80–100% likely, 40
+happened.").
 
 The order matters. Most people see only the first three.
 

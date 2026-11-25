@@ -27,7 +27,7 @@ const allText = () =>
 describe('scoringCopy, medals (D80)', () => {
   it('opens Badges with what the medals are', () => {
     expect(BADGES_INTRO).toBe(
-      'Badges go Bronze, Silver, Gold, Platinum. Each one says how far you can trust your gut in that category.',
+      'Badges go Bronze, Silver, Gold, Platinum. Bronze comes with 20 scored answers; Silver and up say how far you can trust your gut in that category.',
     );
     const badges = scoringSections().find((s) => s.title === 'Badges');
     expect(badges?.paragraphs[0]).toBe(BADGES_INTRO);

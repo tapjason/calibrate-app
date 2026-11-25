@@ -1,5 +1,36 @@
 # Handoff
 
+**Now, 2026-11-25: `master` holds 1.1.0's app code, merged and reviewed, not pushed.** The owner said
+"Merge and review the 3 stacked branches": `builder/phase1-fixes` (D78), `builder/removals` (D79) and
+`builder/badges` (D80) were fast-forwarded onto `master`, then reviewed in three rounds (code-reviewer,
+record-auditor, policy-auditor, all on Opus at xhigh). Ends: code CLEAN, record HOLDS, policy's last FAIL
+(the listing's screenshot list) fixed in the same commit; no code blocker in any round. Fixes: the inline
+calendar shows only after "Pick a date" is tapped (Edit opened on a month grid); Edit's date line shows the
+date Save keeps (`dueDateSavedForEdit`) and redraws at midnight; the paywall's renewal line carries the
+24-hour rule for every subscription; Bronze copy says it comes with 20 scored answers (the explainer:
+"…Bronze comes with 20 scored answers; Silver and up say how far you can trust your gut in that
+category." — **a change to his approved line, awaiting his OK**); the Coach drops every medal word,
+"golden", "top tier", "medal" and "badge"; the privacy policy (effective November 25, 2026, older-builds
+sentence in §5), the listing (trivia, What's New draft, review notes 3,972 characters) and docs. `check.sh`
+exit 0: 254 suites, 5,548 tests. Nothing on a device.
+- **His, next:** redeploy `coach` from this commit (`npx supabase functions deploy coach --yes`; v18 is from
+  1d8cde0 and lacks the round-3 words); OK the Bronze explainer line; confirm the 1.1.0 (17) build command;
+  phone checks (HUMAN_VERIFICATION: Phase 1 fixes, Removals (D79), Medals and 11:59 (D80)); a signed-out
+  paywall must show plans on TestFlight.
+- **Pushing `master` publishes the privacy policy and support pages** (GitHub Pages serves `docs/`); the
+  policy's date says November 25, 2026, so change it if the push is later.
+- **Before submitting 1.1.0:** retake all six screenshots (APP_STORE_LISTING §5); attach the three Plus
+  products and the group with complete metadata and the Annual free month; subtitle "Learn when to trust
+  your gut", promo line 2 (suggested "Gold in health, Bronze with money?"); merge his four What's New lines
+  into the draft (and consider D77/D78 in the review notes' New line); re-seed the demo account with Lifetime.
+  His untracked `store-listing-paste-1.1.0.txt` no longer matches the listing.
+- **"WhatsApp-like categories" answered (2026-11-25):** all settings (notifications, privacy, Coach and the
+  rest) contained in grouped categories on You, which the approved You page redesign does; it stays 1.2.0,
+  reviewed by him before any of it is committed. Still open: what "due date centralized" means.
+- Later Coach holes (record audit, not blocking): "highest tier", "next tier", "medalist", "trophy" pass.
+
+---
+
 **Now, 2026-11-25: `builder/badges`, branched from `builder/removals` (ad0c41b), committed, not merged or pushed.**
 The owner's calls of 2026-11-25 (D80), for 1.1.0: badge names are medals (Tracker → Bronze, Forecaster →
 Silver, Sharp → Gold, Oracle → Platinum; "Getting started" and every stored id unchanged, nothing about

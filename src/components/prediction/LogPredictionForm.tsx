@@ -630,8 +630,8 @@ export function LogPredictionForm({
         <View style={styles.block} onLayout={dateReveal.onTargetLayout} testID="log-due-block">
           <Text style={styles.label}>Due date</Text>
           {/* Revealed only when the calendar is about to appear: with it
-              already showing (a second tap, or a picked date carried in)
-              nothing grows (code review 2026-11-13). */}
+              already showing (a second tap) nothing grows (code review
+              2026-11-13). */}
           <DueDateChips
             presets={presets}
             value={dueDate}

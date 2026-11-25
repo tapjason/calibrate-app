@@ -19,7 +19,8 @@ Status: filled in 2026-11-08
 - **Pitch:** log a prediction, say how sure you are, and find out whether you were right to be.
   Most people are systematically over- or underconfident in specific areas of life; the app shows
   where. Framed as identity ("Gold in health, Bronze in money"; the badges are medals since D80,
-  each saying how far you can trust your gut in that category), never as statistics.
+  Bronze for 20 scored answers, Silver and up saying how far you can trust your gut in that
+  category), never as statistics.
 - **Platform: iOS, iPhone only.** `ios.supportsTablet: false`; no Android build is planned (the
   owner has no Android device; `app.json` keeps an adaptive icon only because Expo expects one).
   The web build exists for automated screenshots and playtests, never as a product (§9).

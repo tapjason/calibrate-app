@@ -1070,7 +1070,9 @@ Added 2026-11-13 (step 178, D62, the calls after round 21; a reload is enough):
 - [ ] **Recaps:** answer the 20th in a category: the week's recap leads "New this week: … in …"
       with its emblem; the year card shows "Calibration …/100, give or take …".
 - [ ] **Small things:** a badge earned says "New badge:" and "Badges follow how well your numbers
-      match what happens…", after Yes and No alike; ±5 with
+      match what happens…", after Yes and No alike; a new Bronze shows "Bronze comes with 20
+      scored answers. Silver and up follow how well your numbers match what happens." instead of
+      "Badges follow how well…"; ±5 with
       VoiceOver speaks "75%, about 3 times in 4"; in an answer run the "Can't tell" notice goes once
       the next card is answered; a fresh install interrupted on the Warm-up result finds "Your
       warm-up: … right. See your result" on Today; the paywall button reads "Start 1 month free,
@@ -1815,8 +1817,8 @@ health, Silver in work and Bronze in finance; Platinum needs the dev celebration
 (`/dev/celebrations`, "Tier-up: Gold → Platinum") or a record of 100+.
 
 - [ ] **Chips and emblems:** Insights → Category badges. The line under the header reads
-      "Badges go Bronze, Silver, Gold, Platinum. Each one says how far you can trust your gut
-      in that category." Getting started, Bronze and Silver chips are greys, each a step
+      "Badges go Bronze, Silver, Gold, Platinum. Bronze comes with 20 scored answers; Silver
+      and up say how far you can trust your gut in that category." Getting started, Bronze and Silver chips are greys, each a step
       darker; Gold is the gold chip with a gold edge and bezel on its emblem; no chip is
       brown, orange, blue or green. In light and dark, each label reads clearly on its chip.
 - [ ] **Platinum:** on the tier-up card (64 pt) and, if a record has it, the Insights chip:
@@ -1835,3 +1837,25 @@ health, Silver in work and Bronze in finance; Platinum needs the dev celebration
       375-pt phone the card's line fits beside the category or moves under it whole, and
       never splits "11:59 PM". VoiceOver says "due today by 11:59 PM". An answered one
       still reads "answered today", and one due yesterday "due yesterday".
+- [ ] **Edit, a picked date folded** (review 2026-11-25): open a prediction whose due date is
+      none of Tomorrow, In a week or In a month (e.g. one due in 10 days) → Edit. "Pick a
+      date" is chosen, the line under the chips reads "Due …" with the date, no month grid
+      shows, and "Save changes" is in view on the sheet without scrolling. Tap "Pick a date":
+      the full calendar opens (and the keyboard goes down if the title field had it). On Log
+      the same: "Pick a date" opens the calendar only when tapped.
+- [ ] **Edit, new words move the date** (review 2026-11-25): on a prediction logged before
+      today, pick today in Edit's calendar, then change the words: the line reads "Due
+      tomorrow" and Tomorrow is chosen; put the words back and it reads "Due today by 11:59
+      PM" again. Save with new words keeps tomorrow.
+- [ ] **Paywall terms** (review 2026-11-25): signed out, You → Fairly Sure Plus. With Annual
+      (the trial) chosen, the fine print reads "Your free trial turns into a paid subscription
+      when it ends." then "Subscriptions renew automatically unless cancelled at least 24
+      hours before the end of the current period. Manage or cancel in your App Store account
+      settings."; with Monthly chosen, only the second; with Lifetime, "One-time purchase. No
+      subscription, no renewal."
+- [ ] **A new Bronze** (not on `/dev/celebrations`, which has Getting started → Silver and
+      Gold → Platinum; seen when a category reaches 20 scored answers with a low score): the
+      card reads "Bronze comes with 20 scored answers. Silver and up follow how well your
+      numbers match what happens."; a new Silver still ends "…not how often you're right."
+      When the score unlocks on the same answer as a new Bronze, its card ends at "New badge,
+      too: Bronze in health." with nothing after it.

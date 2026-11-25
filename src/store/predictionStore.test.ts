@@ -24,6 +24,7 @@ import {
   canRenumber,
   categoryChangeCountedIfAnswered,
   categoryChangeIsCounted,
+  dueDateSavedForEdit,
   moveIsCounted,
   openRepeatOf,
   openTwinFor,
@@ -3076,5 +3077,38 @@ describe('which deletes are counted', () => {
       expect(await getPrediction(p.id)).toBeNull();
       expect(await deleted()).toBe(1);
     });
+  });
+});
+
+// Record audit 2026-11-25 (minor 1): Edit names the date Save will keep. One
+// rule for both, so the line under its chips and `update` can't part.
+describe('dueDateSavedForEdit', () => {
+  const now = new Date(2026, 10, 25, 10);
+  const today = new Date(2026, 10, 25, 12).toISOString();
+  const p = {
+    id: 'p-edit',
+    user_id: 'u',
+    title: 'Ship the beta',
+    category: 'work' as const,
+    confidence: 70,
+    created_at: new Date(2026, 10, 20, 9).toISOString(),
+    due_date: today,
+    status: 'pending' as const,
+    resolved_at: null,
+    reflection: null,
+    integrity_bonus: false,
+  };
+
+  it('keeps a day the words allow, the same words given another way included', () => {
+    expect(dueDateSavedForEdit(p, 'Ship the beta', today, now)).toBe(today);
+    expect(dueDateSavedForEdit(p, '  ship the beta.  ', today, now)).toBe(today);
+  });
+
+  it('moves a day new words rule out to tomorrow, and leaves a later one', () => {
+    expect(dueDateSavedForEdit(p, 'Ship the beta to ten people', today, now)).toBe(
+      new Date(2026, 10, 26, 12).toISOString(),
+    );
+    const later = new Date(2026, 10, 30, 12).toISOString();
+    expect(dueDateSavedForEdit(p, 'Ship the beta to ten people', later, now)).toBe(later);
   });
 });

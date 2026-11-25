@@ -15,7 +15,7 @@ Most people are systematically **overconfident** or **underconfident**, and usua
 
 The core principle: **reward calibration, not correctness.** A prediction you made at 60% confidence that didn't pan out is *expected and fine* — the score measures the honesty of your confidence, not whether you were right. A perfectly calibrated person's "stated confidence vs. actual outcome" chart plots as a straight diagonal line.
 
-The product's "aha" moment is per-category insight — discovering you're **Platinum** in health but only **Bronze** in finance. The badges are medals (Bronze, Silver, Gold, Platinum), each saying how far you can trust your gut in that category.
+The product's "aha" moment is per-category insight — discovering you're **Platinum** in health but only **Bronze** in finance. The badges are medals (Bronze, Silver, Gold, Platinum): Bronze comes with 20 scored answers, and Silver and up say how far you can trust your gut in that category.
 
 ---
 

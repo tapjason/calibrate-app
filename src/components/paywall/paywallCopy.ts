@@ -200,6 +200,13 @@ export function monthlyEquivalentSpoken(plan: PlusPlan): string | null {
 /**
  * Renewal terms. Required by App Review, and honest besides.
  *
+ * Apple's rule on every subscription plan, trial or not: it renews unless
+ * cancelled at least 24 hours before the period ends (policy review
+ * 2026-11-25: "until cancelled" and "any time" left the 24 hours out of the
+ * plans with no trial). A trial is that period too, so with a trial chosen
+ * this sentence carries the 24 hours, and the trial's own line only says it
+ * converts (`trialTermsLine`).
+ *
  * Empty string for an empty offering: with no plans loaded there are no terms
  * to state, and the lifetime-only branch would otherwise assert "no
  * subscription" on the very screen that just said Plus is unavailable.
@@ -209,28 +216,26 @@ export function termsLine(plans: readonly PlusPlan[]): string {
   const hasSubscription = plans.some((p) => p.plan !== 'lifetime');
   if (!hasSubscription) return 'One-time purchase. No subscription, no renewal.';
   return (
-    'Subscriptions renew automatically until cancelled. Manage or cancel any ' +
-    'time in your App Store account settings.'
+    'Subscriptions renew automatically unless cancelled at least 24 hours before ' +
+    'the end of the current period. Manage or cancel in your App Store account settings.'
   );
 }
 
 /**
  * What a free trial actually costs you if you forget — stated plainly.
  *
- * Empty when no plan on offer has a trial. The 24-hour clause is not
- * hedging: Apple stops a trial converting only if it is cancelled at least a
- * day before it ends, so "cancel any time before it ends" is a promise the
- * platform doesn't keep. Saying so here costs a little conversion and saves
- * the refund request and the one-star review that follow a surprise charge.
+ * Empty when no plan on offer has a trial. It says the trial converts, and
+ * says it once: the 24-hour clause sits right under it in `termsLine`, which
+ * carries it for every subscription since the policy review of 2026-11-25,
+ * and in the timeline's last step ("Cancel at least 24 hours before to pay
+ * nothing."). The clause is not hedging: Apple stops a trial converting only
+ * if it is cancelled at least a day before it ends, so "cancel any time
+ * before it ends" is a promise the platform doesn't keep.
  */
 export function trialTermsLine(plans: readonly PlusPlan[]): string {
   const hasTrial = plans.some((p) => trialLabel(p) !== null);
   if (!hasTrial) return '';
-  return (
-    'Your free trial turns into a paid subscription when it ends. Cancel at ' +
-    'least 24 hours before then in your App Store account settings and you ' +
-    "won't be charged."
-  );
+  return 'Your free trial turns into a paid subscription when it ends.';
 }
 
 /** The message shown after an action, or null when there is nothing to say. */

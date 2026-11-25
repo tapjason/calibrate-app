@@ -15,7 +15,7 @@ import {
   tabularNums,
   type,
 } from '@/constants/theme';
-import { MIN_N_OVERALL, type Milestone } from '@/types';
+import { MIN_N_CATEGORY, MIN_N_OVERALL, type BadgeLevel, type Milestone } from '@/types';
 import { categoryLabel } from '@/store/categoryStore';
 
 /** The words for a milestone. Exported for tests. */
@@ -31,9 +31,11 @@ export function milestoneCopy(m: Milestone): { title: string; body: string } {
         title: 'Your calibration score is unlocked',
         // With the badge this answer also earned: only one card shows, and
         // the unlock's won, so the badge was said nowhere (blind playtest
-        // 2026-11-13e, run 3).
+        // 2026-11-13e, run 3). A Bronze is named and nothing more (review
+        // round 3, 2026-11-25): its own line says "20 scored answers" again,
+        // beside the unlock's "20 scored answers in".
         body: m.badge
-          ? `${unlocked} New badge, too: ${BADGE_META[m.badge.badge].label} in ${categoryLabel(m.badge.category)}. ${BADGE_FOLLOWS}`
+          ? `${unlocked} New badge, too: ${BADGE_META[m.badge.badge].label} in ${categoryLabel(m.badge.category)}.${m.badge.badge === 'tracker' ? '' : ` ${BADGE_FOLLOWS}`}`
           : unlocked,
       };
     }
@@ -54,6 +56,18 @@ export function milestoneCopy(m: Milestone): { title: string; body: string } {
  */
 export const BADGE_FOLLOWS =
   'Badges follow how well your numbers match what happens, not how often you’re right.';
+
+/**
+ * Under a new Bronze instead (record audit 2026-11-25): Bronze comes with the
+ * count alone, so "badges follow how well your numbers match" wasn't true of
+ * the one just earned.
+ */
+export const BRONZE_FOLLOWS = `${BADGE_META.tracker.label} comes with ${MIN_N_CATEGORY} scored answers. ${BADGE_META.forecaster.label} and up follow how well your numbers match what happens.`;
+
+/** The sentence under a badge earned: Bronze's own, every other tier's the same. */
+export function badgeFollows(badge: BadgeLevel): string {
+  return badge === 'tracker' ? BRONZE_FOLLOWS : BADGE_FOLLOWS;
+}
 
 const EMBLEM_SIZE = 64;
 
@@ -87,7 +101,16 @@ export function MilestoneCard({ milestone }: { milestone: Milestone }) {
 
   const base = milestoneCopy(milestone);
   const copy =
-    milestone.kind === 'tier_up' ? { ...base, body: `${base.body}. ${BADGE_FOLLOWS}` } : base;
+    milestone.kind === 'tier_up'
+      ? {
+          ...base,
+          // A new Bronze's own line carries the count, so the tagline would say it twice.
+          body:
+            milestone.badge === 'tracker'
+              ? BRONZE_FOLLOWS
+              : `${base.body}. ${badgeFollows(milestone.badge)}`,
+        }
+      : base;
 
   return (
     <Animated.View

@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { dueDay } from '@/components/ui/dates';
 import { chipStyles } from '@/components/prediction/CategoryChips';
@@ -32,7 +32,10 @@ export function datePresets(now: Date = new Date()): DuePreset[] {
 interface DueDateChipsProps {
   presets: readonly DuePreset[];
   value: string;
-  /** The inline picker is open (iOS inline calendar / web date input). */
+  /**
+   * The inline picker is open (iOS inline calendar / web date input). Only a
+   * tap on "Pick a date" opens it: a picked date carried in shows folded.
+   */
   picking: boolean;
   onChange: (iso: string) => void;
   onPickingChange: (picking: boolean) => void;
@@ -53,7 +56,8 @@ interface DueDateChipsProps {
  * The due-date chips, "Pick a date" and the date as a sentence (DESIGN_SYSTEM
  * §7.12). Shared by Log and an open prediction's Edit (§7.23). One chip is
  * chosen at a time (roadmap step 93): while the picker is open, "Pick a date"
- * is the choice, even before the date moves off a preset's.
+ * is the choice, even before the date moves off a preset's; a date no preset
+ * holds keeps it chosen with the calendar folded.
  */
 export function DueDateChips({
   presets,
@@ -66,11 +70,15 @@ export function DueDateChips({
 }: DueDateChipsProps) {
   const isCustomDate = !presets.some((p) => p.iso === value);
   const presetChosen = (iso: string) => !picking && value === iso;
-  const pickerShown = picking || isCustomDate;
+  // "Pick a date" is the choice for a date no preset holds, but its calendar
+  // shows only after a tap on it (review 2026-11-25): an Edit opening on a
+  // picked date showed the whole month grid at once and pushed Save changes
+  // off the sheet. The date sentence below says the day meanwhile.
+  const pickChosen = picking || isCustomDate;
   // A tap on "Pick a date" asks the web field to open its calendar, once: the
   // picker takes the request as it appears, so an effect run twice or a
   // remount finds none (web playtest 2026-11-24: one tap in Edit opened it
-  // twice). Never for an Edit that opens on a picked date.
+  // twice).
   const openRequest = useRef(false);
   const takeOpenRequest = useCallback(() => {
     const asked = openRequest.current;
@@ -102,11 +110,14 @@ export function DueDateChips({
         ))}
         <Pressable
           onPress={() => {
+            // The keyboard down first, as a category tap does on Log: the
+            // calendar opens below the title field, behind it otherwise.
+            Keyboard.dismiss();
             if (Platform.OS === 'android') {
               openDueDialog(value, onChange, earliest, latestDueFor());
               return;
             }
-            if (!pickerShown) {
+            if (!picking) {
               openRequest.current = true;
               onPickerReveal?.();
             }
@@ -115,18 +126,18 @@ export function DueDateChips({
           testID="due-pick"
           accessibilityRole="radio"
           accessibilityLabel="Pick a date"
-          {...chosenProps('radio', pickerShown)}
-          style={[chipStyles.chip, pickerShown && chipStyles.chipActive]}
+          {...chosenProps('radio', pickChosen)}
+          style={[chipStyles.chip, pickChosen && chipStyles.chipActive]}
         >
-          <Text style={[chipStyles.chipText, pickerShown && chipStyles.chipTextActive]}>
+          <Text style={[chipStyles.chipText, pickChosen && chipStyles.chipTextActive]}>
             Pick a date
           </Text>
         </Pressable>
       </View>
-      {/* Whenever "Pick a date" is the choice, its calendar is there: editing a
-          prediction with a picked date showed the chip chosen and no field
-          until a second tap (blind playtest 2026-11-01). */}
-      {pickerShown && (
+      {/* Only once "Pick a date" is tapped (review 2026-11-25; D78: the full
+          calendar at once, when tapped). A picked date carried in shows the
+          chip chosen and the sentence, and one tap on the chip opens it. */}
+      {picking && (
         <DuePicker
           value={value}
           onChange={onChange}
@@ -138,7 +149,7 @@ export function DueDateChips({
       {/* Why today can't be picked, where it can't (D41): a typed date was
           moved to tomorrow without a word (blind playtest 2026-11-05). Not
           when editing one logged earlier, whose earliest day is past. */}
-      {pickerShown && earliest.getTime() > Date.now() && (
+      {picking && earliest.getTime() > Date.now() && (
         <Text style={styles.floorNote} testID="due-floor-note">
           Tomorrow at the earliest: an answer on the day it's logged isn't scored.
         </Text>
