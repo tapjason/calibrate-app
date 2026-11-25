@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { createElement, useEffect, useRef } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { colors, FONT_FAMILY, radius, space, type } from '@/constants/theme';
@@ -18,6 +18,33 @@ interface DuePickerProps {
    * 2026-11-08, which picked 12/31/9999).
    */
   latest: Date;
+  /**
+   * Takes the open request a tap on "Pick a date" left, true once per tap
+   * (DueDateChips): on web the browser's own calendar then opens at once, as
+   * the iPhone's inline one shows at once. Never for an Edit that opens on a
+   * picked date.
+   */
+  takeOpenRequest?: () => boolean;
+}
+
+/** The parts of a web date field this uses; `showPicker` is missing in older browsers. */
+interface WebDateInput {
+  showPicker?: () => void;
+}
+
+/**
+ * Opens a web date field's own calendar, where the browser can. A browser
+ * without `showPicker`, or one that refuses it (no user activation left, a
+ * cross-origin frame), leaves the field as it is: one more tap opens it.
+ * Exported for tests.
+ */
+export function openWebPicker(input: WebDateInput | null): void {
+  if (!input || typeof input.showPicker !== 'function') return;
+  try {
+    input.showPicker();
+  } catch {
+    // Refused: the field stays, and a tap opens it.
+  }
 }
 
 /** Local noon on the given calendar day: same UTC date in every zone ±12h. */
@@ -44,18 +71,33 @@ export function clampPicked(picked: Date, earliest: Date, latest: Date): Date {
 }
 
 /**
- * "Pick a date" for the Log form (DESIGN_SYSTEM §7.12): the native compact
- * picker on iOS, the system dialog on Android, and the browser's own date
- * input on web. Earliest choice is `earliest`: never the past, where the
- * reminder would fire at once, and never the day it was logged, since an
- * answer that day isn't scored (roadmap D41).
+ * "Pick a date" for the Log form (DESIGN_SYSTEM §7.12): the iPhone's inline
+ * calendar, shown whole as soon as "Pick a date" is chosen (the owner,
+ * 2026-11-24: the compact picker's small date button took a second tap), the
+ * system dialog on Android, and the browser's own date input on web, its
+ * calendar opened at once after the tap. Earliest choice is `earliest`: never
+ * the past, where the reminder would fire at once, and never the day it was
+ * logged, since an answer that day isn't scored (roadmap D41).
  */
-export function DuePicker({ value, onChange, earliest, latest }: DuePickerProps) {
+export function DuePicker({ value, onChange, earliest, latest, takeOpenRequest }: DuePickerProps) {
+  const webInput = useRef<WebDateInput | null>(null);
+  // As it appears, and only if a tap asked. The request is taken, not read,
+  // so this effect run a second time (one tap in Edit opened the calendar
+  // twice, web playtest 2026-11-24), a remount or a re-render (a day picked)
+  // finds none. Taken on every platform, so none is left lying.
+  useEffect(() => {
+    const asked = takeOpenRequest?.() ?? false;
+    if (asked && Platform.OS === 'web') openWebPicker(webInput.current);
+    // Once per appearance: a new function from the parent isn't a new tap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (Platform.OS === 'web') {
     // react-native-web renders to the DOM, so a real <input type="date"> is
     // the most accessible picker a browser offers.
     return createElement('input', {
       type: 'date',
+      ref: webInput,
       value: toDateInputValue(value),
       min: toDateInputValue(earliest.toISOString()),
       max: toDateInputValue(latest.toISOString()),
@@ -96,12 +138,14 @@ export function DuePicker({ value, onChange, earliest, latest }: DuePickerProps)
   if (Platform.OS === 'android') return null;
 
   const DateTimePicker = picker.default;
+  // Inline: the month's calendar in the form, at the size iOS gives it (the
+  // library sets the view's size from the picker's own, iOS 14 and later).
   return (
     <View style={styles.ios} testID="due-picker">
       <DateTimePicker
         value={new Date(value)}
         mode="date"
-        display="compact"
+        display="inline"
         minimumDate={earliest}
         maximumDate={latest}
         accentColor={colors.action}
@@ -138,5 +182,7 @@ export function openDueDialog(
 }
 
 const styles = StyleSheet.create({
-  ios: { alignSelf: 'flex-start', marginTop: space.xs },
+  // Centred: the calendar's width is iOS's own, and on a narrow phone any
+  // overflow falls evenly into the form's side margins.
+  ios: { alignSelf: 'center', marginTop: space.sm },
 });

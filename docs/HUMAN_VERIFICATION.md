@@ -596,7 +596,7 @@ Added 2026-09-29 (second pass):
 
 Added 2026-09-29 (polish pass):
 
-- [ ] **Log → Pick a date:** a fourth chip opens the iOS compact date picker
+- [ ] **Log → Pick a date:** (superseded by D78, 2026-11-24: the inline calendar) a fourth chip opens the iOS compact date picker
       (Android: the system dialog). Past days can't be picked; the line below
       updates to "Due {weekday}, {date}".
 - [ ] **Resolve → Change answer:** after Yes/No the screen says "Recorded: it
@@ -813,7 +813,7 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
 - [ ] **Appearance switched with the app open** (Control Centre's Dark Mode, or
       Automatic at sunset): the header and the tab bar change with the content,
       the first time as well as after.
-- [ ] **Log → Pick a date in dark mode:** the compact date picker and its calendar
+- [ ] **Log → Pick a date in dark mode:** (superseded by D78: check the inline calendar instead) the compact date picker and its calendar
       popover are dark too (it was pinned to light). Only "Pick a date" reads as
       chosen while it's open.
 - [ ] **VoiceOver on Log, the Warmup and the paywall:** the chosen category, due
@@ -1236,7 +1236,7 @@ Added 2026-11-10 (steps 167–168; web-verified at 320 and 375, a reload is enou
 
 - [ ] **Log's Save names the date (D55, step 168):** a new prediction starts on
       Tomorrow, the second one too, and Save reads "Save, due tomorrow"; In a week
-      reads "Save, due Tue, Nov 17" in the phone's own date format. Check the pinned
+      reads "Save, due in 7 days" (D78; was "Save, due Tue, Nov 17"). Check the pinned
       Save at the default text size, the largest non-accessibility size, AX3 and
       AX5: a long label wraps after "due" or after the weekday's comma, centred,
       never inside the date, and the footer doesn't push the fields off screen.
@@ -1779,3 +1779,18 @@ select count(*) filter (where name = 'share_completed')::float
 A guest's funnel events land in `public.guest_analytics_events` instead (the same event
 names, no user id), so for the aha rate add its `warmup_completed` and `warmup_started`
 counts to these. Guests' rows are counts, not people: a reinstall counts twice.
+
+## Phase 1 fixes (D78, 2026-11-24, `builder/phase1-fixes`; needs a new TestFlight build)
+
+- [ ] **Category emoji whole:** add a category typed "⚽ Football". On Log's chips, Today and History
+      rows, the details sheet, You → Categories and the icon editor, the whole ball shows, about the
+      size of the built-in symbols, not touching the label.
+- [ ] **Pick a date opens the calendar:** one tap on "Pick a date" (Log, and Edit on an open
+      prediction) shows the full month calendar in the form, scrolled into view with its arrows.
+      Light and dark: the selected day uses the ink accent and reads clearly. On the narrowest
+      phone the calendar doesn't run off the screen. A vertical drag starting on the calendar
+      still scrolls the form.
+- [ ] **Due dates in words:** cards read "due today / tomorrow / in 3 days", beyond 7 days
+      "due Dec 20 (Sunday)"; answered rows "answered yesterday / 3 days ago". Save reads
+      "Save, due in 3 days". VoiceOver says the same words.
+- [ ] **"Add":** "+ New category" → the button under the field reads "Add" and chooses the new one.

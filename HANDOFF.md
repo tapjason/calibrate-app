@@ -1,5 +1,24 @@
 # Handoff
 
+**Now, 2026-11-24: `builder/phase1-fixes`, branched from `master` (37a3cce), committed, not merged or pushed.**
+The owner's Phase 1 of his UI feedback list (D78): "Add" on the new-category field, a category emoji
+no longer clipped on iOS, "Pick a date" showing the full calendar at once (inline on iOS, the popup on
+web), and due dates in words everywhere on screen ("due in 3 days", "due Nov 21 (Friday)"). `check.sh`
+exit 0: 256 suites, 5,539 tests. Web playtest (`web-playtester`, Sonnet): all four pass, no console
+errors, captures in `.tooling/web/2026-11-24-phase1/`. Built by `mobile-ui` on Opus at xhigh. Not on
+any device: HUMAN_VERIFICATION "Phase 1 fixes".
+- **Open, the owner's:** a Today due option (never scorable under D41: add as not scored, change the
+  rule after /design, or skip; the main session recommends skip) and what "11:59 PM" should move.
+- **Paywall shows no plans signed out** (build 15, his phone and a tester in Germany): two Opus
+  diagnoses found no code cause (the identity hold is ruled out against the SDK source and a
+  simulation). Leading candidates: Apple's age answer still pending so RevenueCat never started
+  (a ~5 s spinner first; sign-in then says "Sign-in isn't ready yet"), or the store/RevenueCat
+  returning no offering for a new anonymous customer (RevenueCat Customers in sandbox view shows
+  whether one was made). Proposed, not built: a reason line and "Try again" on the paywall.
+- The rest of the owner's list (phases 2–6) is in the conversation of 2026-11-24; not yet in the roadmap.
+
+---
+
 **Now, 2026-11-23: `master`, with `builder/voice-pass` merged in (fast-forward) on the owner's words
 ("Merge and review, if you think we are ready for a minor version bump then go ahead with the new
 TestFlight build"), reviewed, not pushed. The voice and text pass (D76, step 212) and the two-choice control at 0 to 100% (D77, step

@@ -1,70 +1,38 @@
-// Presentation helper: a due date in the words a button says it with
-// (roadmap D55): "tomorrow", a weekday within the week, else the date.
+// Presentation helper: a due date in the words a button or a line says it
+// with, through the one wording for a day (`relativeDay`; the owner,
+// 2026-11-24): "tomorrow", "in 3 days", "Nov 21 (Friday)".
 //
-// Log's Save ("Save, due Sunday") uses it, and "Log it again, due tomorrow"
-// (D56) builds on it, adding "in a week" and "in a month" as the chips say them.
+// Log's Save ("Save, due in 3 days", D55) uses it, and "Log it again, due
+// tomorrow" (D56), "Logged again, due …" and "Saved, due …" build on it.
 
-import { dateLocale } from '@/constants/locale';
-import { logAgainDraft, startOfLocalDay } from '@/components/prediction/logAgain';
-import { localDate } from '@/components/ui/dates';
+import { logAgainDraft } from '@/components/prediction/logAgain';
+import { localDaysFrom, relativeDay, type DayWords } from '@/components/ui/dates';
 import type { Prediction } from '@/types';
 
-export interface DueWords {
-  /** On screen: "tomorrow", "Sunday", "Tue, Nov 17" (no-break spaces). */
-  text: string;
-  /** To VoiceOver, with nothing abbreviated: "Tuesday, November 17". */
-  spoken: string;
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+export type DueWords = DayWords;
 
 function localDaysUntil(dueIso: string, now: Date): number {
-  return Math.round((startOfLocalDay(new Date(dueIso)) - startOfLocalDay(now)) / DAY_MS);
+  return localDaysFrom(now, new Date(dueIso));
 }
 
 /**
- * How a due date reads from `now`: "tomorrow" for the next day, the weekday
- * for two to six days out (one word, and only one day of that name is that
- * close), the short date from a week on, with the year when it isn't this
- * one. The date's own spaces are no-break, so a wrapping label breaks before
- * the date or after the weekday's comma ("Mon," then "Jan 4, 2027"), never
- * between a month and its day.
+ * How a due date reads from `now` (`relativeDay`): "today", "tomorrow", "in 2
+ * days" to "in 7 days", then the date with its weekday, "Nov 21 (Friday)",
+ * with the year when it isn't this one. On screen the words hold together
+ * with no-break spaces, so a wrapping label breaks after "due" or before the
+ * weekday's bracket, never inside "in 3 days" or between a month and its day.
  */
 export function dueWords(dueIso: string, now: Date = new Date()): DueWords {
-  const due = new Date(dueIso);
-  const days = localDaysUntil(dueIso, now);
-  if (days === 0) return { text: 'today', spoken: 'today' };
-  if (days === 1) return { text: 'tomorrow', spoken: 'tomorrow' };
-  if (days >= 2 && days <= 6) {
-    const weekday = due.toLocaleDateString(dateLocale(), { weekday: 'long' });
-    return { text: weekday, spoken: weekday };
-  }
-  const text = localDate(due, { weekday: 'short', day: 'numeric', month: 'short' }, now);
-  const spoken = localDate(due, { weekday: 'long', day: 'numeric', month: 'long' }, now);
-  // Every space held, then the one after the weekday's comma let go: at the
-  // largest text sizes "Mon, Jan 4, 2027" can't fit one line at 320 pt.
-  const held = text.replace(/ /g, '\u00A0').replace(',\u00A0', ', ');
-  return { text: held, spoken };
-}
-
-/**
- * A repeat's date (roadmap D56): "in a week" and "in a month" for exactly
- * those leads, as Log's chips name them; otherwise as Save says it.
- */
-export function repeatDueWords(dueIso: string, now: Date = new Date()): DueWords {
-  const days = localDaysUntil(dueIso, now);
-  if (days === 7) return { text: 'in a week', spoken: 'in a week' };
-  if (days === 30) return { text: 'in a month', spoken: 'in a month' };
-  return dueWords(dueIso, now);
+  return relativeDay(new Date(dueIso), now);
 }
 
 /**
  * The date "Log it again" will bring, from the same draft Log opens with
  * (`logAgainDraft`), so the button and the form name one day: "Log it again,
- * due tomorrow" (roadmap D56).
+ * due tomorrow" (roadmap D56), in Save's words.
  */
 export function logAgainWords(prediction: Prediction, now: Date = new Date()): DueWords {
-  return repeatDueWords(logAgainDraft(prediction, now).dueIso, now);
+  return dueWords(logAgainDraft(prediction, now).dueIso, now);
 }
 
 /**

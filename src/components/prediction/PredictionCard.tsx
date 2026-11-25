@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { localDate } from '@/components/ui/dates';
+import { relativeDay } from '@/components/ui/dates';
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { spokenExcerpt } from '@/components/ui/textLanguage';
 import { colors, radius, space, tabularNums, type } from '@/constants/theme';
@@ -55,15 +55,6 @@ export function rowPosition(index: number, count: number): RowPosition {
 }
 
 /**
- * "Fri, 3 Oct" in the user's locale, held together with no-break spaces so a
- * narrow row never strands the day on a line of its own ("Oct / 4").
- */
-function formatDue(iso: string): string {
-  return localDate(new Date(iso), { weekday: 'short', day: 'numeric', month: 'short' })
-    .replace(/ /g, '\u00A0');
-}
-
-/**
  * Status in words, all in one neutral ink (DESIGN_SYSTEM §7.11). No ✓/✗ —
  * those are the green/red idiom in disguise, and a No is an outcome, not a
  * mistake. A prediction whose day has come is "ready", never "overdue".
@@ -100,11 +91,16 @@ export function PredictionCard({
 }: PredictionCardProps) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const { fontScale } = useWindowDimensions();
-  const due = formatDue(prediction.due_date);
-  const status = statusLabel(prediction, new Date());
-  // A resolved row dates itself by when it was answered, not when it was due.
+  const now = new Date();
+  const status = statusLabel(prediction, now);
+  // A resolved row dates itself by when it was answered, not when it was due:
+  // "due in 3 days", "answered yesterday", "due Nov 21 (Friday)" (the owner,
+  // 2026-11-24), held together with no-break spaces so a narrow row never
+  // strands a word on a line of its own.
   const answered = prediction.status !== 'pending' && prediction.resolved_at;
-  const when = answered ? `answered ${formatDue(answered)}` : `due ${due}`;
+  const day = relativeDay(new Date(answered || prediction.due_date), now);
+  const when = `${answered ? 'answered' : 'due'} ${day.text}`;
+  const whenSpoken = `${answered ? 'answered' : 'due'} ${day.spoken}`;
   // Outcome glyphs in neutral ink, filled vs hollow — never green/red
   // (DESIGN_SYSTEM §2.4). The word beside them carries the meaning.
   const glyph =
@@ -141,7 +137,7 @@ export function PredictionCard({
       // One sentence instead of fragments read in layout order.
       accessibilityLabel={
         `${hideTitles ? HIDDEN_TITLE : `${prediction.title}.`} ${categoryName}, ${prediction.confidence}% confident, ` +
-        `${when}. ${status}.` +
+        `${whenSpoken}. ${status}.` +
         // The start of the note, not all of it: a long one made the row's
         // label about 1,000 characters (playtest 2026-11-08, finding 40). The
         // details read it in full.

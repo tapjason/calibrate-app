@@ -50,7 +50,7 @@ Status: filled in 2026-11-08
   stored, sign-in and the Plus plans wait (§3, the under-13 bullet).
 - **Log** (a page sheet from the "+" in the title bar of Today, Insights and History, D21): title,
   confidence (starts empty, D13), category (starts empty, D29), due date (starts on Tomorrow, D55).
-  Save waits for a title, a number and a category, and names the date ("Save, due Sunday", D55).
+  Save waits for a title, a number and a category, and names the date ("Save, due in 3 days", D55, D78).
   Target: under 15 seconds.
 - **Resolve:** on the due day the 19:00 reminder (or the person's time, D38) offers Happened /
   Didn't (D8); tapping it opens Resolve: Yes, No or "Can't tell / doesn't apply", and an optional

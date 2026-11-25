@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
-import { localDate } from '@/components/ui/dates';
+import { localDate, relativeDay } from '@/components/ui/dates';
 import { textLanguage } from '@/components/ui/textLanguage';
 import { AnsweredDetails } from '@/components/prediction/AnsweredDetails';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
@@ -14,6 +14,7 @@ import { haptics } from '@/components/ui/haptics';
 import { CategoryIcon } from '@/components/ui/Icon';
 import { TextButton } from '@/components/ui/TextButton';
 import { TextField } from '@/components/ui/TextField';
+import type { ScrollReveal } from '@/components/ui/useScrollReveal';
 import { colors, FONT_FAMILY, space, tabularNums, type } from '@/constants/theme';
 import {
   answeredBefore,
@@ -60,6 +61,11 @@ interface PredictionDetailsProps {
   ) => void;
   /** Whether Edit holds changes not saved yet, for the sheet's draft guard. */
   onDirtyChange?: (dirty: boolean) => void;
+  /**
+   * The sheet's scroll view, made `nested`: Edit's date block is brought into
+   * view when "Pick a date" opens its calendar (the owner, 2026-11-24).
+   */
+  dateReveal?: ScrollReveal;
 }
 
 type Mode = 'view' | 'edit' | 'delete' | 'early';
@@ -147,6 +153,7 @@ export function PredictionDetails({
   onPredictAgain,
   onRenumber,
   onDirtyChange,
+  dateReveal,
 }: PredictionDetailsProps) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const [prediction, setPrediction] = useState<Prediction | null>(null);
@@ -328,11 +335,13 @@ export function PredictionDetails({
   // the morning was "not scored" three times per tick (blind playtest
   // 2026-11-10, run 2). Resolve doesn't repeat it when opened from here.
   const sameDayNow = answerNowIsSameDay(prediction);
-  const dueOn = shortDate(prediction.due_date);
-  // In D76's words (the voice pass, 2026-11-23). The same-day note is
-  // Resolve's too (`sameDayHeadsUp`), which it skips when opened from here.
+  // "in 3 days", "tomorrow", "Nov 21 (Friday)" (the owner, 2026-11-24).
+  const dueOn = relativeDay(new Date(prediction.due_date)).text;
+  // In D76's words (the voice pass, 2026-11-23), the date as the owner's
+  // (2026-11-24): "It's due in 3 days." The same-day note is Resolve's too
+  // (`sameDayHeadsUp`), which it skips when opened from here.
   const earlyText = !sameDayNow
-    ? `It’s not due until ${dueOn}. Know already? Go ahead.`
+    ? `It’s due ${dueOn}. Know already? Go ahead.`
     : reworded
       ? sameDayHeadsUp(true)
       : `${sameDayHeadsUp(false)}${
@@ -392,7 +401,7 @@ export function PredictionDetails({
         </Text>
       )}
       <Text style={styles.due} testID="details-due">
-        Due {daysLeft === 0 ? 'today' : shortDate(prediction.due_date)}
+        Due {dueOn}
         {/* The web build sends no notifications, so it promises none; a past
             due day's reminder has been and gone. */}
         {Platform.OS === 'web' || daysLeft < 0
@@ -421,7 +430,7 @@ export function PredictionDetails({
     const lateMove = moveIsCounted(prediction, dueDate, title);
     const daysLeft = daysUntilDue(prediction, new Date());
     return (
-      <View style={styles.wrap} testID="details-edit">
+      <View style={styles.wrap} testID="details-edit" onLayout={dateReveal?.onParentLayout}>
         <Text style={styles.stated}>
           You said <Text style={styles.statedNumber}>{prediction.confidence}%</Text>
         </Text>
@@ -483,14 +492,18 @@ export function PredictionDetails({
           </Text>
         )}
         <Text style={[styles.label, styles.spaced]}>Due date</Text>
-        <DueDateChips
-          presets={presets}
-          value={dueDate}
-          picking={picking}
-          onChange={setDueDate}
-          onPickingChange={setPicking}
-          earliest={earliestDueForEdit(prediction, title)}
-        />
+        {/* Brought into view once the calendar is laid out, as on Log. */}
+        <View onLayout={dateReveal?.onTargetLayout} testID="details-due-block">
+          <DueDateChips
+            presets={presets}
+            value={dueDate}
+            picking={picking}
+            onChange={setDueDate}
+            onPickingChange={setPicking}
+            earliest={earliestDueForEdit(prediction, title)}
+            onPickerReveal={dateReveal?.reveal}
+          />
+        </View>
         {lateMove && (
           <Text style={styles.note} testID="details-late-move" accessibilityLiveRegion="polite">
             {daysLeft >= 1 ? 'It’s due tomorrow' : daysLeft === 0 ? 'It’s due today' : 'It’s past its due day'},

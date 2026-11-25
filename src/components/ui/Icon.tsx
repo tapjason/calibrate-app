@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { SymbolView } from 'expo-symbols';
 import type { ComponentProps } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, Text, View, type TextStyle } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { useCategoryStore } from '@/store/categoryStore';
@@ -55,6 +55,35 @@ export const CATEGORY_ICONS: Record<BuiltInCategory, { sf: SFSymbol; fallback: I
 
 const ADDED_ICON: { sf: SFSymbol; fallback: IoniconName } = { sf: 'tag.fill', fallback: 'pricetag' };
 
+/**
+ * An emoji's font size, as a share of its icon box. Emoji fonts (Apple Color
+ * Emoji, Noto Color Emoji) draw a glyph about a quarter wider than their font
+ * size, so at 80% the glyph is about the box, as large as the symbols beside
+ * it (playtest 2026-11-03 found 85% of the box's size, drawn on web, smaller).
+ */
+export const EMOJI_FONT_SCALE = 0.8;
+
+/**
+ * A chosen emoji's text style in a `size` box. At the box's own font size the
+ * glyph was wider than the box, and on the iPhone a text view only draws
+ * inside its frame, which its box held to `size`: Log's chips cut off about a
+ * third of the emoji on the right (the owner, TestFlight build 15,
+ * 2026-11-24). So the font is a little under the box, the text's own frame
+ * is twice the box and centred on it, so whatever an emoji font draws past
+ * the box is never cut (it falls into the gap beside it), and there is no
+ * fixed line height, which could cut it at the top or bottom. The box itself
+ * keeps `size`, so nothing beside it moves. Exported for tests.
+ */
+export function emojiStyle(size: number, color: string): TextStyle {
+  return {
+    color,
+    fontSize: Math.round(size * EMOJI_FONT_SCALE),
+    width: size * 2,
+    flexShrink: 0,
+    textAlign: 'center',
+  };
+}
+
 export function CategoryIcon({
   category,
   size = 16,
@@ -80,30 +109,20 @@ export function CategoryIcon({
         aria-hidden
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
+        pointerEvents="none"
         style={{
           width: size,
           height: size,
-          // An emoji is wider than its font size; centred, it stuck out a few
-          // points left of the edge the symbols and text keep, so it starts
-          // at that edge and any extra falls into the gap after it (playtest
-          // 2026-11-08b, finding 26).
-          alignItems: own.kind === 'emoji' ? 'flex-start' : 'center',
+          // Centred: the emoji's font size keeps it inside the box (below),
+          // so it no longer sticks out past the edge the symbols and text
+          // keep (playtest 2026-11-08b, finding 26).
+          alignItems: 'center',
           justifyContent: 'center',
         }}
         testID={`category-icon-${own.kind}`}
       >
         {own.kind === 'emoji' ? (
-          // At the icon size, as large as the symbols beside it: at 85% it
-          // drew 11 px against 13 px symbols on Today (playtest 2026-11-03).
-          <Text
-            allowFontScaling={false}
-            style={{
-              color,
-              fontSize: size,
-              lineHeight: Math.round(size * 1.2),
-              textAlign: 'left',
-            }}
-          >
+          <Text allowFontScaling={false} style={emojiStyle(size, color)}>
             {own.emoji}
           </Text>
         ) : (

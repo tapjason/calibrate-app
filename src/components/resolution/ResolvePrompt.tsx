@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { localDate } from '@/components/ui/dates';
+import { localDate, relativeDay } from '@/components/ui/dates';
 import { endSentence } from '@/components/ui/sentence';
 import { textLanguage } from '@/components/ui/textLanguage';
 import { AnsweredDetails, CORRECTED_NOTE } from '@/components/prediction/AnsweredDetails';
@@ -915,8 +915,9 @@ export function ResolvePrompt({
         {/* Answered after its due day, the day it was about: "today" in a
             title three weeks old read as this morning (blind playtest
             2026-11-13b, run 7; roadmap D60). */}
+        {/* "yesterday", "3 days ago", "Nov 14 (Friday)" (the owner, 2026-11-24). */}
         {daysUntilDue(prediction, new Date()) < 0
-          ? `. ${endSentence(`It was due ${formatLogged(prediction.due_date)}`)}`
+          ? `. ${endSentence(`It was due ${relativeDay(new Date(prediction.due_date)).text}`)}`
           : ''}
       </Text>
       <View style={styles.categoryRow}>

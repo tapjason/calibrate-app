@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { ScrollView, StyleSheet } from 'react-native';
+import { StrictMode } from 'react';
+import { Platform, ScrollView, StyleSheet } from 'react-native';
 
 import { holdRanges } from '@/components/ui/holdRanges';
 import { space } from '@/constants/theme';
@@ -501,14 +502,15 @@ describe('LogPredictionForm due date', () => {
     jest.useFakeTimers({ now: new Date(2026, 9, 6, 23, 59, 0) });
     try {
       render(<LogPredictionForm />);
-      fireEvent.press(screen.getByTestId('due-tomorrow'));
-      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/Oct 7|7 Oct/);
+      // "In a month", a date far enough out to be named.
+      fireEvent.press(screen.getByTestId('due-month'));
+      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due Nov 5 \(Thursday\)$/);
 
       act(() => {
         jest.advanceTimersByTime(61_000);
       });
-      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/Oct 8|8 Oct/);
-      expect(screen.getByTestId('due-tomorrow').props.accessibilityState.selected).toBe(true);
+      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due Nov 6 \(Friday\)$/);
+      expect(screen.getByTestId('due-month').props.accessibilityState.selected).toBe(true);
     } finally {
       jest.useRealTimers();
     }
@@ -793,19 +795,25 @@ describe('LogPredictionForm due date (roadmap D55)', () => {
     expect(screen.getByTestId('due-tomorrow').props.accessibilityState.selected).toBe(true);
   });
 
-  it('names the date on Save, in full to VoiceOver', () => {
+  // The owner, 2026-11-24: "Save, due in 7 days", "Save, due Dec 9 (Wednesday)".
+  it('names the date on Save, and says the same words to VoiceOver', () => {
     jest.useFakeTimers({ now: new Date(2026, 10, 9, 21, 0, 0) }); // Monday
     try {
       render(<LogPredictionForm />);
       expect(save()).toHaveTextContent('Save, due tomorrow');
       expect(save().props.accessibilityLabel).toBe('Save prediction, due tomorrow');
+      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due tomorrow$/);
 
       fireEvent.press(screen.getByTestId('due-week'));
-      // The matcher folds the date's no-break spaces into plain ones (dueWords.test checks them).
-      expect(save()).toHaveTextContent(/^Save, due Mon,? (Nov 16|16 Nov)$/);
-      expect(save().props.accessibilityLabel).toMatch(
-        /^Save prediction, due Monday,? (November 16|16 November)$/,
-      );
+      // The matcher folds the no-break spaces into plain ones (dueWords.test checks them).
+      expect(save()).toHaveTextContent(/^Save, due in 7 days$/);
+      expect(save().props.accessibilityLabel).toBe('Save prediction, due in 7 days');
+      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due in 7 days$/);
+
+      fireEvent.press(screen.getByTestId('due-month'));
+      expect(save()).toHaveTextContent(/^Save, due Dec 9 \(Wednesday\)$/);
+      expect(save().props.accessibilityLabel).toBe('Save prediction, due Dec 9 (Wednesday)');
+      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due Dec 9 \(Wednesday\)$/);
     } finally {
       jest.useRealTimers();
     }
@@ -816,14 +824,15 @@ describe('LogPredictionForm due date (roadmap D55)', () => {
     try {
       render(<LogPredictionForm />);
       expect(save()).toHaveTextContent('Save, due tomorrow');
-      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/Oct 7|7 Oct/);
+      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due tomorrow$/);
       act(() => {
         jest.advanceTimersByTime(61_000);
       });
       expect(save()).toHaveTextContent('Save, due tomorrow');
-      // The chips moved on too, not only the store's clamp.
+      // The chips moved on too, not only the store's clamp: left on Oct 7,
+      // the line would read "Due today".
       expect(screen.getByTestId('due-tomorrow').props.accessibilityState.selected).toBe(true);
-      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/Oct 8|8 Oct/);
+      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due tomorrow$/);
     } finally {
       jest.useRealTimers();
     }
@@ -1049,34 +1058,95 @@ describe('LogPredictionForm — starter ideas step aside after a category is cho
 
 // Blind playtests 2026-11-13 run 5 and 2026-11-13b run 1: opening "Pick a
 // date" pushed the "Due …" line out of view behind Save.
-describe('bringing the due line into view when Pick a date opens', () => {
-  it('scrolls to the end once the date box is laid out, and only then', () => {
-    render(<LogPredictionForm />);
-    const scroll = screen.UNSAFE_getByType(ScrollView);
-    const scrollToEnd = jest.fn();
-    scroll.instance.scrollToEnd = scrollToEnd;
-    fireEvent(scroll, 'contentSizeChange', 375, 900);
-    expect(scrollToEnd).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByTestId('due-pick'));
-    fireEvent(scroll, 'contentSizeChange', 375, 1000);
-    expect(scrollToEnd).toHaveBeenCalledTimes(1);
-    fireEvent(scroll, 'contentSizeChange', 375, 1010);
-    expect(scrollToEnd).toHaveBeenCalledTimes(1);
+// Web playtest 2026-11-24: the browser's calendar opens once per tap on
+// "Pick a date" (Edit opened it twice). Under StrictMode, which runs each new
+// effect twice, as whatever ran Edit's did.
+describe('the web calendar opens once per tap', () => {
+  const realOS = Platform.OS;
+  afterEach(() => {
+    Platform.OS = realOS;
   });
 
-  it("isn't left armed by a tap while the box is already showing (code review 2026-11-13)", () => {
-    render(<LogPredictionForm />);
+  it('calls showPicker exactly once for each tap that brings the field in', () => {
+    Platform.OS = 'web';
+    const showPicker = jest.fn();
+    render(
+      <StrictMode>
+        <LogPredictionForm />
+      </StrictMode>,
+      { createNodeMock: (el: { type: unknown }) => (el.type === 'input' ? { showPicker } : null) },
+    );
+    fireEvent.press(screen.getByTestId('due-pick'));
+    expect(showPicker).toHaveBeenCalledTimes(1);
+    // A second tap with the field showing opens nothing more.
+    fireEvent.press(screen.getByTestId('due-pick'));
+    expect(showPicker).toHaveBeenCalledTimes(1);
+    // Closed by a preset, then a new tap: one more.
+    fireEvent.press(screen.getByTestId('due-tomorrow'));
+    fireEvent.press(screen.getByTestId('due-pick'));
+    expect(showPicker).toHaveBeenCalledTimes(2);
+  });
+});
+
+// The owner, 2026-11-24: the inline calendar shows at once, and it is tall.
+describe('bringing the calendar into view when Pick a date opens', () => {
+  // A 500-high view; the date block at y 300, 150 high, so it shows whole.
+  const layOut = () => {
     const scroll = screen.UNSAFE_getByType(ScrollView);
-    const scrollToEnd = jest.fn();
-    scroll.instance.scrollToEnd = scrollToEnd;
+    const scrollTo = jest.fn();
+    scroll.instance.scrollTo = scrollTo;
+    fireEvent(scroll, 'layout', { nativeEvent: { layout: { height: 500 } } });
+    fireEvent(screen.getByTestId('log-due-block'), 'layout', {
+      nativeEvent: { layout: { y: 300, height: 150 } },
+    });
+    return scrollTo;
+  };
+  const grow = (height: number) =>
+    fireEvent(screen.getByTestId('log-due-block'), 'layout', {
+      nativeEvent: { layout: { y: 300, height } },
+    });
+
+  it('scrolls just far enough to show the block once the calendar is laid out', () => {
+    render(<LogPredictionForm />);
+    const scrollTo = layOut();
+    grow(160);
+    expect(scrollTo).not.toHaveBeenCalled();
     fireEvent.press(screen.getByTestId('due-pick'));
-    fireEvent(scroll, 'contentSizeChange', 375, 1000);
-    expect(scrollToEnd).toHaveBeenCalledTimes(1);
-    // A second tap with the box open changes no size; a later, unrelated
-    // change (the title growing) mustn't scroll the form to the end.
+    expect(scrollTo).not.toHaveBeenCalled();
+    grow(480);
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ y: 300 + 480 - 500 + space.lg }));
+  });
+
+  it('shows a block taller than the view from its top, where the month is', () => {
+    render(<LogPredictionForm />);
+    const scrollTo = layOut();
     fireEvent.press(screen.getByTestId('due-pick'));
-    fireEvent(scroll, 'contentSizeChange', 375, 1030);
-    expect(scrollToEnd).toHaveBeenCalledTimes(1);
+    grow(700);
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ y: 300 }));
+  });
+
+  it("isn't asked for by a tap while the calendar already shows (code review 2026-11-13)", () => {
+    jest.useFakeTimers({ now: new Date(2026, 10, 24, 10) });
+    try {
+      render(<LogPredictionForm />);
+      const scrollTo = layOut();
+      fireEvent.press(screen.getByTestId('due-pick'));
+      grow(480);
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      // A second tap with it open grows nothing; a later, unrelated change
+      // mustn't scroll the form away from the title.
+      fireEvent.press(screen.getByTestId('due-pick'));
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      grow(520);
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
 

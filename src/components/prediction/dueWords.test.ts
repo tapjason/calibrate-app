@@ -1,6 +1,7 @@
-import { dueWords, loggedAgainLine, savedLine, logAgainWords, repeatDueWords } from './dueWords';
+import { dueWords, loggedAgainLine, savedLine, logAgainWords } from './dueWords';
 
-// Roadmap D55: Save names the date ("Save, due Sunday").
+// Roadmap D55: Save names the date. In the owner's words since 2026-11-24:
+// "Save, due in 3 days", "Save, due Nov 21 (Friday)".
 describe('dueWords', () => {
   // Monday 9 November 2026, 9 PM local.
   const now = new Date(2026, 10, 9, 21, 0, 0);
@@ -10,43 +11,32 @@ describe('dueWords', () => {
     expect(dueWords(noon(2026, 10, 10), now)).toEqual({ text: 'tomorrow', spoken: 'tomorrow' });
   });
 
-  it('says the weekday from two to six days out', () => {
+  it('counts the days from two to seven, held together on screen', () => {
     const sunday = dueWords(noon(2026, 10, 15), now);
-    expect(sunday.text).toMatch(/Sunday/);
-    expect(sunday.spoken).toBe(sunday.text);
-    expect(dueWords(noon(2026, 10, 11), now).text).toMatch(/Wednesday/);
+    expect(sunday.spoken).toBe('in 6 days');
+    expect(sunday.text).toBe('in 6 days');
+    expect(dueWords(noon(2026, 10, 11), now).spoken).toBe('in 2 days');
+    expect(dueWords(noon(2026, 10, 16), now).spoken).toBe('in 7 days');
   });
 
-  it('says the short date from a week on, held together, and spells it out to VoiceOver', () => {
-    const week = dueWords(noon(2026, 10, 16), now);
-    expect(week.text).toMatch(/Mon/);
-    expect(week.text).toMatch(/16/);
-    // Held together, except after the weekday's comma, where a long label may break.
-    expect(week.text.replace(', ', '')).not.toMatch(/ /);
-    expect(week.spoken).toMatch(/Monday/);
-    expect(week.spoken).toMatch(/November/);
+  it('gives the date and its weekday from the eighth day, breaking only before the bracket', () => {
+    const later = dueWords(noon(2026, 10, 17), now);
+    expect(later.spoken).toBe('Nov 17 (Tuesday)');
+    expect(later.text).toBe('Nov 17 (Tuesday)');
   });
 
   it('adds the year when it is not this one', () => {
-    const next = dueWords(noon(2027, 0, 4), now).text;
-    expect(next).toMatch(/2027/);
-    // At most one breakable space: after the weekday's comma.
-    expect((next.match(/ /g) ?? []).length).toBeLessThanOrEqual(1);
+    const next = dueWords(noon(2027, 0, 4), now);
+    expect(next.spoken).toBe('Jan 4, 2027 (Monday)');
+    // One breakable space: before the weekday's bracket.
+    expect((next.text.match(/ /g) ?? []).length).toBe(1);
     expect(dueWords(noon(2026, 11, 1), now).text).not.toMatch(/2026/);
   });
 });
 
-// Roadmap D56: "Log it again, due tomorrow"; a week or a month as the chips say it.
-describe('repeatDueWords and logAgainWords', () => {
+// Roadmap D56: "Log it again, due tomorrow", in Save's words.
+describe('logAgainWords', () => {
   const now = new Date(2026, 10, 9, 21, 0, 0);
-  const noon = (y: number, m: number, d: number) => new Date(y, m, d, 12).toISOString();
-
-  it('names a week and a month as the chips do, else as Save says it', () => {
-    expect(repeatDueWords(noon(2026, 10, 16), now).text).toBe('in a week');
-    expect(repeatDueWords(noon(2026, 11, 9), now).text).toBe('in a month');
-    expect(repeatDueWords(noon(2026, 10, 10), now).text).toBe('tomorrow');
-    expect(repeatDueWords(noon(2026, 10, 12), now).text).toMatch(/Thursday/);
-  });
 
   it('reads the date Log will open with: the lead time from today', () => {
     const p = {
@@ -62,10 +52,14 @@ describe('repeatDueWords and logAgainWords', () => {
       reflection: null,
       integrity_bonus: false,
     };
-    expect(logAgainWords(p, now).text).toBe('in a week');
+    expect(logAgainWords(p, now).spoken).toBe('in 7 days');
     expect(logAgainWords({ ...p, created_at: new Date(2026, 10, 8, 20).toISOString() }, now).text).toBe(
       'tomorrow',
     );
+    // A month ahead: the date, as Save says it.
+    expect(
+      logAgainWords({ ...p, created_at: new Date(2026, 9, 10, 8).toISOString() }, now).spoken,
+    ).toBe('Dec 9 (Wednesday)');
   });
 });
 
@@ -75,6 +69,7 @@ describe('loggedAgainLine', () => {
 
   it('names the day ahead, and says ready to answer once it has come', () => {
     expect(loggedAgainLine(noon(2026, 10, 10), now)).toBe('Logged again, due tomorrow.');
+    expect(loggedAgainLine(noon(2026, 10, 12), now)).toBe('Logged again, due in 3 days.');
     expect(loggedAgainLine(noon(2026, 10, 9), now)).toBe('Logged again, ready to answer.');
     expect(loggedAgainLine(noon(2026, 10, 7), now)).toBe('Logged again, ready to answer.');
     expect(dueWords(noon(2026, 10, 9), now).text).toBe('today');
@@ -87,7 +82,8 @@ describe('savedLine', () => {
 
   it('says the save worked and when it comes due', () => {
     expect(savedLine(noon(2026, 10, 10), now)).toBe('Saved, due tomorrow.');
-    expect(savedLine(noon(2026, 10, 12), now)).toMatch(/^Saved, due Thursday\.$/);
+    expect(savedLine(noon(2026, 10, 12), now)).toBe('Saved, due in 3 days.');
+    expect(savedLine(noon(2026, 10, 30), now)).toBe('Saved, due Nov 30 (Monday).');
     expect(savedLine(noon(2026, 10, 9), now)).toBe('Saved, ready to answer.');
   });
 });

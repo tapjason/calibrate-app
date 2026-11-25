@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { datePresets, DueDateChips } from './DueDateChips';
 
@@ -33,5 +33,75 @@ describe('DueDateChips — the earliest day', () => {
     today.setHours(0, 0, 0, 0);
     renderChips(today);
     expect(screen.queryByTestId('due-floor-note')).toBeNull();
+  });
+});
+
+// The owner, 2026-11-24: "Pick a date" shows the full calendar at once, not
+// the compact picker's small date button that took a second tap.
+describe('DueDateChips — the calendar', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const DateTimePicker = require('@react-native-community/datetimepicker').default;
+  const presets = datePresets();
+
+  it('shows the inline calendar on the iPhone, within the earliest and latest days', () => {
+    const earliest = new Date();
+    earliest.setHours(0, 0, 0, 0);
+    earliest.setDate(earliest.getDate() + 1);
+    const view = render(
+      <DueDateChips
+        presets={presets}
+        value={presets[0].iso}
+        picking
+        onChange={jest.fn()}
+        onPickingChange={jest.fn()}
+        earliest={earliest}
+      />,
+    );
+    const picker = view.UNSAFE_getByType(DateTimePicker);
+    expect(picker.props.display).toBe('inline');
+    expect(picker.props.mode).toBe('date');
+    expect(picker.props.minimumDate).toBe(earliest);
+    expect(picker.props.maximumDate.getTime()).toBeGreaterThan(earliest.getTime());
+    expect(picker.props.accentColor).toBeDefined();
+    // It follows the phone's appearance.
+    expect(picker.props.themeVariant).toBeUndefined();
+  });
+
+  it('asks for the reveal only when a tap brings the calendar in', () => {
+    const onPickerReveal = jest.fn();
+    const onPickingChange = jest.fn();
+    const chips = (picking: boolean, value = presets[0].iso) => (
+      <DueDateChips
+        presets={presets}
+        value={value}
+        picking={picking}
+        onChange={jest.fn()}
+        onPickingChange={onPickingChange}
+        onPickerReveal={onPickerReveal}
+      />
+    );
+    const view = render(chips(false));
+    fireEvent.press(screen.getByTestId('due-pick'));
+    expect(onPickerReveal).toHaveBeenCalledTimes(1);
+    expect(onPickingChange).toHaveBeenLastCalledWith(true);
+    // Open already, or a picked date showing it: nothing to bring in.
+    view.rerender(chips(true));
+    fireEvent.press(screen.getByTestId('due-pick'));
+    view.rerender(chips(false, new Date(2027, 0, 5, 12).toISOString()));
+    fireEvent.press(screen.getByTestId('due-pick'));
+    expect(onPickerReveal).toHaveBeenCalledTimes(1);
+  });
+
+  it('names the due day in words under the chips', () => {
+    render(
+      <DueDateChips
+        presets={presets}
+        value={presets[1].iso}
+        picking={false}
+        onChange={jest.fn()}
+        onPickingChange={jest.fn()}
+      />,
+    );
+    expect(screen.getByTestId('due-sentence')).toHaveTextContent(/^Due in 7 days$/);
   });
 });

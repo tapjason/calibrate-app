@@ -81,27 +81,27 @@ describe('groupByDue', () => {
 
 // Roadmap step 32: while calibrating, the wait gets a date.
 describe('nextDueLine', () => {
-  // The date's spaces are no-break ones, so it never splits across lines.
-  const day = (p: Prediction) =>
-    new Date(p.due_date)
-      .toLocaleDateString(undefined, {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-      })
-      .replace(/ /g, '\u00A0');
-
-  it('names the soonest due date when nothing is ready yet', () => {
+  // In the owner's words (2026-11-24), held by no-break spaces so the day
+  // never splits across lines.
+  it('names the soonest due day when nothing is ready yet', () => {
     const soonest = dueIn(3, 'soon');
     expect(nextDueLine([dueIn(9, 'later'), soonest], NOW)).toBe(
-      `The next one comes due ${day(soonest)}.`,
+      'The next one comes due in\u00A03\u00A0days.',
+    );
+    expect(nextDueLine([dueIn(1, 'soon')], NOW)).toBe('The next one comes due tomorrow.');
+  });
+
+  it('gives the date and its weekday beyond the week', () => {
+    // 10 Sep 2026 is a Thursday, so nine days on is Saturday the 19th.
+    expect(nextDueLine([dueIn(9, 'later')], NOW)).toBe(
+      'The next one comes due Sep\u00A019 (Saturday).',
     );
   });
 
   it('calls it the first while nothing has resolved', () => {
     const soonest = dueIn(3, 'soon');
     expect(nextDueLine([soonest], NOW, { first: true })).toBe(
-      `The first one comes due ${day(soonest)}.`,
+      'The first one comes due in\u00A03\u00A0days.',
     );
   });
 
@@ -137,8 +137,9 @@ describe('firstAnswerLead', () => {
   });
 
   it('gives the date beyond the week', () => {
-    expect(firstAnswerLead([dueIn(9)], NOW)).toMatch(
-      /^Your first answer lands on Sat,?\u00A0Sep\u00A019\.$|^Your first answer lands on Sat,\u00A019\u00A0Sep\.$/,
+    // As every due date beyond the week reads (the owner, 2026-11-24).
+    expect(firstAnswerLead([dueIn(9)], NOW)).toBe(
+      'Your first answer lands on Sep\u00A019 (Saturday).',
     );
   });
 

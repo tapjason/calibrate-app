@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
 
-import { localDate } from '@/components/ui/dates';
+import { relativeDay } from '@/components/ui/dates';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { Prediction } from '@/types';
@@ -43,16 +43,59 @@ describe('PredictionCard', () => {
   // One sentence, not five fragments in layout order, and no "check mark".
   it('reads as one sentence, without the status glyph', () => {
     render(<PredictionCard prediction={prediction} onPress={jest.fn()} />);
-    // Resolved cards date themselves by the answer, not the due date.
-    // Through localDate, which adds the year from next year on.
-    const resolved = localDate(new Date(prediction.resolved_at as string), {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    }).replace(/ /g, '\u00A0');
+    // Resolved cards date themselves by the answer, not the due date, in the
+    // same words as on screen, with plain spaces.
+    const resolved = relativeDay(new Date(prediction.resolved_at as string)).spoken;
     expect(screen.getByRole('button').props.accessibilityLabel).toBe(
       `I ship the report by Friday. Work, 70% confident, answered ${resolved}. Happened.`,
     );
+  });
+
+  // The owner, 2026-11-24: "Due in * days makes the most sense, but for
+  // dates further out \u2026 Due Nov 21 (Friday)."
+  describe('dates in words', () => {
+    // Tuesday 24 November 2026, 10 AM.
+    beforeEach(() => jest.useFakeTimers({ now: new Date(2026, 10, 24, 10) }));
+    afterEach(() => jest.useRealTimers());
+    const open = (due: Date) => ({
+      ...prediction,
+      status: 'pending' as const,
+      resolved_at: null,
+      due_date: due.toISOString(),
+    });
+
+    it("names an open one's due day from today", () => {
+      const { rerender } = render(<PredictionCard prediction={open(new Date(2026, 10, 24, 12))} />);
+      expect(screen.getByText('due today')).toBeTruthy();
+      rerender(<PredictionCard prediction={open(new Date(2026, 10, 25, 12))} />);
+      expect(screen.getByText('due tomorrow')).toBeTruthy();
+      rerender(<PredictionCard prediction={open(new Date(2026, 10, 27, 12))} />);
+      expect(screen.getByText('due in\u00A03\u00A0days')).toBeTruthy();
+      rerender(<PredictionCard prediction={open(new Date(2026, 11, 4, 12))} />);
+      expect(screen.getByText('due Dec\u00A04 (Friday)')).toBeTruthy();
+      rerender(<PredictionCard prediction={open(new Date(2026, 10, 22, 12))} />);
+      expect(screen.getByText('due 2\u00A0days\u00A0ago')).toBeTruthy();
+    });
+
+    it("names an answered one's day the same way, and says it the same way", () => {
+      const answeredOn = (d: Date) => ({ ...prediction, resolved_at: d.toISOString() });
+      const { rerender } = render(
+        <PredictionCard prediction={answeredOn(new Date(2026, 10, 23, 19))} onPress={jest.fn()} />,
+      );
+      expect(screen.getByText('answered yesterday')).toBeTruthy();
+      rerender(
+        <PredictionCard prediction={answeredOn(new Date(2026, 10, 21, 19))} onPress={jest.fn()} />,
+      );
+      expect(screen.getByText('answered 3\u00A0days\u00A0ago')).toBeTruthy();
+      expect(screen.getByRole('button').props.accessibilityLabel).toMatch(/answered 3 days ago\./);
+      rerender(
+        <PredictionCard prediction={answeredOn(new Date(2026, 10, 2, 19))} onPress={jest.fn()} />,
+      );
+      expect(screen.getByText('answered Nov\u00A02 (Monday)')).toBeTruthy();
+      expect(screen.getByRole('button').props.accessibilityLabel).toMatch(
+        /answered Nov 2 \(Monday\)\./,
+      );
+    });
   });
 
   // DESIGN_SYSTEM §7.11: outcomes in words and one neutral ink — no ✓/✗.
@@ -102,7 +145,8 @@ describe('PredictionCard', () => {
     // give way and the date moves under it (playtest 2026-11-08).
     const meta = screen.getByText(/^answered /);
     const date = String([].concat(meta.props.children).join('')).replace(/^answered /, '');
-    expect(date).not.toMatch(/ /);
+    // Held together, except before the weekday's bracket: "Jan 9 (Friday)".
+    expect(date.replace(' (', '(')).not.toMatch(/ /);
     expect(date).toMatch(/\u00A0/);
   });
 

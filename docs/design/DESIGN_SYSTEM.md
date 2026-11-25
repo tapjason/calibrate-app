@@ -419,15 +419,17 @@ The four tabs are *Today*, *Insights*, *History* and *You*, and Log is a sheet (
   really will count, so this endowed progress is honest (Nunes & Drèze 2006: 19% → 34%
   completion). "Calibrating" over the bar and **one line of words** (D76; it was three):
   after the first answer, under the bar, "15 more scored answers unlock your score." with
-  the wait's date after it (roadmap step 32): "The next one comes due Tue, Oct 6." ("The
-  first one" on Insights before any has resolved; the date never splits across lines), or
+  the wait's date after it (roadmap step 32): "The next one comes due in 3 days." ("…due
+  Oct 16 (Friday)." beyond a week, in the words every due date takes, §7.11; "The
+  first one" on Insights before any has resolved; the words never split across lines), or
   "One is ready to resolve now." Nothing when nothing is open. The progress bar's spoken
   label says the same line. On Insights "What does this mean?" sits under the block.
 - **The first answer leads** (D30, 2026-10-10): on Today, until anything has resolved,
   the block's one line sits above the bar in `headline`, naming the evening the first
   reminder comes and then what unlocks the score (D76): "Your first answer lands tomorrow
   evening. 20 scored answers unlock your score." ("…lands Friday evening." within a week, "…lands
-  on Fri, Oct 16." beyond, "Your first answer is ready." when one is due). The bar
+  on Oct 16 (Friday)." beyond, as every due date beyond a week reads, "Your first answer is
+  ready." when one is due). The bar
   follows, with nothing under it. The newcomer read Day 0 as "come back in a week, then
   20 more"; the nearest thing now comes first.
 - **Ghost chart** before unlock: the full frame, diagonal and labelled regions with
@@ -846,8 +848,8 @@ screen readers): `calendar.badge.plus` on Today, `clock.arrow.circlepath` on His
 state shows it is the screen's main action. On Today and History, **Log a prediction**
 repeats the title bar's "+" (D3, D21) on purpose: in words, for someone who hasn't
 learned the symbol yet, and only until there's something to list. History's empty state (step 69): before
-anything resolves it says when the first answer comes ("The first one comes due Tue,
-Oct 13.") and offers **Answer it now** (one ready), **Answer the first one** (two),
+anything resolves it says when the first answer comes ("The first one comes due in 3
+days.") and offers **Answer it now** (one ready), **Answer the first one** (two),
 **Answer all N** (three or more, Today's run threshold), or **Log a prediction**. A list emptied by its filters keeps just the sentence; the
 filters are its way forward.
 
@@ -973,8 +975,10 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   Done. It saves any reflection, closes the sheet and opens Log with the title,
   category and lead time carried over, and the confidence empty: a fresh call, never
   the old number. Not offered inside a run. **Its label names the date it brings**
-  (D56, step 169): "Log it again, due tomorrow", "…due in a week", "…due in a month",
-  else as Save says it (`logAgainWords`, from the same draft Log opens with).
+  (D56, step 169): "Log it again, due tomorrow", "…due in 7 days", "…due Dec 9
+  (Wednesday)", in Save's words (`logAgainWords`, from the same draft Log opens with;
+  "in a week" and "in a month" gave way to the one wording for a day, the owner,
+  2026-11-24, §7.11).
   **After a same-day answer** (D41) the line in place of the range's record is short,
   "Saved, but not scored, since you logged it today." ("…since you reworded it today"
   after a rewording; D76: the rule was said once, before the answer), and the button
@@ -1003,13 +1007,25 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   `PredictionCard`'s `position` (`rowPosition(index, count)`), not one card per
   prediction.
 - **Layout:** the title (`body`, up to 3 lines, 6 above a 1.15 text scale); under it the category symbol and
-  "Health, due Fri 3 Oct" (`footnote`, `textSecondary`); then the status ("Happened",
+  "Health due in 3 days" (`footnote`, `textSecondary`); then the status ("Happened",
   "Ready to answer") in semibold ink with its glyph, when there is one to say. On the
   right, the stated confidence in its own column: "70%" in `headline` (tabular) over a
   44pt 0–100 scale, an `emphasis` track with an ink tick where the number sits, so a
   list reads at a glance for where its calls sit, as the chart does. No ALL-CAPS, no
   hue on the confidence, no dot between the parts. The date holds together with
-  no-break spaces (roadmap step 52).
+  no-break spaces (roadmap step 52), breaking only before the weekday's bracket.
+- **A day in words** (the owner, 2026-11-24: "Due in * days makes the most sense, but for
+  dates further out … Due Nov 21 (Friday). For the ones within 7 days it makes sense to
+  not show the full date at least"): every due date on screen is named from today by
+  local calendar days (`relativeDay`, `src/components/ui/dates.ts`): "today",
+  "tomorrow", "in 2 days" to "in 7 days", "yesterday", "2 days ago" to "7 days ago", and
+  further either way the short date with its weekday in brackets, in the phone's own
+  day-and-month order: "Nov 21 (Friday)", "21 Nov (Friday)", with the year only when it
+  isn't this one ("Jan 5, 2027 (Tuesday)"). A row reads "due in 3 days" or "answered
+  yesterday"; VoiceOver hears the same words. It replaced "Fri 3 Oct", the weekday names
+  on Save and the comma'd dates. Notifications, share cards, the CSV, Can't tell's last
+  day and the dates that aren't due dates (when it was logged, when it was answered on its
+  details) keep their own forms.
 - **Section headers** (`SectionHeader`): the title in `headline` ink and the count at
   the right edge in tabular `subhead`, never "Title · N". Under a "Ready to answer"
   header the rows don't repeat it (`showReady={false}`); the row's accessible sentence
@@ -1093,12 +1109,20 @@ the control reads the chosen category.)
   "Log it again" chooses it. A preset Work filed an untouched gym prediction under
   Work. The track record line reads all categories until one is chosen.
 - **Due date:** chips "Tomorrow", "In a week", "In a month" and **"Pick a date"**,
-  which opens the native picker (`@react-native-community/datetimepicker`, §9). Under
-  the chips, the resolved date as a sentence: "Due Friday, 3 Oct." One chip is chosen
+  which shows the month's calendar in the form at once on the iPhone (the inline
+  `@react-native-community/datetimepicker`, §9; the owner, 2026-11-24: the compact
+  picker's small date button took a second tap to open it), centred, `accentColor`
+  ink, following the phone's appearance; the browser's own date field on web, its
+  calendar opened at once after the tap where the browser allows (`showPicker`); the
+  system dialog on Android. Under the chips, the date in words (§7.11): "Due in 3
+  days", "Due Oct 16 (Friday)". One chip is chosen
   at a time (roadmap step 93): while the picker is open "Pick a date" is the choice,
-  even before the date moves off a preset's. Whenever "Pick a date" is the choice its field shows, including
+  even before the date moves off a preset's. Whenever "Pick a date" is the choice its calendar shows, including
   when Edit opens on a prediction due on a picked date (step 138; Edit showed the chip
-  chosen and no field until a second tap).
+  chosen and no field until a second tap). When a tap brings the calendar in, Log and
+  Edit scroll just far enough to show the date block's bottom, or its top when the block
+  is taller than the view, so the month and its arrows show (`useScrollReveal`); not when
+  it already shows.
 - **Starter ideas** (roadmap step 40): only before the first prediction ever, five
   quiet rows under the empty title field ("Stuck? Try one:", D76), one per category with its icon. A tap fills title, category and
   the due date its words imply, never confidence. Since D18 (4), step 99, all five
@@ -1136,10 +1160,11 @@ the control reads the chosen category.)
   it is waiting for, in the form's own words: "To save, add a category and a
   confidence." An empty form has none, and Edit's **Save changes** does the same
   (step 138; a greyed-out Save said nothing about why).
-  **Its label names the date it will save** (D55, step 168): "Save, due tomorrow",
-  "Save, due Sunday" (two to six days out), "Save, due Tue, Nov 17" (further, with
-  the year when it isn't this one), the date's spaces no-break so a wrapped label
-  breaks after "due"; VoiceOver hears "Save prediction, due Tuesday, November 17".
+  **Its label names the date it will save** (D55, step 168), in the words of §7.11:
+  "Save, due tomorrow", "Save, due in 3 days", "Save, due Nov 17 (Tuesday)" (with
+  the year when it isn't this one), the words' spaces no-break so a wrapped label
+  breaks after "due" or before the bracket; VoiceOver hears "Save prediction, due in
+  3 days".
   The date is the store's (`dueDateSavedAt`, after its clamp to tomorrow) and
   follows the day turning over; `dueWords` words it. At 320 the chips sat under
   this bar, so the date was out of sight at the moment of saving. Edit's **Save
@@ -1546,8 +1571,9 @@ Tapping a prediction that isn't due yet, on Today or in History, opens a medium-
 sheet with the round ×:
 
 - **What you said, first:** "On Oct 4 you said **70%**", the category, the title in
-  `title2`, then "Due Fri, Oct 16 · reminder that evening" (or "· reminders off"; on
-  the web build, which sends nothing, the date alone).
+  `title2`, then "Due in 3 days, with a reminder at 7:00 PM" (the date in §7.11's
+  words, "Due Oct 16 (Friday), …" beyond a week; or ", reminders off"; on the web
+  build, which sends nothing, the date alone).
 - **Edit** (secondary capsule): the title, category and due date in place, with the
   Log form's fields and chips; **Save changes** as the one primary while editing,
   waiting for a non-empty title. The confidence is shown, never editable: it is the
@@ -1562,8 +1588,9 @@ sheet with the round ×:
   was logged (new words don't move that day), and "Delete this prediction? It’s due, so
   Insights will count it as deleted. This can’t be undone." on the day it was logged once
   it is already due (`canRenumber` tells the two apart, on one clock).
-- **Answer it now** (text button, `actionText`): opens Resolve after one line, "It's not
-  due until Fri, Oct 16. Know already? Go ahead." (D76) with
+- **Answer it now** (text button, `actionText`): opens Resolve after one line, "It's due
+  in 3 days. Know already? Go ahead." (D76; "It's not due until Fri, Oct 16." until the
+  owner's wording for a day, 2026-11-24, §7.11) with
   **Answer now** and **Not yet**. Early answers count like any other. **On the day it
   was logged** the line says the rule once, with what to do (D56, step 169; D76's
   words): "Heads up: an answer today won’t be scored, because you logged it today. Tomorrow
@@ -1583,7 +1610,7 @@ sheet with the round ×:
   **Delete** with the usual confirmation. After the day, one line instead: "This one’s
   locked in. Answers can be changed for a day, then they’re part of your record." (D76)
   At any time, under the outcome, **Log it again, due tomorrow** (secondary capsule,
-  12 pt below the outcome; D56, step 169), or "Logged again, due Wed, Nov 11." while
+  12 pt below the outcome; D56, step 169), or "Logged again, due in 3 days." while
   the same words are open (`openRepeatOf`; "Logged again, ready to answer." once its
   day has come), so one source doesn't stack. Resolve does the same after an answer.
   Never "Can't tell" here. A skip still opens Resolve (step 39).
@@ -1606,10 +1633,15 @@ for a built-in as much as for an added category. Tapping it again, or Done, clos
   couldn't be used. Try another." and keeps the icon. Footnote: "Pictures stay on
   this phone. Share cards keep their own look."
 - **Use the default** (text button, only when an icon is set) and **Done**, right-aligned.
-- **Rendering** (`CategoryIcon`): an emoji at the icon size (85% until the
-  2026-11-03 playtest found it smaller than the symbols beside it), a picture at
-  the icon size with corners of a quarter of it, both in their own colours and hidden
-  from VoiceOver like every icon here (the word beside it says what it is).
+- **Rendering** (`CategoryIcon`): an emoji in a box of the icon size, centred, at 80%
+  of it (`EMOJI_FONT_SCALE`): emoji fonts draw a glyph about a quarter wider than their
+  font size, so the glyph comes out about the box, as large as the symbols beside it.
+  Its text frame is twice the box, centred on it, with no fixed line height: on the
+  iPhone a text view draws only inside its frame, and at the box's own font size, in a
+  frame held to the box, Log's chips cut off about a third of the emoji on the right (the
+  owner, TestFlight build 15, 2026-11-24). A picture at the icon size with corners of a
+  quarter of it. Both in their own colours and hidden from VoiceOver like every icon
+  here (the word beside it says what it is).
 - **Not on share cards or Wrapped** (owner's call, 2026-11-03): the exported card
   keeps its fixed design, so a photo never leaves the phone by accident. Neither the
   cards nor Share's own controls draw category icons.
@@ -1701,7 +1733,7 @@ Pinned for **Expo SDK 55 / RN 0.83.10** (verified in
 | Category pictures (D40) | `expo-image-picker` + `expo-image-manipulator` | ~55.0.24 / ~55.0.21 | Library only (camera and microphone permissions off in `app.json`); square crop, 120 px PNG. Both work on web. |
 | Haptics | `expo-haptics` | ~55.0.18 | Web: no-op, harmless. |
 | Slider | `@react-native-community/slider` | 5.1.2 | Works on web. |
-| Date picker | `@react-native-community/datetimepicker` | 8.6.0 | "Pick a date" on Log (§7.12). Check its web behaviour before relying on it in screenshots. |
+| Date picker | `@react-native-community/datetimepicker` | 8.6.0 | "Pick a date" on Log and Edit (§7.12): `display="inline"` on iOS (14 and later; the library sizes the view from the picker's own size, which no style overrides). Check its web behaviour before relying on it in screenshots. |
 | Glass accents | `expo-glass-effect` | 55.0.11 | iOS 26+; check `isLiquidGlassAvailable()`. `opacity: 0` breaks it. |
 | Native tabs | `expo-router/unstable-native-tabs` | in expo-router 55 | Unstable until SDK 58. Keep JS `Tabs` in `_layout.web.tsx` (web renders a text-only top pill). |
 | Sheets | expo-router `formSheet` | built in | Adopts Liquid Glass on iOS 26+. |

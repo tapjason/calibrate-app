@@ -375,13 +375,16 @@ aren't filed under a preset. A starter idea or "Log it again" fills it.
 
 **The due date starts on Tomorrow** (D55) for every new prediction; a starter idea and
 "Log it again" bring their own. Save names the date it will save: "Save, due tomorrow",
-"Save, due Sunday" (two to six days out), "Save, due Tue, Nov 17" (further), so the date is
-in view when the chips aren't.
+"Save, due in 3 days" (up to 7 days out), "Save, due Nov 21 (Friday)" (further; the year
+only when it isn't this one), so the date is in view when the chips aren't. Every on-screen
+due date uses the same words (`relativeDay`, the owner, 2026-11-24): cards ("due in 3 days",
+"answered yesterday"), Log, Edit, details and Resolve. "Pick a date" opens the full calendar
+at once (inline on iOS).
 
 **"Log it again"** (step 22; on History's details too, D56) is offered after an answer on Resolve and on an answered
 prediction's details in History at any time. Its label names the date it brings ("Log it
 again, due tomorrow"); when the same words are already open it reads "Logged again, due
-Wed, Nov 11." instead. The title, category and lead time (a day at least) carry over; the
+in 7 days." instead. The title, category and lead time (a day at least) carry over; the
 confidence never does, so the new number isn't anchored on the old one.
 
 **This prediction's own record** (D32): when the typed title matches predictions already

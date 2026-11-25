@@ -66,11 +66,17 @@ export interface ScrollReveal {
  * no motion under Reduce Motion. Positions are kept from layout and scroll
  * events, not measured. The Warm-up's pick did this first (playtests
  * 2026-11-01, 2026-11-03); Log after a category and the Warm-up's restored
- * pick share it (blind playtest 2026-11-12e, findings 3 and 4).
+ * pick share it (blind playtest 2026-11-12e, findings 3 and 4). A second
+ * block of the same scroll view takes its own reveal with `scrollRef`, the
+ * first one's, and the view's layout and scroll events passed to both.
  */
-export function useScrollReveal({ nested = false }: { nested?: boolean } = {}): ScrollReveal {
+export function useScrollReveal({
+  nested = false,
+  scrollRef: shared,
+}: { nested?: boolean; scrollRef?: RefObject<ScrollView | null> } = {}): ScrollReveal {
   const reduceMotion = useReducedMotion();
-  const scrollRef = useRef<ScrollView>(null);
+  const own = useRef<ScrollView>(null);
+  const scrollRef = shared ?? own;
   const viewport = useRef(0);
   const scrollY = useRef(0);
   const parentY = useRef<number | null>(nested ? null : 0);
@@ -96,7 +102,7 @@ export function useScrollReveal({ nested = false }: { nested?: boolean } = {}): 
       margin: space.lg,
     });
     if (y !== null) scrollRef.current?.scrollTo({ y, animated: !reduceMotion });
-  }, [reduceMotion]);
+  }, [reduceMotion, scrollRef]);
 
   return useMemo<ScrollReveal>(
     () => ({
@@ -133,6 +139,6 @@ export function useScrollReveal({ nested = false }: { nested?: boolean } = {}): 
         parentY.current = nested ? null : 0;
       },
     }),
-    [attempt, nested],
+    [attempt, nested, scrollRef],
   );
 }

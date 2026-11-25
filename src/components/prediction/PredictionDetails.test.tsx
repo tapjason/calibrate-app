@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { StrictMode } from 'react';
+import { AccessibilityInfo, Platform, ScrollView } from 'react-native';
 
+import { useScrollReveal } from '@/components/ui/useScrollReveal';
 import { setDbForTests } from '@/db/client';
 import {
   countPostponements,
@@ -80,6 +82,18 @@ describe('PredictionDetails (roadmap D25)', () => {
     // The screen's heading (playtest 2026-11-09b, finding 18).
     expect(screen.getByRole('header', { name: 'Ship the beta' })).toBeTruthy();
     expect(screen.getByTestId('details-due')).toHaveTextContent(/^Due .+, with a reminder at 7:00\sPM$/);
+  });
+
+  // The owner, 2026-11-24: "Due in * days", the full date only further out.
+  it('names a due day within the week from today', async () => {
+    const inThree = new Date();
+    inThree.setDate(inThree.getDate() + 3);
+    inThree.setHours(12, 0, 0, 0);
+    await insertPrediction(open({ due_date: inThree.toISOString() }));
+    renderDetails();
+    await waitFor(() =>
+      expect(screen.getByTestId('details-due')).toHaveTextContent(/^Due in\s3\sdays, with a reminder/),
+    );
   });
 
   it('says reminders are off when they are', async () => {
@@ -162,6 +176,88 @@ describe('PredictionDetails (roadmap D25)', () => {
     fireEvent.press(screen.getByTestId('details-edit-button'));
     expect(screen.getByTestId('due-pick').props.accessibilityState.selected).toBe(true);
     expect(screen.getByTestId('due-picker')).toBeTruthy();
+  });
+
+  // The owner, 2026-11-24: the inline calendar shows at once; the sheet
+  // brings it into view, only when a tap brings it in.
+  it('asks the sheet to bring the calendar into view when Pick a date opens it', async () => {
+    const tomorrowNoon = new Date();
+    tomorrowNoon.setDate(tomorrowNoon.getDate() + 1);
+    tomorrowNoon.setHours(12, 0, 0, 0);
+    await insertPrediction(open({ due_date: tomorrowNoon.toISOString() }));
+    const dateReveal = {
+      scrollRef: { current: null },
+      onViewportLayout: jest.fn(),
+      onScroll: jest.fn(),
+      onScrollBeginDrag: jest.fn(),
+      onParentLayout: jest.fn(),
+      onTargetLayout: jest.fn(),
+      reveal: jest.fn(),
+      reset: jest.fn(),
+    };
+    renderDetails({ dateReveal });
+    await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-edit-button'));
+    expect(screen.queryByTestId('due-picker')).toBeNull();
+    const layout = { nativeEvent: { layout: { x: 0, y: 40, width: 375, height: 120 } } };
+    fireEvent(screen.getByTestId('details-edit'), 'layout', layout);
+    fireEvent(screen.getByTestId('details-due-block'), 'layout', layout);
+    expect(dateReveal.onParentLayout).toHaveBeenCalled();
+    expect(dateReveal.onTargetLayout).toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId('due-pick'));
+    expect(screen.getByTestId('due-picker')).toBeTruthy();
+    expect(dateReveal.reveal).toHaveBeenCalledTimes(1);
+    // Already showing: nothing grows, so nothing to bring into view.
+    fireEvent.press(screen.getByTestId('due-pick'));
+    expect(dateReveal.reveal).toHaveBeenCalledTimes(1);
+  });
+
+  // Web playtest 2026-11-24: one tap on "Pick a date" in Edit called
+  // showPicker twice (Log once). Under StrictMode, which runs each new effect
+  // twice and gave the same two calls, with the sheet's reveal wired as in
+  // the route.
+  it('opens the web calendar exactly once per tap', async () => {
+    const tomorrowNoon = new Date();
+    tomorrowNoon.setDate(tomorrowNoon.getDate() + 1);
+    tomorrowNoon.setHours(12, 0, 0, 0);
+    await insertPrediction(open({ due_date: tomorrowNoon.toISOString() }));
+    const realOS = Platform.OS;
+    Platform.OS = 'web';
+    const showPicker = jest.fn();
+    function Sheet() {
+      const dateReveal = useScrollReveal({ nested: true });
+      return (
+        <ScrollView ref={dateReveal.scrollRef} onLayout={dateReveal.onViewportLayout}>
+          <PredictionDetails
+            predictionId="p1"
+            onClose={jest.fn()}
+            onAnswer={jest.fn()}
+            dateReveal={dateReveal}
+          />
+        </ScrollView>
+      );
+    }
+    try {
+      render(
+        <StrictMode>
+          <Sheet />
+        </StrictMode>,
+        { createNodeMock: (el: { type: unknown }) => (el.type === 'input' ? { showPicker } : null) },
+      );
+      await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+      fireEvent.press(screen.getByTestId('details-edit-button'));
+      fireEvent.press(screen.getByTestId('due-pick'));
+      expect(showPicker).toHaveBeenCalledTimes(1);
+      // A second tap with the field showing opens nothing more.
+      fireEvent.press(screen.getByTestId('due-pick'));
+      expect(showPicker).toHaveBeenCalledTimes(1);
+      // Closed by a preset, then a new tap: one more.
+      fireEvent.press(screen.getByTestId('due-tomorrow'));
+      fireEvent.press(screen.getByTestId('due-pick'));
+      expect(showPicker).toHaveBeenCalledTimes(2);
+    } finally {
+      Platform.OS = realOS;
+    }
   });
 
   it('keeps Save changes waiting for a title', async () => {
@@ -835,9 +931,10 @@ describe('PredictionDetails (roadmap D25)', () => {
     await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
 
     fireEvent.press(screen.getByTestId('details-answer'));
-    // D76: "It’s not due until Fri, Nov 28. Know already? Go ahead."
+    // D76's line, the date in the owner's words (2026-11-24): "It’s due
+    // Oct 16, 2099 (Friday). Know already? Go ahead."
     expect(screen.getByTestId('details-early-text')).toHaveTextContent(
-      /^It’s not due until .+\. Know already\? Go ahead\.$/,
+      /^It’s due Oct\s16,\s2099 \(Friday\)\. Know already\? Go ahead\.$/,
     );
     // Not logged today, so no same-day "Heads up".
     expect(screen.getByTestId('details-early')).not.toHaveTextContent(/Heads up/);
@@ -1057,7 +1154,9 @@ describe('PredictionDetails, answered: Log it again (roadmap D56)', () => {
     });
     renderDetails({ onPredictAgain: jest.fn() });
     await waitFor(() => expect(screen.getByTestId('answered-logged-again')).toBeTruthy());
-    expect(screen.getByTestId('answered-logged-again')).toHaveTextContent(/^Logged again, due \w+\.$/);
+    expect(screen.getByTestId('answered-logged-again')).toHaveTextContent(
+      /^Logged again, due in\s3\sdays\.$/,
+    );
     expect(screen.queryByTestId('answered-again')).toBeNull();
   });
 

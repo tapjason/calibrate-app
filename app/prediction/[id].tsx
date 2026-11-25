@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PredictionDetails } from '@/components/prediction/PredictionDetails';
 import { useEditDraftGuard } from '@/components/prediction/useLogDraftGuard';
 import { SheetCloseBar } from '@/components/ui/SheetCloseBar';
+import { useScrollReveal } from '@/components/ui/useScrollReveal';
 import { warnedKey } from '@/components/resolution/sameDayWarned';
 import { useRenumberStore } from '@/store/renumberStore';
 
@@ -24,6 +25,9 @@ export default function PredictionScreen() {
   // The × sits on a bar the content scrolls under (blind playtest 2026-11-12,
   // finding 21); a hairline sets it off once scrolled.
   const [scrolled, setScrolled] = useState(false);
+  // Edit's date block, brought into view when "Pick a date" opens its
+  // calendar (the owner, 2026-11-24); it sits in the details' own view.
+  const dateReveal = useScrollReveal({ nested: true });
   const close = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/' as never);
@@ -34,10 +38,16 @@ export default function PredictionScreen() {
       {/* Sticky first child: pinned, never over the content (code review
           2026-11-12). */}
       <ScrollView
+        ref={dateReveal.scrollRef}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         stickyHeaderIndices={[0]}
-        onScroll={(e) => setScrolled(e.nativeEvent.contentOffset.y > 0)}
+        onLayout={dateReveal.onViewportLayout}
+        onScroll={(e) => {
+          setScrolled(e.nativeEvent.contentOffset.y > 0);
+          dateReveal.onScroll(e);
+        }}
+        onScrollBeginDrag={dateReveal.onScrollBeginDrag}
         scrollEventThrottle={16}
       >
         <SheetCloseBar onPress={close} testID="details-close" scrolled={scrolled} />
@@ -67,6 +77,7 @@ export default function PredictionScreen() {
             router.replace(`/log?renumber=${encodeURIComponent(p.id)}` as never);
           }}
           onDirtyChange={setDirty}
+          dateReveal={dateReveal}
         />
       </ScrollView>
     </SafeAreaView>

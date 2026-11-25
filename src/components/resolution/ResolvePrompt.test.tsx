@@ -1371,7 +1371,9 @@ describe('ResolvePrompt — Logged again', () => {
     await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
     fireEvent.press(screen.getByTestId('resolve-yes'));
     await waitFor(() => expect(screen.getByTestId('resolve-logged-again')).toBeTruthy());
-    expect(screen.getByTestId('resolve-logged-again')).toHaveTextContent(/^Logged again, due \w+\.$/);
+    expect(screen.getByTestId('resolve-logged-again')).toHaveTextContent(
+      /^Logged again, due in\s2\sdays\.$/,
+    );
     expect(screen.queryByTestId('resolve-again')).toBeNull();
   });
 });
@@ -1440,6 +1442,19 @@ describe('ResolvePrompt — answered late', () => {
     render(<ResolvePrompt predictionId="p1" />);
     await waitFor(() => expect(screen.getByTestId('resolve-stated')).toBeTruthy());
     expect(screen.getByTestId('resolve-stated')).toHaveTextContent(/you said 80%\. It was due /);
+  });
+
+  // In the owner's words for a day (2026-11-24): "yesterday", "3 days ago".
+  it('names a recent due day from today', async () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(12, 0, 0, 0);
+    await insertPrediction(samplePending({ due_date: yesterday.toISOString() }));
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-stated')).toBeTruthy());
+    expect(screen.getByTestId('resolve-stated')).toHaveTextContent(
+      /you said 80%\. It was due yesterday\.$/,
+    );
   });
 
   it('says nothing more on the due day itself', async () => {

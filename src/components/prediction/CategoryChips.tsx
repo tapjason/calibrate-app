@@ -237,9 +237,10 @@ export function CategoryChips({
               testID="category-add-cancel"
             />
             {/* Secondary: Save stays the form's one primary (DESIGN_SYSTEM
-                §7.12, §7.23). */}
+                §7.12, §7.23). "Add" (the owner, 2026-11-24); it still
+                chooses the new category, and VoiceOver hears that it did. */}
             <Button
-              label="Add and choose it"
+              label="Add"
               variant="secondary"
               onPress={() => void add()}
               disabled={saving || name.trim().length === 0}

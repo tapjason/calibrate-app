@@ -10,7 +10,7 @@
 
 import { dateLocale } from '@/constants/locale';
 import { endSentence } from '@/components/ui/sentence';
-import { localDate } from '@/components/ui/dates';
+import { dateWithWeekday, holdDayWords, relativeDay } from '@/components/ui/dates';
 import type { Prediction } from '@/types';
 
 export interface DueGroup {
@@ -101,14 +101,10 @@ export function nextDueLine(
     .filter((t) => !Number.isNaN(t))
     .sort((a, b) => a - b)[0];
   if (next === undefined) return null;
-  const day = localDate(new Date(next), {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }, now);
-  // No-break spaces hold the date together: "Oct" ended one line and "13."
-  // began the next.
-  return endSentence(`The ${first ? 'first' : 'next'} one comes due ${day.replace(/ /g, '\u00A0')}`);
+  // "in 3 days", "Nov 21 (Friday)" (the owner, 2026-11-24), held together by
+  // no-break spaces: "Oct" ended one line and "13." began the next.
+  const day = relativeDay(new Date(next), now).text;
+  return endSentence(`The ${first ? 'first' : 'next'} one comes due ${day}`);
 }
 
 /**
@@ -148,8 +144,9 @@ export function firstAnswerLead(
   if (days < 7) {
     return `Your first answer lands ${due.toLocaleDateString(dateLocale(), { weekday: 'long' })} ${part}.`;
   }
-  const day = localDate(due, { weekday: 'short', day: 'numeric', month: 'short' }, now);
-  return endSentence(`Your first answer lands on ${day.replace(/ /g, '\u00A0')}`);
+  // Beyond the week, the date as every due date reads (the owner, 2026-11-24):
+  // "\u2026lands on Nov 21 (Friday)."
+  return endSentence(`Your first answer lands on ${holdDayWords(dateWithWeekday(due, now))}`);
 }
 
 /**

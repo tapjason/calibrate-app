@@ -9,7 +9,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useReducedMotion } from 'react-native-reanimated';
 
 import { refinePrediction } from '@/ai/refine';
 import { track } from '@/analytics/track';
@@ -163,14 +162,15 @@ export function LogPredictionForm({
     }, LOG_DRAFT_WRITE_MS);
     return () => clearTimeout(t);
   }, [title, category, confidence, dueDate, again?.replaces]);
-  // Showing the inline picker (iOS compact / web date input).
+  // Showing the inline picker (iOS inline calendar / web date input).
   const [picking, setPicking] = useState(false);
-  // Opening "Pick a date" adds the date box at the end of the form and pushed
-  // the "Due Wednesday 9 Dec" line out of view behind Save; the form now
-  // scrolls to it once the box is laid out (blind playtests 2026-11-13,
-  // run 5, and 2026-11-13b, run 1).
-  const revealDate = useRef(false);
-  const reduceMotionDate = useReducedMotion();
+  // Opening "Pick a date" adds the calendar at the end of the form and pushed
+  // the "Due …" line out of view behind Save (blind playtests 2026-11-13,
+  // run 5, and 2026-11-13b, run 1); the inline calendar (the owner,
+  // 2026-11-24) is taller still. Once it's laid out, the form scrolls just
+  // far enough to show the date block's bottom, or its top when the block is
+  // taller than the view, so the calendar's month and arrows show.
+  const dateReveal = useScrollReveal({ scrollRef: reveal.scrollRef });
   // A form left open (the Log tab, before D3; a sheet now) kept yesterday's
   // presets after midnight, and "Tomorrow" meant today. When the day turns, rebuild them and
   // keep the chosen chip chosen; a picked date stays as picked.
@@ -350,6 +350,7 @@ export function LogPredictionForm({
         // finding 12). The form starts over at the top, the save said there.
         setSavedNote((prev) => ({ text: note, n: (prev?.n ?? 0) + 1 }));
         reveal.reset();
+        dateReveal.reset();
         reveal.scrollRef.current?.scrollTo({ y: 0, animated: false });
       } else {
         onSubmitted?.();
@@ -463,13 +464,17 @@ export function LogPredictionForm({
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
-        onLayout={reveal.onViewportLayout}
-        onScroll={reveal.onScroll}
-        onScrollBeginDrag={reveal.onScrollBeginDrag}
-        onContentSizeChange={() => {
-          if (!revealDate.current) return;
-          revealDate.current = false;
-          reveal.scrollRef.current?.scrollToEnd({ animated: !reduceMotionDate });
+        onLayout={(e) => {
+          reveal.onViewportLayout(e);
+          dateReveal.onViewportLayout(e);
+        }}
+        onScroll={(e) => {
+          reveal.onScroll(e);
+          dateReveal.onScroll(e);
+        }}
+        onScrollBeginDrag={() => {
+          reveal.onScrollBeginDrag();
+          dateReveal.onScrollBeginDrag();
         }}
         scrollEventThrottle={32}
       >
@@ -622,23 +627,18 @@ export function LogPredictionForm({
           ) : null}
         </View>
 
-        <View style={styles.block}>
+        <View style={styles.block} onLayout={dateReveal.onTargetLayout} testID="log-due-block">
           <Text style={styles.label}>Due date</Text>
+          {/* Revealed only when the calendar is about to appear: with it
+              already showing (a second tap, or a picked date carried in)
+              nothing grows (code review 2026-11-13). */}
           <DueDateChips
             presets={presets}
             value={dueDate}
             picking={picking}
             onChange={setDueDate}
-            onPickingChange={(open) => {
-              // Armed only when the box is about to appear: with it already
-              // showing (a second tap, or a picked date carried in) no size
-              // change comes, and a flag left on would scroll the form away
-              // from the title on the next unrelated one (code review
-              // 2026-11-13).
-              const shown = picking || !presets.some((p) => p.iso === dueDate);
-              if (open && !shown) revealDate.current = true;
-              setPicking(open);
-            }}
+            onPickingChange={setPicking}
+            onPickerReveal={dateReveal.reveal}
           />
         </View>
 
