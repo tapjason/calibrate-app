@@ -431,28 +431,6 @@ describe('stripSummary (roadmap D47)', () => {
   });
 });
 
-describe('cardHiddenCategories while hiding (step 179)', () => {
-  it('keeps the named ones off, even all of them', () => {
-    const stat = (category: string, n: number) =>
-      ({
-        user_id: 'u1',
-        category,
-        predictions_made: n,
-        predictions_resolved: n,
-        calibration_score: 80,
-        score_is_provisional: n < 20,
-        badge_level: 'guesser',
-      }) as never;
-    const stats = [stat('work', 3), stat('c-divorce', 2)];
-    expect([...cardHiddenCategories(stats, [])]).toEqual([]);
-    expect([...cardHiddenCategories(stats, [], (c) => c === 'c-divorce')]).toEqual(['c-divorce']);
-    expect([...cardHiddenCategories(stats, ['work'], (c) => c === 'c-divorce')].sort()).toEqual([
-      'c-divorce',
-      'work',
-    ]);
-  });
-});
-
 describe('buildShareCard with every category left off (code review, step 179)', () => {
   const stat = (category: string) =>
     ({

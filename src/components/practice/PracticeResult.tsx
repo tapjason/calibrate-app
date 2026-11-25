@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
@@ -11,8 +10,6 @@ import { PRACTICE_APART, practiceDayCopy, practiceRecordCopy } from './practiceC
 
 interface PracticeResultProps {
   day: number;
-  /** Shown under the day's answers: the reminder offer (roadmap step 89). */
-  children?: ReactNode;
 }
 
 /**
@@ -21,7 +18,7 @@ interface PracticeResultProps {
  * way the answers lean only from PRACTICE_MIN_N, and draws the chart from
  * there too; before that it says how many more it takes.
  */
-export function PracticeResult({ day, children }: PracticeResultProps) {
+export function PracticeResult({ day }: PracticeResultProps) {
   usePracticeStore((s) => s.answers);
   const store = usePracticeStore.getState();
   const answers = store.answersFor(day);
@@ -57,11 +54,9 @@ export function PracticeResult({ day, children }: PracticeResultProps) {
         Three new questions tomorrow.
       </Text>
 
-      {children}
-
       <View style={styles.record} testID="practice-record">
         <Text style={styles.eyebrow} accessibilityRole="header">
-          Your practice so far
+          Your trivia so far
         </Text>
         {/* It names ranges by the chart's rule now (record audit
             2026-11-23), held whole at a line break as Insights' title is. */}

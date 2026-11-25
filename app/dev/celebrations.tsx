@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PracticeReminderOfferCard } from '@/components/practice/PracticeReminderOfferCard';
 import { ReminderPromptCard } from '@/components/prediction/ReminderPromptCard';
 import { MilestoneCard } from '@/components/resolution/MilestoneCard';
 import { StreakCheckpointCard } from '@/components/resolution/StreakCheckpointCard';
@@ -117,9 +116,6 @@ export default function DevCelebrationsScreen() {
         {/* Native-only cards, previewed here because web never shows them. */}
         <Text style={styles.title}>Other cards</Text>
         <ReminderPromptCard onAllow={() => {}} onDismiss={() => {}} />
-        {/* The practice sheet's reminder offer (roadmap step 89), and after a choice. */}
-        <PracticeReminderOfferCard onChoose={() => {}} onDismiss={() => {}} />
-        <PracticeReminderOfferCard onChoose={() => {}} onDismiss={() => {}} confirmation="Set for 8:00 AM." />
 
         {/* The streak row's rest-day line in each state (roadmap step 87). */}
         <Text style={styles.title}>Rest days</Text>

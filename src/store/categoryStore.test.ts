@@ -12,11 +12,8 @@ import {
   categoryOptions,
   categoryTitle,
   isCategoryHidden,
-  isOwnCategory,
   leadingEmoji,
   useCategoryStore,
-  visibleCategoryLabel,
-  visibleCategoryTitle,
 } from './categoryStore';
 
 beforeEach(async () => {
@@ -45,13 +42,6 @@ describe('categoryStore', () => {
     expect(categoryOptions().slice(5)).toEqual([id, second]);
   });
 
-  it('knows which categories carry the person’s own words (D62)', async () => {
-    expect(isOwnCategory('health')).toBe(false);
-    const id = await useCategoryStore.getState().add('Divorce');
-    expect(isOwnCategory(id)).toBe(true);
-    await useCategoryStore.getState().rename('finance', 'Debts');
-    expect(isOwnCategory('finance')).toBe(true);
-  });
 
   it('renames a built-in, and back', async () => {
     await useCategoryStore.getState().rename('finance', 'Money');
@@ -196,26 +186,3 @@ describe('a leading emoji in a new name', () => {
   });
 });
 
-describe('visibleCategoryTitle (owner, 2026-11-14)', () => {
-  afterEach(() => useCategoryStore.setState({ defs: [] }));
-  const def = (id: 'health' | 'finance', over: { name?: string | null; icon?: { kind: 'emoji'; emoji: string } | null }) => ({
-    id,
-    user_id: 'u1',
-    name: over.name ?? null,
-    icon: over.icon ?? null,
-    hidden: false,
-    position: 0,
-    created_at: '2026-11-01T00:00:00.000Z',
-  });
-
-  it('keeps a built-in given only an icon under its word, and hides a name', () => {
-    useCategoryStore.setState({
-      defs: [def('health', { icon: { kind: 'emoji', emoji: '🏃' } }), def('finance', { name: 'Rent' })],
-    });
-    expect(visibleCategoryTitle('health', true)).toBe('Health');
-    expect(visibleCategoryLabel('health', true)).toBe('health');
-    expect(visibleCategoryTitle('finance', true)).toBe('Your own category');
-    expect(visibleCategoryLabel('finance', true)).toBe('your own category');
-    expect(visibleCategoryTitle('finance', false)).toBe('Rent');
-  });
-});

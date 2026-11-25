@@ -212,7 +212,7 @@ one-month trial nor a lifetime plan is a cost risk.
 | Capability | Free (forever) | Plus |
 |---|---|---|
 | Log, resolve, score, curve, badges, streaks, rest days | ✅ | ✅ |
-| Daily practice and its reminder | ✅ | ✅ |
+| Trivia (daily practice) | ✅ | ✅ |
 | Identity card, Wrapped (weekly and yearly), the Warmup card | ✅ (the growth engine) | ✅ |
 | Full history | ✅ | ✅ |
 | **Coach**: up to three grounded reads of your own numbers (`COACH_AGENT.md`) | — | ✅ |

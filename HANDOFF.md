@@ -1,5 +1,24 @@
 # Handoff
 
+**Now, 2026-11-25: `builder/removals`, branched from `builder/phase1-fixes` (d3444da), committed, not merged or pushed.**
+The owner's Phase 4 removals (D79): "Hide the words" gone; "Show the words in reminders" gone, so every
+reminder reads "Your prediction from Nov 6 · You said 70%" with no Happened / Didn't (older builds'
+scheduled reminders are redone at launch; delivered ones keep their buttons and safety rules);
+Practice is "Trivia" on screen and its reminder is gone (older scheduled ones cancelled at launch);
+"Got a friend's card?" gone; "+" only on Today. `check.sh` exit 0: 254 suites, 5,500 tests. Built by a
+general-purpose agent on Opus at xhigh; docs by Sonnet. Web captures in `.tooling/web/2026-11-25-removals/`.
+- **His to publish:** PRIVACY_POLICY.md (the reminder-words sentence, the event list) and SUPPORT.md
+  changed; GitHub Pages needs republishing when 1.1.0 ships, not before.
+- **Release plan, the main session's recommendation (owner to confirm):** 1.1.0 = the voice pass, D77,
+  Phase 1 (D78), these removals, the "Due today by 11:59 PM" wording (next to build; the reminder stays
+  7 PM), with the three Plus subscriptions attached (they were MISSING_METADATA; first subscriptions must
+  ship with a version). 1.2.0 = the You page redesign (approved in the conversation of 2026-11-25:
+  profile summary, Plus row, Settings rows Categories / Notifications / Appearance / Privacy / Help /
+  Advanced, Account at the bottom) and the other big items. The owner reviews the You page before any
+  of it is committed.
+
+---
+
 **Now, 2026-11-24: `builder/phase1-fixes`, branched from `master` (37a3cce), committed, not merged or pushed.**
 The owner's Phase 1 of his UI feedback list (D78): "Add" on the new-category field, a category emoji
 no longer clipped on iOS, "Pick a date" showing the full calendar at once (inline on iOS, the popup on

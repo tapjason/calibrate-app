@@ -273,19 +273,6 @@ describe('WrappedPanel', () => {
     expect(screen.getByText(/Close the deal/)).toBeTruthy();
   });
 
-  // Step 179 (blind playtest 2026-11-13e, run 4): titles can't go on the card
-  // while the words are hidden.
-  it('offers no titles while the words are hidden', () => {
-    seed([prediction({ confidence: 95, status: 'resolved_yes', title: 'Ship the beta' })]);
-    useSettingsStore.setState({ hideTitles: true });
-    try {
-      render(<WrappedPanel span="week" />);
-      expect(screen.queryByTestId('wrapped-titles-toggle')).toBeNull();
-      expect(screen.queryByText(/Ship the beta/)).toBeNull();
-    } finally {
-      useSettingsStore.setState({ hideTitles: false });
-    }
-  });
 
   // Blind playtest 2026-11-04, run 3: Finance left off the card came back
   // on both recaps, with its next badge and, with titles on, its title.
@@ -335,7 +322,7 @@ describe('WrappedPanel', () => {
 
   // Record audit and code review, 2026-11-14: a category with open
   // predictions only was never on the card, but its next badge reached the
-  // recap, named, with the words hidden and every answered category off.
+  // recap, named, with every answered category off.
   it("names no category the card couldn't show in its next badge", () => {
     /* eslint-disable @typescript-eslint/no-var-requires */
     const { useCategoryStore } = require("@/store/categoryStore") as typeof import("@/store/categoryStore");
@@ -372,7 +359,6 @@ describe('WrappedPanel', () => {
     });
     seed(run(4, 3));
     try {
-      useSettingsStore.setState({ hideTitles: true });
       const view = render(<WrappedPanel span="week" />);
       const spoken = () => screen.getByTestId("wrapped-card").props.accessibilityLabel as string;
       expect(screen.queryByText(/Trips|social/)).toBeNull();
@@ -384,7 +370,7 @@ describe('WrappedPanel', () => {
       expect(screen.queryByTestId("wrapped-next-badge")).toBeNull();
       expect(spoken()).not.toMatch(/Trips|social/);
     } finally {
-      useSettingsStore.setState({ hideTitles: false, cardHiddenCategories: [] });
+      useSettingsStore.setState({ cardHiddenCategories: [] });
       useCategoryStore.setState({ defs: [] });
     }
   });

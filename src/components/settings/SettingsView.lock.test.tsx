@@ -13,7 +13,6 @@ import {
   appLockLine,
   lockAfterLabel,
   lockAfterLine,
-  reminderWordsLine,
   SettingsView,
 } from './SettingsView';
 
@@ -171,7 +170,7 @@ describe('SettingsView: the app lock', () => {
   it('is not offered on a build that cannot lock', async () => {
     install(false);
     render(<SettingsView />);
-    await waitFor(() => expect(screen.getByTestId('toggle-hide-titles-row')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('toggle-streak-row')).toBeTruthy());
     expect(screen.queryByTestId('toggle-app-lock-row')).toBeNull();
   });
 });
@@ -210,7 +209,7 @@ describe('SettingsView: Lock after', () => {
     install(false);
     useSettingsStore.setState({ appLock: true });
     render(<SettingsView />);
-    await waitFor(() => expect(screen.getByTestId('toggle-hide-titles-row')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('toggle-streak-row')).toBeTruthy());
     expect(screen.queryByTestId('settings-lock-after')).toBeNull();
   });
 
@@ -360,11 +359,12 @@ describe('the lock switch in words', () => {
   });
 
   // Policy audit of step 180: the line mustn't promise more than the lock does.
-  it.each<LockGraceMinutes>([0, 5])('says reminders are not covered, and what changes on them, at %i minutes', (grace) => {
+  // Every reminder reads without its words and has no Happened / Didn't
+  // (2026-11-25), so the line no longer points at a switch for them.
+  it.each<LockGraceMinutes>([0, 5])('says reminders are not covered, and never show the words, at %i minutes', (grace) => {
     const line = appLockLine('ready', 'Face ID', false, grace);
-    expect(line).toMatch(/Reminders aren’t covered/);
-    expect(line).toMatch(/no Happened or Didn’t/);
-    expect(line).toMatch(/their own switch under Notifications/);
+    expect(line).toMatch(/Reminders aren’t covered, but they never show a prediction’s words\.$/);
+    expect(line).not.toMatch(/Happened|own switch/);
   });
 
   it('names the Settings page it is given when there is no passcode', () => {
@@ -387,19 +387,12 @@ describe('the lock switch in words', () => {
     );
   });
 
-  // With the lock on a reminder can't answer for you, so its line stops saying it can.
-  it('stops promising Happened and Didn’t on reminders while the lock is on', () => {
-    expect(reminderWordsLine(true)).toMatch(/Happened and Didn't to answer from it/);
-    expect(reminderWordsLine(true, true)).not.toMatch(/Happened/);
-    expect(reminderWordsLine(true, true)).toMatch(/opens the question behind the app lock/);
-    expect(reminderWordsLine(false, true)).toBe(reminderWordsLine(false, false));
-  });
 });
 
 // Roadmap D75: the words for each choice, pinned.
 describe('Lock after in words', () => {
   const REST =
-    ' Unlock opens it with Face ID or your iPhone passcode. For a phone someone else picks up. Reminders aren’t covered: while this is on they have no Happened or Didn’t, and their words have their own switch under Notifications.';
+    ' Unlock opens it with Face ID or your iPhone passcode. For a phone someone else picks up. Reminders aren’t covered, but they never show a prediction’s words.';
 
   it('names each choice, its count held to its unit', () => {
     expect(lockAfterLabel(0)).toBe('Immediately');

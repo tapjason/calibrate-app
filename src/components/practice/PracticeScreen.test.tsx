@@ -18,7 +18,6 @@ jest.mock('expo-router', () => ({
 }));
 jest.mock('@/analytics/track', () => ({ track: jest.fn(async () => {}) }));
 // The offer has its own tests; only the sheet around it is under test.
-jest.mock('@/components/practice/PracticeReminderOffer', () => ({ PracticeReminderOffer: () => null }));
 // Reduce Motion is a system setting; mock only that hook. The default export
 // (Animated) has to be carried over by hand, since spreading a module object
 // drops it.
@@ -94,7 +93,7 @@ describe('the practice sheet', () => {
     render(<PracticeScreen />);
     const scroll = screen.getByTestId('practice-scroll');
     expect(same(hostParent(scroll), screen.root)).toBe(true);
-    expect(within(scroll).getByRole('header', { name: 'Today’s practice' })).toBeTruthy();
+    expect(within(scroll).getByRole('header', { name: 'Today’s trivia' })).toBeTruthy();
     expect(within(scroll).getByTestId('practice-close')).toBeTruthy();
     expect(within(scroll).getByTestId('practice-quiz')).toBeTruthy();
   });
@@ -104,7 +103,7 @@ describe('the practice sheet', () => {
     render(<PracticeScreen />);
     const scroll = screen.getByTestId('practice-scroll');
     expect(same(hostParent(scroll), screen.root)).toBe(true);
-    expect(within(scroll).getByRole('header', { name: 'Today’s practice' })).toBeTruthy();
+    expect(within(scroll).getByRole('header', { name: 'Today’s trivia' })).toBeTruthy();
     expect(within(scroll).getByTestId('practice-close')).toBeTruthy();
     expect(within(scroll).getByTestId('practice-result')).toBeTruthy();
   });

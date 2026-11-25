@@ -97,7 +97,6 @@ describe('You under the under-13 rule', () => {
         'settings-card',
         'settings-categories',
         'toggle-streak-row',
-        'toggle-hide-titles-row',
         'toggle-notifications-row',
         'settings-export',
         'settings-scoring',

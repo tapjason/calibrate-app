@@ -852,11 +852,10 @@ describe('CalibrationView, what luck alone gives', () => {
   });
 });
 
-// Step 179 (blind playtest 2026-11-13e, runs 1 and 4): Insights' rows don't
-// name a category the person named while the words are hidden.
-describe('CalibrationView with the words hidden', () => {
-  it('reads "Your own category" on its badge row', () => {
-    const { useSettingsStore } = jest.requireActual('@/store/settingsStore') as typeof import('@/store/settingsStore');
+// "Hide the words" is gone (2026-11-25, the owner): Insights' rows name a
+// category as the person named it.
+describe('CalibrationView names every category', () => {
+  it('shows a name the person gave on its badge row', () => {
     useCategoryStore.setState({
       defs: [
         {
@@ -870,7 +869,6 @@ describe('CalibrationView with the words hidden', () => {
         },
       ],
     });
-    useSettingsStore.setState({ hideTitles: true });
     try {
       const view = render(
         <CalibrationView
@@ -890,10 +888,9 @@ describe('CalibrationView with the words hidden', () => {
           nextBadges={{}}
         />,
       );
-      expect(view.queryByText(/Divorce/)).toBeNull();
-      expect(view.getAllByText(/Your own category/).length).toBeGreaterThan(0);
+      expect(view.getAllByText(/Divorce/).length).toBeGreaterThan(0);
+      expect(view.queryByText(/Your own category/)).toBeNull();
     } finally {
-      useSettingsStore.setState({ hideTitles: false });
       useCategoryStore.setState({ defs: [] });
     }
   });
@@ -1095,17 +1092,6 @@ describe('CalibrationView, the lines under the rating in groups (D68, D76)', () 
     }
   });
 
-  it('is unchanged with the words hidden', () => {
-    useSettingsStore.setState({ hideTitles: true });
-    try {
-      show();
-      expect(style('stats-rating-meaning').color).toEqual(colors.textPrimary);
-      expect(style('stats-week-change').marginTop).toBe(space.md);
-      expect(countStyle().marginTop).toBe(space.md);
-    } finally {
-      act(() => useSettingsStore.setState({ hideTitles: false }));
-    }
-  });
 
   // Record audit, 2026-11-18 (R11): the count line read the stored streak,
   // which waits for a write, so it outlived a streak Today showed as ended.

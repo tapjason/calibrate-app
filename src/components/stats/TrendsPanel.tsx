@@ -17,12 +17,7 @@ import type {
   TrendSummary,
 } from '@/engine/trends';
 import { MIN_N_BAND } from '@/types';
-import {
-  useCategoryStore,
-  visibleCategoryLabel,
-  visibleCategoryTitle,
-} from '@/store/categoryStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 /**
  * Advanced analytics (Plus) — the sticky, non-AI half of the subscription.
@@ -161,11 +156,10 @@ function PeriodRow({ period }: { period: PeriodStat }) {
 }
 
 function CategoryRow({ trend }: { trend: CategoryTrend }) {
-  const hideTitles = useSettingsStore((s) => s.hideTitles);
   return (
     <View style={styles.row} testID={`trend-category-${trend.category}`}>
       <Text style={[styles.rowLabel, styles.rowLabelName]} numberOfLines={1}>
-        {visibleCategoryTitle(trend.category, hideTitles)}
+        {categoryTitle(trend.category)}
       </Text>
       <Text style={styles.rowValue}>
         {/* A provisional category shows progress toward its threshold, never a
@@ -211,7 +205,6 @@ const percent = (rate: number) => `${Math.round(rate * 100)}%`;
  * predictions; while none qualify, it says which band is closest instead.
  */
 function Corrections({ trends }: { trends: TrendSummary }) {
-  const hideTitles = useSettingsStore((s) => s.hideTitles);
   const rows = trends.corrections;
   const progress = trends.correction_progress;
   if (rows.length === 0 && !progress) return null;
@@ -225,14 +218,14 @@ function Corrections({ trends }: { trends: TrendSummary }) {
       {rows.length === 0 && progress ? (
         <Text style={styles.muted} testID="trends-corrections-progress">
           A range needs {MIN_N_BAND} calls in one category before it gets a row.
-          Closest: {visibleCategoryTitle(progress.category, hideTitles)} at {band(progress.low, progress.high)}, with{' '}
+          Closest: {categoryTitle(progress.category)} at {band(progress.low, progress.high)}, with{' '}
           {progress.resolved}.
         </Text>
       ) : (
         <>
           {worst && (
             <Text style={styles.delta} testID="trends-corrections-lead">
-              In {visibleCategoryLabel(worst.category, hideTitles)}, your {band(worst.low, worst.high)} has come true{' '}
+              In {categoryLabel(worst.category)}, your {band(worst.low, worst.high)} has come true{' '}
               {percent(worst.actual_rate)} of the time.
             </Text>
           )}
@@ -255,13 +248,12 @@ function band(low: number, high: number): string {
 }
 
 function CorrectionLine({ row }: { row: CorrectionRow }) {
-  const hideTitles = useSettingsStore((s) => s.hideTitles);
   return (
     <View style={styles.row} testID={`trend-correction-${row.category}-${row.low}`}>
       {/* The person's own name (up to 24 characters) wraps rather than pushing
           the figure off the row (playtest 2026-11-08, finding 1). */}
       <Text style={[styles.rowLabelPlain, styles.rowLabelName]}>
-        {visibleCategoryTitle(row.category, hideTitles)} at {band(row.low, row.high)}
+        {categoryTitle(row.category)} at {band(row.low, row.high)}
       </Text>
       <Text style={[styles.rowValue, styles.rowFigure]}>
         {percent(row.actual_rate)}, {row.happened} of {row.resolved}

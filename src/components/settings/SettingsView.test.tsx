@@ -14,7 +14,7 @@ import { SIGN_OUT_FAILED as SIGN_OUT_FAILED_CONST } from '@/supabase/auth';
 import { FREE_ENTITLEMENT } from '@/types';
 
 import {
-  reminderWordsLine,
+  REMINDER_SHOWS,
   SettingsView,
   SIGN_OUT_ANYWAY_TITLE,
   unsyncedSignOutLine,
@@ -90,16 +90,6 @@ describe('SettingsView', () => {
     await waitFor(() => expect(useSettingsStore.getState().streakShown).toBe(false));
   });
 
-  // D61 (blind playtest 2026-11-13c, finding 7): off by default, one tap on.
-  it('hides the words on Today and History when asked', async () => {
-    __setPersistenceForTests({ load: async () => null, save: async () => {} });
-    useSettingsStore.setState({ hideTitles: false });
-    render(<SettingsView />);
-    fireEvent.press(screen.getByTestId('toggle-hide-titles-row'));
-    await waitFor(() => expect(useSettingsStore.getState().hideTitles).toBe(true));
-    useSettingsStore.setState({ hideTitles: false });
-  });
-
   it('persists the change through the store setter', async () => {
     const saved: unknown[] = [];
     __setPersistenceForTests({
@@ -124,8 +114,6 @@ describe('SettingsView', () => {
         coachEnabled: false,
         analyticsEnabled: true,
         streakShown: true,
-        reminderWords: false,
-        hideTitles: false,
         appLock: false,
         appLockGraceMinutes: 5,
         appLockAwaySince: null,
@@ -138,8 +126,6 @@ describe('SettingsView', () => {
         backupNudgeDismissedAt: null,
         welcomeBackDismissedFor: null,
         ratingAskedAt: null,
-        practiceReminder: null,
-        practiceReminderOfferDismissedAt: null,
         streakMomentDay: null,
         usageNoticeShownAt: null,
       });
@@ -948,33 +934,29 @@ describe('SettingsView — notification switches', () => {
   });
 });
 
-// Roadmap D60 (b): what a reminder shows, and the words kept off it.
-describe('SettingsView — the words in reminders', () => {
-  it('says what a reminder shows, and switches the words off', async () => {
-    useSettingsStore.setState({ notificationsEnabled: true, remindersEnabled: true, reminderWords: true });
-    render(<SettingsView />);
-    expect(screen.getByTestId('toggle-reminder-words-row').props.accessibilityHint).toBe(
-      reminderWordsLine(true),
+// What a reminder shows, now said on the due-day reminders' own row: the
+// switch that showed the words (D60 (b)) went on 2026-11-25 (the owner).
+describe('SettingsView — what a reminder shows', () => {
+  it('says a reminder never shows its words, with reminders on or off', () => {
+    expect(REMINDER_SHOWS).toBe('Each shows your number and the day you made it, never its words.');
+    useSettingsStore.setState({ notificationsEnabled: true, remindersEnabled: true });
+    const view = render(<SettingsView />);
+    expect(screen.getByTestId('toggle-reminders-row').props.accessibilityHint).toMatch(
+      new RegExp(`^On the day each prediction comes due, at .+\\. ${REMINDER_SHOWS}$`),
     );
-    expect(reminderWordsLine(true)).toMatch(/locked iPhone/);
-    expect(reminderWordsLine(false)).toMatch(/Tap it to answer/);
-    // The example's date is in the phone's order, as the reminder writes it.
-    const example = new Date(2026, 10, 6, 12).toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-    });
-    expect(reminderWordsLine(false)).toContain(`from ${example} · You said 70%`);
-    fireEvent.press(screen.getByTestId('toggle-reminder-words-row'));
-    await waitFor(() => expect(useSettingsStore.getState().reminderWords).toBe(false));
-    expect(screen.getByTestId('toggle-reminder-words-row').props.accessibilityHint).toBe(
-      reminderWordsLine(false),
+    view.unmount();
+    useSettingsStore.setState({ notificationsEnabled: true, remindersEnabled: false });
+    render(<SettingsView />);
+    expect(screen.getByTestId('toggle-reminders-row').props.accessibilityHint).toBe(
+      `On the day each prediction comes due. ${REMINDER_SHOWS}`,
     );
   });
 
-  it('is offered only while due-day reminders are on', () => {
-    useSettingsStore.setState({ notificationsEnabled: true, remindersEnabled: false });
+  it('offers no switch for the words in reminders any more', () => {
+    useSettingsStore.setState({ notificationsEnabled: true, remindersEnabled: true });
     render(<SettingsView />);
     expect(screen.queryByTestId('toggle-reminder-words-row')).toBeNull();
+    expect(screen.queryByText('Show the words in reminders')).toBeNull();
   });
 });
 
@@ -991,7 +973,7 @@ describe('SettingsView — reminder and digest times', () => {
     });
     render(<SettingsView />);
     expect(screen.getByTestId('toggle-reminders-row').props.accessibilityHint).toMatch(
-      /^On the day each prediction comes due, at 7:00.PM.$/,
+      new RegExp(`^On the day each prediction comes due, at 7:00.PM. ${REMINDER_SHOWS}$`),
     );
     expect(screen.getByTestId('toggle-digest-row').props.accessibilityLabel).toBe('Weekly digest');
     expect(screen.getByTestId('toggle-digest-row').props.accessibilityHint).toMatch(
@@ -1023,29 +1005,6 @@ describe('SettingsView — reminder and digest times', () => {
     render(<SettingsView />);
     expect(screen.queryByTestId('settings-reminder-time')).toBeNull();
     expect(screen.queryByTestId('settings-digest-when')).toBeNull();
-  });
-});
-
-// Roadmap D31: a practice reminder at any time of day.
-describe('SettingsView — practice reminder time', () => {
-  it('offers Pick a time, which then reads as the chosen time', () => {
-    useSettingsStore.setState({ notificationsEnabled: true, practiceReminder: null });
-    const view = render(<SettingsView />);
-    expect(screen.getByTestId('settings-practice-moments-custom').props.accessibilityLabel).toBe(
-      'Pick a time',
-    );
-    view.unmount();
-
-    // Blind playtest 2026-11-01: it still read "Pick a time" once one was picked.
-    useSettingsStore.setState({ notificationsEnabled: true, practiceReminder: { hour: 6, minute: 45 } });
-    render(<SettingsView />);
-    const custom = screen.getByTestId('settings-practice-moments-custom');
-    expect(custom).toHaveTextContent(/^Your time/);
-    expect(custom.props.accessibilityLabel).toMatch(/^Your time, 6:45/);
-    expect(custom.props.accessibilityState).toMatchObject({ selected: true });
-    expect(screen.getByTestId('settings-practice-moments-coffee').props.accessibilityState).toMatchObject({
-      selected: false,
-    });
   });
 });
 

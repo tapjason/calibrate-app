@@ -6,6 +6,15 @@
 // wipe, dismissDeliveredReminderWords on sign-out; nothing at this module's
 // top level reads a store.)
 //
+// Every reminder reads without its words, "Your prediction from Nov 6 · You
+// said 70%", and carries no Happened / Didn't (the owner, 2026-11-25: "we
+// don't need the buttons to be on the lock screen for the time being"). The
+// switch that showed the words, and the buttons with them (D60 (b), D8), is
+// gone. A reminder an older build set with words or buttons is cancelled and
+// set again in this form by the launch reconcile (step 4 below); one it
+// already delivered keeps its buttons, and a tap on them is still handled,
+// under the same rules (handleResponse).
+//
 // Lifecycle:
 //   1. initNotifications() is called once at app start (after auth init).
 //   2. We CHECK permission, never ask (roadmap step 38): the system alert
@@ -13,8 +22,9 @@
 //      where it would land on the Warmup. Not granted → stay inactive until
 //      requestReminderPermission() is called from that moment.
 //   3. Once granted, we install the tap handler. A tap on the notification
-//      body deep-links to /resolve/[id]. Happened / Didn't (roadmap D8)
-//      record that answer first, then open the same screen already resolved.
+//      body deep-links to /resolve/[id]. Happened / Didn't (roadmap D8), on
+//      a reminder an older build delivered, record that answer first, then
+//      open the same screen already resolved.
 //   4. We reconcile with what the OS already has scheduled (roadmap step
 //      37): reminders from an earlier session are re-adopted for open
 //      predictions and cancelled for anything else, and an open prediction
@@ -48,14 +58,13 @@ import {
   REMINDER_CATEGORY,
   REMINDER_PLACEHOLDER,
   REMINDER_TITLE,
-  reminderBody,
   reminderBodyWithoutWords,
 } from './copy';
 
 /**
- * Whether the app lock is on and this build can keep it (D64). A reminder
- * then carries no Happened / Didn't, and one that still has them opens the
- * question instead of recording.
+ * Whether the app lock is on and this build can keep it (D64). Happened /
+ * Didn't on a reminder an older build delivered then opens the question
+ * instead of recording.
  */
 function appLockOn(): boolean {
   return useSettingsStore.getState().appLock && lockSupported();
@@ -346,29 +355,23 @@ async function schedule(p: Prediction): Promise<void> {
   // what a launch-time backfill of overdue predictions would otherwise do.
   // They're on Home's "Ready to answer" list already.
   if (fireDate.getTime() <= Date.now()) return;
-  const words = useSettingsStore.getState().reminderWords;
-  const answerable = words && !appLockOn();
   try {
     const id = await deps.notifications.scheduleNotificationAsync({
       content: {
         title: REMINDER_TITLE,
-        // The day Resolve's "On Nov 6 you said 70%" names.
-        body: words
-          ? reminderBody(p.title, p.confidence)
-          : reminderBodyWithoutWords(p.created_at, p.confidence),
+        // Never the words (2026-11-25): the day Resolve's "On Nov 6 you said
+        // 70%" names, and the number. Nothing written shows on a lock screen.
+        body: reminderBodyWithoutWords(p.created_at, p.confidence),
         // fireAt lets the launch reconcile spot a reminder set for another
-        // time (one from before D9 fired at noon) and set it again; `words`
-        // one set before the words were switched off or on (D60 (b)).
-        // `answerable` likewise: one set before the app lock was turned on or
-        // off (D64), if setting them all again didn't finish.
-        data: { predictionId: p.id, fireAt: fireDate.toISOString(), words, answerable },
-        // Without the words, no Happened / Didn't: two made the same day at
-        // the same number would read alike, and a one-tap answer could land
-        // on the wrong one (policy audit, step 176). A tap opens the question,
-        // words and all, behind the lock. With the app lock on (D64), none
-        // either: an answer from the lock screen would be recorded without
-        // the app's lock being opened (policy audit of step 180).
-        ...(answerable ? { categoryIdentifier: REMINDER_CATEGORY } : {}),
+        // time (one from before D9 fired at noon) and set it again. `words`
+        // and `answerable`, both false, tell it from one an older build set
+        // with the words or with Happened / Didn't (one from before D60 has
+        // neither, and showed both), which it sets again in this form.
+        data: { predictionId: p.id, fireAt: fireDate.toISOString(), words: false, answerable: false },
+        // No category, so no Happened / Didn't: two made the same day at the
+        // same number read alike, and a one-tap answer could land on the
+        // wrong one (policy audit, step 176). A tap opens the question, words
+        // and all, behind the app lock when it's on.
       },
       trigger: { type: 'date', date: fireDate },
     });
@@ -399,15 +402,6 @@ async function cancel(predictionId: string): Promise<void> {
   }
 }
 
-/**
- * Launch-time reconcile with the OS (roadmap step 37). Reminders scheduled in
- * an earlier session are adopted when their prediction is still open,
- * reminders are on, and they fire when they should now (D9 moved reminders to
- * the evening, so a noon one from before is replaced); every other reminder of
- * ours is cancelled (resolved or deleted elsewhere, a duplicate, the wrong
- * time, or reminders turned off). Then any open prediction without a reminder
- * gets one. Requests without a predictionId (the weekly digest) are left alone.
- */
 /** A stored reminder's `words`: on unless false or 0 (set before D60, it showed them). */
 function shownWords(stored: unknown): boolean {
   return stored !== false && stored !== 0;
@@ -423,6 +417,17 @@ function shownAnswerable(data: Record<string, unknown> | null | undefined): bool
   return stored !== false && stored !== 0;
 }
 
+/**
+ * Launch-time reconcile with the OS (roadmap step 37). Reminders scheduled in
+ * an earlier session are adopted when their prediction is still open,
+ * reminders are on, they fire when they should now (D9 moved reminders to the
+ * evening, so a noon one from before is replaced), and they carry neither
+ * the words nor Happened / Didn't (2026-11-25); every other reminder of ours
+ * is cancelled (resolved or deleted elsewhere, a duplicate, the wrong time, a
+ * form an older build set, or reminders turned off). Then any open
+ * prediction without a reminder gets one, in today's form. Requests without
+ * a predictionId (the weekly digest) are left alone.
+ */
 async function reconcile(): Promise<void> {
   if (!deps || !deps.notifications) return;
   const api = deps.notifications;
@@ -447,12 +452,11 @@ async function reconcile(): Promise<void> {
       prediction !== undefined &&
       !scheduledByPredictionId.has(predictionId) &&
       request.content.data?.fireAt === reminderTimeFor(prediction.due_date).toISOString() &&
-      // One from before D60 has no `words`: it showed them.
+      // Not one an older build set with the words (one from before D60 has
+      // no `words`: it showed them) or with Happened / Didn't (2026-11-25).
       // Read loosely: iOS may hand a stored boolean back as 1 or 0.
-      shownWords(request.content.data?.words) === useSettingsStore.getState().reminderWords &&
-      // And one whose buttons no longer match the app lock (D64).
-      shownAnswerable(request.content.data) ===
-        (useSettingsStore.getState().reminderWords && !appLockOn());
+      !shownWords(request.content.data?.words) &&
+      !shownAnswerable(request.content.data);
     if (keep) {
       scheduledByPredictionId.set(predictionId, request.identifier);
       continue;
@@ -498,10 +502,10 @@ async function applyEnabled(enabled: boolean): Promise<void> {
 }
 
 /**
- * Move every reminder to the chosen time (roadmap D38), or set them again with
- * or without the words (D60 (b)): cancel, then set again. One run at a time:
- * two quick flips of a switch ran two at once, and the loser's requests were
- * left with iOS, never cancelled (code review, step 176).
+ * Move every reminder to the chosen time (roadmap D38): cancel, then set
+ * again. One run at a time: two quick changes ran two at once, and the
+ * loser's requests were left with iOS, never cancelled (code review, step
+ * 176).
  */
 let rescheduling: Promise<void> = Promise.resolve();
 function rescheduleAll(): Promise<void> {
@@ -529,13 +533,14 @@ function handleStoreUpdate(pending: Prediction[]): void {
     }
   }
 
-  // Reschedule: an open prediction whose due date or title was edited
-  // (roadmap D25). The reminder fires on the due day and its body quotes the
-  // title, so either change replaces it. cancel() drops the map entry at
-  // once, so schedule() below doesn't see a stale one.
+  // Reschedule: an open prediction whose due date was edited (roadmap D25):
+  // the reminder fires on the due day. Its body hasn't quoted the title since
+  // 2026-11-25, so new words alone leave it be (a rewording that moves the due
+  // date is a due-date change). cancel() drops the map entry at once, so
+  // schedule() below doesn't see a stale one.
   for (const [id, p] of nextById) {
     const prev = lastPendingById.get(id);
-    if (prev && (prev.due_date !== p.due_date || prev.title !== p.title)) {
+    if (prev && prev.due_date !== p.due_date) {
       void cancel(id);
       void schedule(p);
     }
@@ -800,12 +805,11 @@ export async function routeFromLaunchNotification(): Promise<void> {
 
 /**
  * Registers the reminder category: the hidden-preview placeholder, and
- * Happened / Didn't (roadmap D8). The OS looks the category up when a
- * reminder is delivered, so registering it here covers reminders an older
- * build already scheduled — those requests are not cancelled or rewritten
- * just to gain the buttons. A reminder that fires before this version has
- * launched once still opens Resolve from a body tap. Best-effort: a failure
- * leaves the reminder working, without buttons where the platform has none.
+ * Happened / Didn't (roadmap D8). No reminder this build sets uses it
+ * (2026-11-25: no buttons); it stays registered for the reminders an older
+ * build delivered with it, which keep their buttons until they're cleared,
+ * and whose answers handleResponse still records under the same rules.
+ * Best-effort: a failure leaves those reminders opening Resolve from a tap.
  */
 async function registerCategory(): Promise<void> {
   try {
@@ -842,13 +846,11 @@ export async function initNotifications(): Promise<void> {
     return;
   }
 
-  // Words switched off, or the app lock switched on: reminders already on the
-  // lock screen that show a prediction's words go too, or the switch would
-  // cover only the ones still to come (security review, 2026-11-18).
+  // The app lock switched on: reminders an older build left on the lock
+  // screen that show a prediction's words go too, or the lock would cover
+  // only the app (security review, 2026-11-18).
   privacyUnsub = useSettingsStore.subscribe((state, prev) => {
-    const wordsOff = prev.reminderWords && !state.reminderWords;
-    const lockOn = !prev.appLock && state.appLock;
-    if (wordsOff || lockOn) void dismissDeliveredReminderWords();
+    if (!prev.appLock && state.appLock) void dismissDeliveredReminderWords();
   });
 
   // Foreground display behavior. Safe to call before permission check.
@@ -879,8 +881,8 @@ export async function initNotifications(): Promise<void> {
  * Take the app's delivered notifications off the lock screen and Notification
  * Center. For Erase and account deletion: the scheduler cancels what is still
  * to come when the open list empties, but a reminder already delivered stayed,
- * with the prediction's words on it when "Show the words in reminders" is on
- * (code review of step 182).
+ * with the prediction's words on it when an older build had "Show the words
+ * in reminders" on (code review of step 182).
  *
  * Everything goes but a trial-ending notice (`kind: 'trial'`, D16): the Apple
  * subscription outlives Erase and account deletion, so the word that a free
@@ -897,9 +899,10 @@ const KINDS_WITHOUT_WORDS: ReadonlySet<unknown> = new Set(['digest', 'practice',
 /**
  * Whether a delivered notification may show a prediction's words: a due-day
  * reminder (it carries `predictionId`) unless its `words` says false (one from
- * before D60 has no `words`, and showed them), and anything with no data to
- * tell by. The digest shows a count, the practice reminder that day's
- * question and the trial notice a date: none of them the person's words.
+ * before D60 has no `words`, and showed them; none this build sets does), and
+ * anything with no data to tell by. The digest shows a count, an older
+ * build's practice reminder that day's question and the trial notice a date:
+ * none of them the person's words.
  */
 function mayShowWords(data: Record<string, unknown> | null | undefined): boolean {
   if (!data) return true;
@@ -910,10 +913,10 @@ function mayShowWords(data: Record<string, unknown> | null | undefined): boolean
 
 /**
  * Take off the lock screen and Notification Center the delivered reminders
- * that may show a prediction's words, and leave the rest (security review,
- * 2026-11-18). For sign-out, "Show the words in reminders" turned off, and
- * the app lock turned on: a reminder already delivered kept the words those
- * changes were meant to hide. Never throws.
+ * that may show a prediction's words (only an older build's, since
+ * 2026-11-25), and leave the rest (security review, 2026-11-18). For
+ * sign-out and the app lock turned on: a reminder already delivered kept the
+ * words those changes were meant to hide. Never throws.
  */
 export async function dismissDeliveredReminderWords(): Promise<void> {
   await dismissDelivered(mayShowWords);
@@ -1011,15 +1014,9 @@ async function activate(): Promise<void> {
       void applyEnabled(next);
       return;
     }
-    // A new time (roadmap D38): every reminder moves to it. Words on or off
-    // (D60 (b)), or the app lock on or off (D64): every reminder is set
-    // again, with or without its words and its Happened / Didn't.
-    if (
-      next &&
-      (state.dueReminderTime !== prev.dueReminderTime ||
-        state.reminderWords !== prev.reminderWords ||
-        state.appLock !== prev.appLock)
-    ) {
+    // A new time (roadmap D38): every reminder moves to it. The app lock no
+    // longer changes a reminder: none carries Happened / Didn't (2026-11-25).
+    if (next && state.dueReminderTime !== prev.dueReminderTime) {
       void rescheduleAll();
     }
   });

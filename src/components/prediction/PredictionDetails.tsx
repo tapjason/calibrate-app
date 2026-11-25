@@ -31,7 +31,7 @@ import {
   rewords,
   usePredictionStore,
 } from '@/store/predictionStore';
-import { reminderTimeLabel } from '@/notifications/practiceReminder';
+import { reminderTimeLabel } from '@/notifications/copy';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { Category, Prediction } from '@/types';
 import { categoryTitle, useCategoryStore } from '@/store/categoryStore';

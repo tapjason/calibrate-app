@@ -176,9 +176,10 @@ describe('CoachPanel — rendering insights', () => {
     );
   });
 
-  // Security review, 2026-11-18: with the words hidden, a renamed built-in's
-  // header read "Your own category" and its drift receipt named "health".
-  it('names a drift by the same words as its header while the words are hidden', () => {
+  // Security review, 2026-11-18: a renamed built-in's header and its drift
+  // receipt must name it alike. "Hide the words" is gone (2026-11-25), so both
+  // use the person's own name.
+  it('names a drift by the same words as its header', () => {
     seed();
     useCategoryStore.setState({
       defs: [
@@ -193,7 +194,6 @@ describe('CoachPanel — rendering insights', () => {
         },
       ],
     });
-    useSettingsStore.setState({ hideTitles: true });
     useCoachStore.setState({
       insights: [
         {
@@ -211,13 +211,12 @@ describe('CoachPanel — rendering insights', () => {
       render(<CoachPanel />);
 
       const card = screen.getByTestId('coach-insight-health');
-      expect(card).toHaveTextContent(/Your own category/);
+      expect(card).toHaveTextContent(/Fitness/);
       expect(screen.getByTestId('coach-receipt').props.accessibilityLabel).toBe(
-        '+6, change in your own category score, earlier to recent',
+        '+6, change in your Fitness score, earlier to recent',
       );
-      expect(card).not.toHaveTextContent(/health|Fitness/);
+      expect(card).not.toHaveTextContent(/health|Your own category/);
     } finally {
-      useSettingsStore.setState({ hideTitles: false });
       useCategoryStore.setState({ defs: [] });
     }
   });

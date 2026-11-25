@@ -153,8 +153,6 @@ describe('settingsStore: setters persist', () => {
       coachEnabled: false,
       analyticsEnabled: true,
       streakShown: true,
-      reminderWords: false,
-      hideTitles: false,
       appLock: false,
       appLockGraceMinutes: 5,
       appLockAwaySince: null,
@@ -167,8 +165,6 @@ describe('settingsStore: setters persist', () => {
       backupNudgeDismissedAt: null,
       welcomeBackDismissedFor: null,
       ratingAskedAt: null,
-      practiceReminder: null,
-      practiceReminderOfferDismissedAt: null,
       streakMomentDay: null,
       usageNoticeShownAt: null,
     });
@@ -192,8 +188,6 @@ describe('settingsStore: setters persist', () => {
       coachEnabled: false,
       analyticsEnabled: true,
       streakShown: true,
-      reminderWords: false,
-      hideTitles: false,
       appLock: false,
       appLockGraceMinutes: 5,
       appLockAwaySince: null,
@@ -206,8 +200,6 @@ describe('settingsStore: setters persist', () => {
       backupNudgeDismissedAt: null,
       welcomeBackDismissedFor: null,
       ratingAskedAt: null,
-      practiceReminder: null,
-      practiceReminderOfferDismissedAt: null,
       streakMomentDay: null,
       usageNoticeShownAt: null,
     });
@@ -310,41 +302,34 @@ describe('settingsStore: reminder prompt cooldown', () => {
     expect(useSettingsStore.getState().reminderPromptDismissals).toBe(2);
   });
 
-  // Roadmap step 89: the practice reminder's time, off until it's chosen.
-  it('stores the practice reminder time, and turns it off', async () => {
-    const { persistence, saved } = makeFakePersistence();
+  // The owner's removals of 2026-11-25: "Hide the words", "Show the words in
+  // reminders" and the practice reminder. A record an older build stored with
+  // them is read without them, and the next write leaves them out (a write is
+  // always the whole snapshot); no migration.
+  it('reads none of the removed settings, and the next write leaves them out', async () => {
+    const { persistence, saved } = makeFakePersistence({
+      notificationsEnabled: false,
+      hideTitles: true,
+      reminderWords: true,
+      practiceReminder: { hour: 8, minute: 0 },
+      practiceReminderOfferDismissedAt: '2026-11-20T10:00:00.000Z',
+    } as never);
     __setPersistenceForTests(persistence);
-    expect(useSettingsStore.getState().practiceReminder).toBeNull();
-
-    await useSettingsStore.getState().setPracticeReminder({ hour: 8, minute: 0 });
-    expect(useSettingsStore.getState().practiceReminder).toEqual({ hour: 8, minute: 0 });
-    expect(saved.at(-1)?.practiceReminder).toEqual({ hour: 8, minute: 0 });
-
-    await useSettingsStore.getState().setPracticeReminder(null);
-    expect(saved.at(-1)?.practiceReminder).toBeNull();
-  });
-
-  it('drops a stored practice reminder time that is not a time', async () => {
-    __setPersistenceForTests(
-      makeFakePersistence({ practiceReminder: { hour: 25, minute: 0 } } as never).persistence,
-    );
     await useSettingsStore.getState().hydrate();
-    expect(useSettingsStore.getState().practiceReminder).toBeNull();
+    const state = useSettingsStore.getState() as unknown as Record<string, unknown>;
+    expect(state.notificationsEnabled).toBe(false);
+    for (const key of ['hideTitles', 'reminderWords', 'practiceReminder', 'practiceReminderOfferDismissedAt']) {
+      expect(state).not.toHaveProperty(key);
+    }
+    // Nothing was written just to drop them.
+    expect(saved).toHaveLength(0);
 
-    __setPersistenceForTests(
-      makeFakePersistence({ practiceReminder: { hour: 20, minute: 30 } }).persistence,
-    );
-    await useSettingsStore.getState().hydrate();
-    expect(useSettingsStore.getState().practiceReminder).toEqual({ hour: 20, minute: 30 });
-  });
-
-  it('remembers when the practice reminder offer was waved off', async () => {
-    const { persistence, saved } = makeFakePersistence();
-    __setPersistenceForTests(persistence);
-    await useSettingsStore.getState().dismissPracticeReminderOffer();
-    const at = useSettingsStore.getState().practiceReminderOfferDismissedAt;
-    expect(typeof at).toBe('string');
-    expect(saved.at(-1)?.practiceReminderOfferDismissedAt).toBe(at);
+    await useSettingsStore.getState().setDigestEnabled(false);
+    expect(saved).toHaveLength(1);
+    for (const key of ['hideTitles', 'reminderWords', 'practiceReminder', 'practiceReminderOfferDismissedAt']) {
+      expect(saved[0]).not.toHaveProperty(key);
+    }
+    expect(saved[0]).toMatchObject({ notificationsEnabled: false, digestEnabled: false });
   });
 });
 
@@ -582,13 +567,13 @@ describe('settingsStore: a settings record that cannot be read', () => {
       load: async () => {
         calls += 1;
         if (calls === 1) throw new Error('busy');
-        return { appLock: false, hideTitles: true };
+        return { appLock: false, streakShown: false };
       },
       save: async () => {},
     });
     await useSettingsStore.getState().hydrate();
     expect(calls).toBe(2);
-    expect(useSettingsStore.getState()).toMatchObject({ appLock: false, hideTitles: true, loadFailed: false });
+    expect(useSettingsStore.getState()).toMatchObject({ appLock: false, streakShown: false, loadFailed: false });
   });
 
   it('a later write of another setting stores the lock on, not off', async () => {
@@ -647,20 +632,19 @@ describe('settingsStore: a settings record that cannot be read', () => {
 });
 
 // Security review, 2026-11-18, round 3: after a record that couldn't be read,
-// "Hide the words" fell back to off and usage stats to on, so someone who had
-// hidden their words saw them, and someone who had opted out was recorded
+// "Hide the words" (removed 2026-11-25) fell back to off and usage stats to
+// on, so someone who had hidden their words saw them, and someone who had
+// opted out was recorded
 // again (and the next write of any setting stored that). Each privacy choice
 // now takes its private side, as the lock does.
 describe('settingsStore: privacy choices after a record that cannot be read', () => {
-  const PRIVATE = { appLock: true, hideTitles: true, reminderWords: false, analyticsEnabled: false };
-  const FRESH = { appLock: false, hideTitles: false, reminderWords: false, analyticsEnabled: true };
+  const PRIVATE = { appLock: true, analyticsEnabled: false };
+  const FRESH = { appLock: false, analyticsEnabled: true };
 
   const privacy = () => {
     const s = useSettingsStore.getState();
     return {
       appLock: s.appLock,
-      hideTitles: s.hideTitles,
-      reminderWords: s.reminderWords,
       analyticsEnabled: s.analyticsEnabled,
       loadFailed: s.loadFailed,
     };
@@ -679,14 +663,11 @@ describe('settingsStore: privacy choices after a record that cannot be read', ()
 
   it('a record that reads fine keeps every choice as stored, opt-ins included', async () => {
     __setPersistenceForTests(
-      makeFakePersistence({ hideTitles: false, reminderWords: true, analyticsEnabled: true, appLock: false })
-        .persistence,
+      makeFakePersistence({ analyticsEnabled: true, appLock: false }).persistence,
     );
     await useSettingsStore.getState().hydrate();
     expect(privacy()).toEqual({
       appLock: false,
-      hideTitles: false,
-      reminderWords: true,
       analyticsEnabled: true,
       loadFailed: false,
     });
@@ -708,7 +689,7 @@ describe('settingsStore: privacy choices after a record that cannot be read', ()
   });
 
   it.each([
-    ['a string', 'hideTitles: true'],
+    ['a string', 'appLock: true'],
     ['a list', [true]],
     ['a number', 7],
   ])('a record that is %s takes the private side of each', async (_label, stored) => {
@@ -723,7 +704,7 @@ describe('settingsStore: privacy choices after a record that cannot be read', ()
       load: async () => {
         calls += 1;
         if (calls === 1) throw new Error('busy');
-        return { analyticsEnabled: true, hideTitles: false, reminderWords: true };
+        return { analyticsEnabled: true };
       },
       save: async () => {},
     });
@@ -731,8 +712,6 @@ describe('settingsStore: privacy choices after a record that cannot be read', ()
     expect(calls).toBe(2);
     expect(privacy()).toEqual({
       appLock: false,
-      hideTitles: false,
-      reminderWords: true,
       analyticsEnabled: true,
       loadFailed: false,
     });
@@ -760,19 +739,11 @@ describe('settingsStore: privacy choices after a record that cannot be read', ()
 
     await useSettingsStore.getState().setAnalyticsEnabled(true);
     expect(useSettingsStore.getState().analyticsEnabled).toBe(true);
-    expect(saved.at(-1)).toMatchObject({ analyticsEnabled: true, hideTitles: true, reminderWords: false });
+    expect(saved.at(-1)).toMatchObject({ analyticsEnabled: true, appLock: true });
 
-    await useSettingsStore.getState().setHideTitles(false);
-    expect(useSettingsStore.getState().hideTitles).toBe(false);
-    expect(saved.at(-1)).toMatchObject({ analyticsEnabled: true, hideTitles: false, reminderWords: false });
-
-    await useSettingsStore.getState().setReminderWords(true);
-    expect(useSettingsStore.getState().reminderWords).toBe(true);
-    expect(saved.at(-1)).toMatchObject({ analyticsEnabled: true, hideTitles: false, reminderWords: true });
-
-    await useSettingsStore.getState().setHideTitles(true);
-    await useSettingsStore.getState().setReminderWords(false);
-    expect(saved.at(-1)).toMatchObject({ hideTitles: true, reminderWords: false });
+    await useSettingsStore.getState().setAppLock(false);
+    expect(useSettingsStore.getState().appLock).toBe(false);
+    expect(saved.at(-1)).toMatchObject({ analyticsEnabled: true, appLock: false });
   });
 
   // The real persistence: AsyncStorage's text, parsed.
@@ -789,8 +760,6 @@ describe('settingsStore: privacy choices after a record that cannot be read', ()
         const s = store.getState();
         state = {
           appLock: s.appLock,
-          hideTitles: s.hideTitles,
-          reminderWords: s.reminderWords,
           analyticsEnabled: s.analyticsEnabled,
           loadFailed: s.loadFailed,
         };
@@ -803,7 +772,7 @@ describe('settingsStore: privacy choices after a record that cannot be read', ()
     });
 
     it('a record cut short takes the private side of each', async () => {
-      await expect(hydrateFrom('{"analyticsEnabled":false,"hideTi')).resolves.toEqual({
+      await expect(hydrateFrom('{"analyticsEnabled":false,"appLo')).resolves.toEqual({
         ...PRIVATE,
         loadFailed: true,
       });
@@ -811,11 +780,9 @@ describe('settingsStore: privacy choices after a record that cannot be read', ()
 
     it('a readable record is read as it is', async () => {
       await expect(
-        hydrateFrom('{"analyticsEnabled":true,"hideTitles":false,"reminderWords":true}'),
+        hydrateFrom('{"analyticsEnabled":true,"appLock":false}'),
       ).resolves.toEqual({
         appLock: false,
-        hideTitles: false,
-        reminderWords: true,
         analyticsEnabled: true,
         loadFailed: false,
       });
@@ -972,7 +939,7 @@ describe('settingsStore: when the line about usage counts was first shown', () =
 // it reads, which is tried again at each return to the foreground.
 describe('settingsStore: what is stored while the record cannot be read', () => {
   type Store = ReturnType<typeof useSettingsStore.getState>;
-  const PRIVATE = { appLock: true, hideTitles: true, reminderWords: false, analyticsEnabled: false };
+  const PRIVATE = { appLock: true, analyticsEnabled: false };
 
   /** A record that is there but can't be read until heal(); every save kept. */
   function flakyRecord(initial: Partial<StoredSettings> | null) {
@@ -1060,7 +1027,6 @@ describe('settingsStore: what is stored while the record cannot be read', () => 
       (s) => s.dismissWelcomeBack('2026-11-01T10:00:00.000Z'),
       { welcomeBackDismissedFor: '2026-11-01T10:00:00.000Z' },
     ],
-    ['dismissPracticeReminderOffer', (s) => s.dismissPracticeReminderOffer(), {}],
     ['setCardThemeId', (s) => s.setCardThemeId('paper'), { cardThemeId: 'paper' }],
     ['setCardFormat', (s) => s.setCardFormat('story'), { cardFormat: 'story' }],
     ['setCardHiddenCategories', (s) => s.setCardHiddenCategories(['work']), { cardHiddenCategories: ['work'] }],
@@ -1110,15 +1076,8 @@ describe('settingsStore: what is stored while the record cannot be read', () => 
     ['setCoachEnabled', (s) => s.setCoachEnabled(true), { coachEnabled: true }],
     ['setAnalyticsEnabled', (s) => s.setAnalyticsEnabled(true), { analyticsEnabled: true }],
     ['setStreakShown', (s) => s.setStreakShown(false), { streakShown: false }],
-    ['setReminderWords', (s) => s.setReminderWords(true), { reminderWords: true }],
-    ['setHideTitles', (s) => s.setHideTitles(false), { hideTitles: false }],
     ['setAppLock', (s) => s.setAppLock(false), { appLock: false }],
     ['setAppLockGraceMinutes', (s) => s.setAppLockGraceMinutes(15), { appLockGraceMinutes: 15 }],
-    [
-      'setPracticeReminder',
-      (s) => s.setPracticeReminder({ hour: 8, minute: 0 }),
-      { practiceReminder: { hour: 8, minute: 0 } },
-    ],
   ])(
     '%s, a change in You, is stored with the private sides when the record still cannot be read',
     async (_name, run, changed) => {
@@ -1142,7 +1101,6 @@ describe('settingsStore: what is stored while the record cannot be read', () => 
   it('a change in You reads the record again first, and one that reads now is kept, with every held change on top', async () => {
     const rec = flakyRecord({
       notificationsEnabled: false,
-      hideTitles: false,
       analyticsEnabled: true,
       reminderPromptDismissedAt: '2026-11-01T10:00:00.000Z',
       reminderPromptDismissals: 2,
@@ -1163,7 +1121,6 @@ describe('settingsStore: what is stored while the record cannot be read', () => 
     expect(rec.saved).toHaveLength(1);
     const expected = {
       notificationsEnabled: false, // the record's, not the default
-      hideTitles: false, // the record's, not the private side
       analyticsEnabled: true, // the record's
       appLock: false, // the record has none: the default
       digestEnabled: false, // the change
@@ -1176,7 +1133,7 @@ describe('settingsStore: what is stored while the record cannot be read', () => 
   });
 
   it('the read is tried again at each return to the foreground, and a record that reads is loaded with what was held', async () => {
-    const rec = flakyRecord({ notificationsEnabled: false, appLock: false, hideTitles: false, analyticsEnabled: true });
+    const rec = flakyRecord({ notificationsEnabled: false, appLock: false, analyticsEnabled: true });
     const app = watchAppState();
     __setPersistenceForTests(rec.persistence);
     await store().hydrate();
@@ -1196,7 +1153,7 @@ describe('settingsStore: what is stored while the record cannot be read', () => 
     expect(rec.loads()).toBe(3);
 
     await app.foreground();
-    const expected = { notificationsEnabled: false, appLock: false, hideTitles: false, analyticsEnabled: true };
+    const expected = { notificationsEnabled: false, appLock: false, analyticsEnabled: true };
     expect(store()).toMatchObject({ ...expected, cardFormat: 'story', loadFailed: false });
     // Stored once, with the held change, so it survives a restart.
     expect(rec.saved).toHaveLength(1);
@@ -1438,13 +1395,10 @@ describe('settingsStore: the retired support-card set-asides (D73)', () => {
     analyticsEnabled: true,
     analyticsChosen: true,
     streakShown: false,
-    reminderWords: true,
-    hideTitles: true,
     appLock: true,
     cardFormat: 'story',
     cardHiddenCategories: ['work'],
     coverageNudgeLastShownAt: '2026-11-10T10:00:00.000Z',
-    practiceReminder: { hour: 8, minute: 0 },
     streakMomentDay: 'Thu Nov 19 2026',
     usageNoticeShownAt: '2026-11-01T09:00:00.000Z',
   };
@@ -1537,8 +1491,6 @@ describe('settingsStore: the retired support-card set-asides (D73)', () => {
       expect(useSettingsStore.getState()).toMatchObject({
         loadFailed: true,
         appLock: true,
-        hideTitles: true,
-        reminderWords: false,
         analyticsEnabled: false,
       });
       expect(useSettingsStore.getState()).not.toHaveProperty('supportAsideKeys');

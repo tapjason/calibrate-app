@@ -60,7 +60,11 @@ export const EVENT_NAMES = [
   'practice_started',
   /** The day's last question was answered. */
   'practice_completed',
-  /** A daily practice reminder time was chosen. `hour` is the local hour. */
+  /**
+   * A daily practice reminder time was chosen. `hour` is the local hour. Not
+   * sent since the reminder was removed (2026-11-25); kept so one an older
+   * build queued still matches the catalogue and the server's list.
+   */
   'practice_reminder_set',
 
   // --- Plus usage mix (§7, metric 4: AI-heavy vs analytics/cosmetic) --------

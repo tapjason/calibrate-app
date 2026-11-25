@@ -4,7 +4,6 @@ import {
   AccessibilityInfo,
   AppState,
   Linking,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -12,7 +11,6 @@ import {
 } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
-import { dateLocale } from '@/constants/locale';
 import {
   LOCAL_ONLY_FROZEN_FOOTER,
   LOCAL_ONLY_GUEST_FOOTER,
@@ -36,7 +34,6 @@ import {
   TERMS_OF_USE_URL,
 } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
-import { MomentChips } from '@/components/practice/MomentChips';
 import { DAY_NAMES, DayChips } from '@/components/settings/DayChips';
 import { TimeSetting } from '@/components/settings/TimeSetting';
 import { useCsvExport } from '@/components/settings/useCsvExport';
@@ -47,18 +44,17 @@ import {
   type LockMethod,
   type LockSupport,
 } from '@/lock/appLock';
-import { openPracticeTimeDialog, PracticeTimePicker } from '@/components/practice/PracticeTimePicker';
 import {
   askForReminders,
   reminderPermission,
   type ReminderPermission,
 } from '@/notifications/permission';
-import { choosePracticeReminder, reminderTimeLabel } from '@/notifications/practiceReminder';
+import { reminderTimeLabel } from '@/notifications/copy';
 import { useAgeStore } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useLockStore } from '@/store/lockStore';
-import { selectUsageStatsOn, useSettingsStore, type PracticeReminderTime } from '@/store/settingsStore';
+import { selectUsageStatsOn, useSettingsStore } from '@/store/settingsStore';
 import { isLockGraceMinutes, LOCK_GRACE_MINUTES, type LockGraceMinutes } from '@/types';
 
 /**
@@ -118,8 +114,6 @@ export function SettingsView({
   // Their times (roadmap D38).
   const dueReminderTime = useSettingsStore((s) => s.dueReminderTime);
   const setDueReminderTime = useSettingsStore((s) => s.setDueReminderTime);
-  const reminderWords = useSettingsStore((s) => s.reminderWords);
-  const setReminderWords = useSettingsStore((s) => s.setReminderWords);
   const digestDay = useSettingsStore((s) => s.digestDay);
   const setDigestDay = useSettingsStore((s) => s.setDigestDay);
   const digestTime = useSettingsStore((s) => s.digestTime);
@@ -133,10 +127,6 @@ export function SettingsView({
   const setAnalyticsEnabled = useSettingsStore((s) => s.setAnalyticsEnabled);
   const streakShown = useSettingsStore((s) => s.streakShown);
   const setStreakShown = useSettingsStore((s) => s.setStreakShown);
-  const hideTitles = useSettingsStore((s) => s.hideTitles);
-  const setHideTitles = useSettingsStore((s) => s.setHideTitles);
-  // Whether reminders carry Happened / Didn't follows the app lock (D64).
-  const appLock = useSettingsStore((s) => s.appLock);
   // The under-13 rule (D70): no Plus, no Coach, no usage counts on this phone.
   const localOnly = useAgeStore((s) => s.localOnly);
   const showPlus = !!onOpenPaywall && !localOnly;
@@ -191,17 +181,6 @@ export function SettingsView({
           onValueChange={(v) => void setStreakShown(v)}
           testID="toggle-streak"
         />
-        {/* D61: a phone someone else picks up showed a health prediction word
-            for word at the top of Today (blind playtest 2026-11-13c,
-            finding 7). Reminders are covered below; this covers the screens. */}
-        <ToggleRow
-          // Short enough to keep its switch beside it at 375 (D62).
-          label="Hide the words"
-          description="Each prediction shows its number and date, not its words or its note, until you open it. Categories you named read “Your own category” and stay off your card. For a phone someone else picks up; reminders have their own switch under Notifications."
-          value={hideTitles}
-          onValueChange={(v) => void setHideTitles(v)}
-          testID="toggle-hide-titles"
-        />
         <AppLockRow />
       </Group>
 
@@ -221,11 +200,14 @@ export function SettingsView({
               label="Due-day reminders"
               // The time only while it's on: off, a time read as still coming
               // (blind playtest 2026-11-13, run 7).
-              description={
+              // What one shows, since nothing else in You says (four testers
+              // over rounds 18–19 asked what the lock screen would show; the
+              // words switch that said it went on 2026-11-25).
+              description={`${
                 remindersEnabled
                   ? endSentence(`On the day each prediction comes due, at ${reminderTimeLabel(dueReminderTime)}`)
                   : 'On the day each prediction comes due.'
-              }
+              } ${REMINDER_SHOWS}`}
               value={remindersEnabled}
               onValueChange={(v) => void setRemindersEnabled(v)}
               testID="toggle-reminders"
@@ -240,18 +222,6 @@ export function SettingsView({
                   testID="reminder-time"
                 />
               </View>
-            )}
-            {/* What a reminder shows, and a way to keep the words off it
-                (roadmap D60 (b)): four testers over rounds 18–19 asked what
-                the lock screen would show, and nothing said. */}
-            {remindersEnabled && (
-              <ToggleRow
-                label="Show the words in reminders"
-                description={reminderWordsLine(reminderWords, appLock)}
-                value={reminderWords}
-                onValueChange={(v) => void setReminderWords(v)}
-                testID="toggle-reminder-words"
-              />
             )}
             <ToggleRow
               label="Weekly digest"
@@ -284,7 +254,6 @@ export function SettingsView({
           </>
         )}
         <NotificationPermissionRow />
-        <PracticeReminderRow />
       </Group>
 
       {/* Under the under-13 rule the whole group goes (D70): none of AI
@@ -346,26 +315,11 @@ export function SettingsView({
 }
 
 /**
- * What a due-day reminder shows, with its words on or off (roadmap D60 (b)).
- * The example's date is written as the reminder writes it, in the phone's
- * order: a fixed "Nov 6" beside "13 Nov" everywhere else (blind playtest
- * 2026-11-13c, finding 20). Exported for tests.
+ * What every due-day reminder shows (2026-11-25: always without the words,
+ * with no Happened / Didn't; the switch that showed them is gone). Exported
+ * for tests.
  */
-export function reminderWordsLine(on: boolean, appLock = false): string {
-  if (on) {
-    // With the app lock on a reminder can't answer for you (D64): the answer
-    // would be recorded without the lock being opened.
-    const actions = appLock
-      ? ', and a tap opens the question behind the app lock'
-      : ", with Happened and Didn't to answer from it";
-    return `Each shows the prediction's words and your number${actions}. On a locked iPhone the words stay hidden until it recognises you, unless Show Previews is set to Always (Settings → Notifications → Show Previews).`;
-  }
-  const example = new Date(2026, 10, 6, 12).toLocaleDateString(dateLocale(), {
-    month: 'short',
-    day: 'numeric',
-  });
-  return `Each shows only the day you made it and your number, like “Your prediction from ${example} · You said 70%”. Tap it to answer.`;
-}
+export const REMINDER_SHOWS = 'Each shows your number and the day you made it, never its words.';
 
 /**
  * The lock switch's name: only a way of unlocking this phone has, and has in
@@ -411,8 +365,8 @@ export function lockAfterLine(minutes: LockGraceMinutes): string {
 /**
  * What the lock switch says under its name. Its first sentence follows "Lock
  * after" (D75), so it says when the lock comes up. It says what the lock
- * leaves out, as "Hide the words" does: a reminder is on the lock screen,
- * outside the app (policy audit of step 180). Exported for tests.
+ * leaves out: a reminder is on the lock screen, outside the app (policy audit
+ * of step 180), though never with a prediction's words. Exported for tests.
  */
 export function appLockLine(
   support: LockSupport,
@@ -433,14 +387,14 @@ export function appLockLine(
     grace === 0
       ? `Locks ${APP_NAME} each time it opens or comes back to the front, and covers it in the app switcher.`
       : `Locks ${APP_NAME} once you’ve been away from it for more than ${lockAfterLabel(grace)}, and covers it in the app switcher.`;
-  const line = `${when} Unlock opens it with ${unlock}. For a phone someone else picks up. Reminders aren’t covered: while this is on they have no Happened or Didn’t, and their words have their own switch under Notifications.`;
+  const line = `${when} Unlock opens it with ${unlock}. For a phone someone else picks up. Reminders aren’t covered, but they never show a prediction’s words.`;
   return failed ? `${APP_LOCK_FAILED} ${line}` : line;
 }
 
 /**
- * The app lock (roadmap D64, step 180): "Hide the words" is a curtain, since
- * one tap opens a card (blind playtests 2026-11-13e and 2026-11-14, the top
- * privacy finding of both). The iPhone checks before the switch moves either
+ * The app lock (roadmap D64, step 180), for a phone someone else picks up
+ * (blind playtests 2026-11-13e and 2026-11-14, the top privacy finding of
+ * both). The iPhone checks before the switch moves either
  * way, so the person who turns it on can open it, and nobody else turns it
  * off. Nothing on a build or platform that can't lock; rechecked on return
  * to the app, since a passcode is set in iOS Settings. Under it, while the
@@ -514,7 +468,7 @@ function AppLockRow() {
  * "Lock after" (roadmap D75, the owner, 2026-11-23): how long the app may be
  * away before coming back locks it; sooner opens straight in, after a restart
  * too. A stacked row under the lock switch, its label and one line over four
- * chips two to a row, as the practice reminder's moments are (§7.21). The
+ * chips two to a row (§7.21). The
  * line follows the choice. Changing it asks nothing of the phone (decided):
  * it neither locks nor opens the app now, only the next trip away.
  */
@@ -718,61 +672,6 @@ function AboutGroup({ onOpenScoring }: { onOpenScoring?: () => void }) {
         testID="settings-support-link"
       />
     </Group>
-  );
-}
-
-/**
- * The daily practice reminder (roadmap step 89): Off, or a moment in the day.
- * Choosing one asks iOS for permission if it never has, as the reminder
- * prompt does. It follows the Notifications switch above, so with that off
- * the choice is kept but nothing is sent, and the row says so.
- */
-function PracticeReminderRow() {
-  const chosen = useSettingsStore((s) => s.practiceReminder);
-  const enabled = useSettingsStore((s) => s.notificationsEnabled);
-  const [busy, setBusy] = useState(false);
-  // "Pick a time" (roadmap D31): the picker stays open while it's the choice.
-  const [picking, setPicking] = useState(false);
-  const startTime: PracticeReminderTime = chosen ?? { hour: 9, minute: 0 };
-  const choose = async (time: PracticeReminderTime | null) => {
-    setBusy(true);
-    try {
-      await choosePracticeReminder(time);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <View style={styles.stacked} testID="settings-practice-reminder">
-      <Text style={styles.rowLabel}>Practice reminder</Text>
-      <Text style={styles.rowDescription}>
-        {enabled
-          ? 'One a day at the moment you pick, only on days practice isn’t done.'
-          : 'Kept, but nothing is sent while Notifications is off.'}
-      </Text>
-      <View style={styles.chips}>
-        <MomentChips
-          selected={chosen}
-          onChoose={(t) => {
-            setPicking(false);
-            void choose(t);
-          }}
-          withOff
-          disabled={busy}
-          testID="settings-practice-moments"
-          picking={picking}
-          onPickTime={() => {
-            if (Platform.OS === 'android') {
-              openPracticeTimeDialog(startTime, (t) => void choose(t));
-              return;
-            }
-            // The picker opens on the current time; turning it chooses.
-            setPicking(true);
-          }}
-        />
-      </View>
-      {picking && <PracticeTimePicker value={startTime} onChange={(t) => void choose(t)} />}
-    </View>
   );
 }
 
@@ -1164,7 +1063,8 @@ const styles = StyleSheet.create({
   rowLabelDestructive: { color: colors.destructive },
   rowValue: { ...type.callout, color: colors.textSecondary },
   rowDescription: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },
-  // A row whose control sits under its label: the practice reminder's moments.
+  // A row whose control sits under its label: the reminder and digest times,
+  // and "Lock after".
   stacked: {
     borderBottomColor: colors.hairline,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -1172,7 +1072,7 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
   },
   chips: { marginTop: space.md },
-  // "Lock after"'s chips, wrapping as the practice reminder's moments do.
+  // "Lock after"'s chips, wrapping two to a row.
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   permission: {
     borderBottomColor: colors.hairline,

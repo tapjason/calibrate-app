@@ -312,8 +312,7 @@ Start from a fresh install: delete the app, reinstall from TestFlight.
 5. Log a second one, open it, **Answer it now**: it says an answer today isn't scored;
    answer anyway; History marks it "not scored".
 6. Insights, History and You open with no layout faults at the top or bottom of the
-   screen. You's defaults: Hide the words off, the lock off, Show the words in reminders
-   off.
+   screen. You's defaults: the lock off (the Hide the words and reminder-words switches are superseded by D79)
 
 **Account**
 7. You → Sign in → Sign in with Apple. The sign-in screen says a record of which features
@@ -910,7 +909,7 @@ Added 2026-11-15 (step 182, TestFlight hardening, and the TestFlight prep; in bu
       off in You: the link stays, and since D71 (d) the sentence doesn't go but changes to
       "Usage stats are off, so no record of which features you use is sent. …" (D5 has the
       full check; before D71 (d) the sentence went).
-- [ ] **Erase clears the lock screen (step 182):** with "Show the words in reminders" on, let a
+- [ ] **Erase clears the lock screen (step 182; the reminder-words switch is superseded by D79, so use a reminder from an older build or a new one):** let a
       due-day reminder arrive and leave it in Notification Center; then You → Erase your data
       on this phone. The reminder is gone from Notification Center. Once more, locking the
       phone the moment Erase finishes: the clear is no longer waited on (review of
@@ -966,8 +965,8 @@ Added 2026-11-15 (step 180, the app lock and units by Region; native, in build 2
 - [ ] **The app lock, VoiceOver (step 180):** with VoiceOver on and the app locked, swiping
       reads "Fairly Sure", the locked line and Unlock, and nothing from the screen behind.
 - [ ] **The app lock and a reminder (step 180):** with the lock on, tap a due-day reminder: the
-      lock screen first, then the question; do it once with the app killed first. With "Show
-      the words in reminders" on and the lock on, a new reminder has no Happened / Didn't. Turn
+      lock screen first, then the question; do it once with the app killed first. (Superseded by D79: no new reminder has Happened / Didn't.)
+      Turn
       the lock off, let a reminder with the buttons arrive, turn the lock on, then tap Happened:
       the lock screen shows; after Unlock and Face ID the app shows the question, with
       nothing recorded.
@@ -1012,14 +1011,14 @@ Added 2026-11-14 (step 181, the release candidate; a reload is enough):
       the badge. On the `return` profile a badge can fall on the next answer: it says "Back to
       Tracker in health…".
 - [ ] **Share in the first week (step 181):** on `first-week`, Share opens on the Warm-up card
-      with "Show my category card" under it; "Got a friend's card?" explains a friend's
-      warm-up card first. On `long-time`, Share opens on the category card as before.
+      with "Show my category card" under it (the friend's-card check is superseded by D79).
+      On `long-time`, Share opens on the category card as before.
 - [ ] **The chart with one or two answers (step 181):** on `first-week`, Insights' chart shows
       no "Overconfident" or "Underconfident" words; on `long-time` it does.
 
 Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
 
-- [ ] **Hide the words, everywhere read-only:** with a category you named (or renamed) and the
+- [ ] **Hide the words, everywhere read-only (superseded by D79):** with a category you named (or renamed) and the
       switch on, Insights' badge row and "Furthest off" read "Your own category"; Share leaves it
       off the card with "Categories you named stay off the card…"; the week recap has no "Show
       prediction titles" switch. Switch off: it's all back, nothing unticked. Rename every
@@ -1053,7 +1052,7 @@ Added 2026-11-13 (step 178, D62, the calls after round 21; a reload is enough):
 - [ ] **Before 20:** at 10–19 scored answers, Today and Insights show "First look: you said
       about …%, and … of your … scored answers happened. Too early to rate." (D76's words, "scored" since the 2026-11-23 review) Before
       the first answer, the practice row reads "While you wait: today's practice".
-- [ ] **Hide the words:** You → "Hide the words" sits on one line with its switch at 375. On, a card
+- [ ] **Hide the words (superseded by D79):** You → "Hide the words" sits on one line with its switch at 375. On, a card
       in an added or renamed category reads "Your own category" with a plain folder symbol,
       Today's identity line and History's filter chips name no such category; VoiceOver says
       "Your own category".
@@ -1080,7 +1079,7 @@ Added 2026-11-13 (step 178, D62, the calls after round 21; a reload is enough):
 
 Added 2026-11-13 (step 177, D61 and round 20's fixes; a reload is enough):
 
-- [ ] **Hide the words:** You → "Hide the words on Today and History" (off by default). On:
+- [ ] **Hide the words (superseded by D79):** You → "Hide the words on Today and History" (off by default). On:
       every card on Today and History reads "Words hidden. Open it to see them." with its
       category, number and date, and no note; tapping one shows the words in its details or Resolve.
       VoiceOver reads the hidden line, never the title. Off again: the words are back.
@@ -1101,7 +1100,7 @@ Added 2026-11-13 (step 177, D61 and round 20's fixes; a reload is enough):
 
 Added 2026-11-13 (step 176, D60, the owner's picks after round 19; a reload is enough):
 
-- [ ] **Reminders without the words:** You → Due-day reminders → "Show the words in reminders"
+- [ ] **Reminders without the words (superseded by D79: every reminder is now like this, with no switch):** You → Due-day reminders → "Show the words in reminders"
       is off by default. Log one due tomorrow (or move the reminder time a few minutes ahead and set a due-today
       one from yesterday's demo data). On the lock screen it reads "Your prediction from … · You
       said N%", no title, and no Happened / Didn't (a tap opens the question). Back on, the next
@@ -1339,7 +1338,7 @@ native modules.
       prediction due in a few minutes, force-quit, reopen, resolve it before it
       fires: no reminder arrives. Repeat with You → Notifications off
       after the relaunch instead of resolving: still nothing.
-- [ ] **Practice reminder (added 2026-10-07, roadmap step 89):** finish
+- [ ] **Practice reminder (added 2026-10-07, roadmap step 89; superseded by D79):** finish
       today's practice; under the answers, "Want tomorrow's three at a set
       time?" offers three moments. On a fresh install, picking one brings up the
       iOS alert (and only then). `getAllScheduledNotificationsAsync` lists three
@@ -1794,3 +1793,16 @@ counts to these. Guests' rows are counts, not people: a reinstall counts twice.
       "due Dec 20 (Sunday)"; answered rows "answered yesterday / 3 days ago". Save reads
       "Save, due in 3 days". VoiceOver says the same words.
 - [ ] **"Add":** "+ New category" → the button under the field reads "Add" and chooses the new one.
+
+
+## Removals (D79, 2026-11-25)
+
+Needs a new build; check on the iPhone after updating from an older build.
+
+- [ ] **Older reminders, rescheduled:** with due-day reminders an older build scheduled, update and open the app once. Each pending reminder now reads "Your prediction from … · You said N%", with no title and no Happened / Didn't.
+- [ ] **Older practice reminders never fire:** with a practice reminder an older build scheduled, update and open the app once; no practice reminder arrives at its time on any day.
+- [ ] **A reminder already delivered keeps its buttons:** one delivered by the older build and still in Notification Center: Happened records the answer and opens the resolved state; with the app lock on, it opens the question and records nothing.
+- [ ] **You is shorter:** no "Hide the words", no "Show the words in reminders", no practice reminder choice. The app lock, Due-day reminders and Weekly digest switches work as before.
+- [ ] **Trivia, by that name:** Today's row reads "While you wait: today's trivia"; the sheet, its results, its closing line ("Trivia is just for fun. It doesn't touch your rating, badges or streak.") and You say Trivia, never Practice.
+- [ ] **Share:** no "Got a friend's card?" on either card.
+- [ ] **The "+":** only on Today's title bar; Insights and History have none, and Log still opens from Today.

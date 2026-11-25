@@ -198,41 +198,33 @@ describe('CategoryBadge with a give-or-take', () => {
   });
 });
 
-// Owner, 2026-11-14: Insights called a built-in given only an icon "Your own
-// category" while Today and the card named it.
-describe('CategoryBadge with the words hidden', () => {
+// "Hide the words" (D61, D62) was removed on 2026-11-25: a badge row names
+// the category as the person named it, with the icon they chose.
+describe('CategoryBadge names every category (2026-11-25)', () => {
   /* eslint-disable @typescript-eslint/no-var-requires */
   const { useCategoryStore } = require('@/store/categoryStore') as typeof import('@/store/categoryStore');
-  const { useSettingsStore } = require('@/store/settingsStore') as typeof import('@/store/settingsStore');
   /* eslint-enable @typescript-eslint/no-var-requires */
-  const def = (over: { name?: string | null; icon?: { kind: 'emoji'; emoji: string } | null }) => ({
-    id: 'health' as const,
-    user_id: 'u1',
-    name: over.name ?? null,
-    icon: over.icon ?? null,
-    hidden: false,
-    position: 0,
-    created_at: '2026-11-01T00:00:00.000Z',
-  });
   afterEach(() => {
-    useSettingsStore.setState({ hideTitles: false });
     useCategoryStore.setState({ defs: [] });
   });
 
-  it('keeps a built-in given only an icon under its word, with its own symbol', () => {
-    useSettingsStore.setState({ hideTitles: true });
-    useCategoryStore.setState({ defs: [def({ icon: { kind: 'emoji', emoji: '🏃' } })] });
+  it('shows a name the person gave, with their icon', () => {
+    useCategoryStore.setState({
+      defs: [
+        {
+          id: 'health',
+          user_id: 'u1',
+          name: 'Divorce',
+          icon: { kind: 'emoji', emoji: '🏃' },
+          hidden: false,
+          position: 0,
+          created_at: '2026-11-01T00:00:00.000Z',
+        },
+      ],
+    });
     const view = render(<CategoryBadge stat={stat()} next={null} />);
-    expect(view.getByText('Health')).toBeTruthy();
+    expect(view.getByText('Divorce')).toBeTruthy();
     expect(view.queryByText('Your own category')).toBeNull();
-    expect(view.queryByTestId('category-icon-emoji', { includeHiddenElements: true })).toBeNull();
-  });
-
-  it('hides a name the person gave', () => {
-    useSettingsStore.setState({ hideTitles: true });
-    useCategoryStore.setState({ defs: [def({ name: 'Divorce' })] });
-    const view = render(<CategoryBadge stat={stat()} next={null} />);
-    expect(view.getByText('Your own category')).toBeTruthy();
-    expect(view.queryByText(/Divorce/)).toBeNull();
+    expect(view.getByTestId('category-icon-emoji', { includeHiddenElements: true })).toBeTruthy();
   });
 });

@@ -28,7 +28,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, space, tabularNums, type } from '@/constants/theme';
 import type { BrierEdge, CategoryMiss, WeekChange } from '@/store/statsStore';
-import { useCategoryStore, visibleCategoryTitle } from '@/store/categoryStore';
+import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
   BRIER_MIN_N,
@@ -162,8 +162,6 @@ export function CalibrationView({
   // outlived a streak that had ended (record audit, 2026-11-18).
   const streakShown = useSettingsStore((s) => s.streakShown);
   const streak = useStreakNow().streak;
-  // Names the person chose stay out of view while the words are hidden (D62).
-  const hideTitles = useSettingsStore((s) => s.hideTitles);
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
   const [showFine, setShowFine] = useState(false);
@@ -458,15 +456,12 @@ export function CalibrationView({
             // snapshot, 2026-11-23); the expanded state says it is open, and
             // the detail under it is read on its own, not twice (code review
             // 2026-11-23).
-            accessibilityLabel={furthestOffLine(
-              furthestOff,
-              visibleCategoryTitle(furthestOff.category, hideTitles),
-            )}
+            accessibilityLabel={furthestOffLine(furthestOff, categoryTitle(furthestOff.category))}
             style={styles.patternRow}
             testID="stats-furthest-off-toggle"
           >
             <Text style={styles.pattern} testID="stats-furthest-off">
-              {furthestOffLine(furthestOff, visibleCategoryTitle(furthestOff.category, hideTitles))}
+              {furthestOffLine(furthestOff, categoryTitle(furthestOff.category))}
             </Text>
             <Icon
               sf={showFurthest ? 'chevron.up' : 'chevron.down'}

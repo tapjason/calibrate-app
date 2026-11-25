@@ -356,7 +356,7 @@ reproduce it verbatim if that reads better than a summary.
 
 The app requests notification permission and schedules **local** notifications
 (due-day reminders, the weekly digest on the day and time the person picks, the
-practice reminder, the trial-ending notice). It never requests a push token: no
+trial-ending notice). It never requests a push token: no
 `getExpoPushTokenAsync`, no device push token, nothing server-side that sends a
 push (verified across `src/`, `app/`, `supabase/`).
 

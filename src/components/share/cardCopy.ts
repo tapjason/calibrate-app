@@ -55,9 +55,9 @@ export function buildShareCard(
   if (!userStat) return null;
 
   const withData = categoryStats.filter((c) => c.predictions_resolved > 0);
-  // Every category left off (the person's own, while the words are hidden):
-  // the card keeps the rating and says how many aren't shown, rather than
-  // vanishing or putting one back (code review, step 179).
+  // Every category left off: the card keeps the rating and says how many
+  // aren't shown, rather than vanishing or putting one back (code review,
+  // step 179).
   if (withData.length === 0 && !((extras.hiddenCount ?? 0) > 0)) return null;
 
   const ordered = [...withData].sort((a, b) => {
@@ -177,17 +177,9 @@ export function shareSubline(card: ShareCard): string {
 export function cardHiddenCategories(
   categoryStats: readonly CategoryStat[],
   stored: readonly Category[],
-  /**
-   * Categories kept off whatever was chosen: the ones the person named,
-   * while "Hide the words" is on (D62; blind playtest 2026-11-13e, runs 1 and
-   * 4).
-   */
-  alsoOff?: (category: Category) => boolean,
 ): ReadonlySet<Category> {
   const onFile = categoryStats.filter((c) => c.predictions_resolved > 0);
-  const chosen = onFile.map((c) => c.category).filter((c) => stored.includes(c));
-  if (!alsoOff) return new Set(chosen);
-  return new Set([...chosen, ...onFile.map((c) => c.category).filter(alsoOff)]);
+  return new Set(onFile.map((c) => c.category).filter((c) => stored.includes(c)));
 }
 
 /**

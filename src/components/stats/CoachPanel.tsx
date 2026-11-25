@@ -12,12 +12,7 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { MIN_N_OVERALL, type CoachInsight } from '@/types';
-import {
-  categoryTitle,
-  useCategoryStore,
-  visibleCategoryLabel,
-  visibleCategoryTitle,
-} from '@/store/categoryStore';
+import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 import { coachReceipt } from './coachReceipt';
 
@@ -248,19 +243,14 @@ function InsightCard({
   insight: CoachInsight;
   onDismiss: () => void;
 }) {
-  // A renamed built-in's name stays off while the words are hidden (step 179),
-  // in the receipt as in the header.
-  const hideTitles = useSettingsStore((s) => s.hideTitles);
   const receipt = insight.evidence_source
-    ? coachReceipt(insight.evidence_source, (c) => visibleCategoryLabel(c, hideTitles))
+    ? coachReceipt(insight.evidence_source, categoryLabel)
     : null;
   return (
     <View style={styles.card} testID={`coach-insight-${insight.category}`}>
       <View style={styles.cardHeader}>
         <Text style={styles.category} numberOfLines={1}>
-          {insight.category === 'overall'
-            ? categoryTitle('overall')
-            : visibleCategoryTitle(insight.category, hideTitles)}
+          {categoryTitle(insight.category)}
         </Text>
         <Pressable
           onPress={onDismiss}

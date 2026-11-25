@@ -18,7 +18,7 @@ import { colors, palettes, type } from '@/constants/theme';
 import { initDb } from '@/db/client';
 import { sweepExportFiles } from '@/export/file';
 import { initDigest } from '@/notifications/digest';
-import { initPracticeReminder } from '@/notifications/practiceReminder';
+import { cancelPracticeReminders } from '@/notifications/practiceReminder';
 import { initTrialReminder } from '@/notifications/trialReminder';
 import {
   initNotifications,
@@ -155,8 +155,9 @@ export default function RootLayout() {
         });
         // The reminder before a trial renews follows the same toggle (D16).
         initTrialReminder();
-        // So does the daily practice reminder, once a time is chosen (step 89).
-        initPracticeReminder();
+        // The daily practice reminder is gone (2026-11-25): any an earlier
+        // build left scheduled is taken back. Never throws.
+        void cancelPracticeReminders();
         // One sweep at startup so a queue built up offline doesn't wait for
         // the next foreground. Fire-and-forget; it returns 0 and logs on any
         // failure. A guest sends only funnel counts, with no id (D43), and

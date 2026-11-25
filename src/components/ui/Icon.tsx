@@ -88,21 +88,14 @@ export function CategoryIcon({
   category,
   size = 16,
   color,
-  plain = false,
 }: {
   category: Category;
   size?: number;
   color: string;
-  /**
-   * The default symbol even when the person chose an icon: a list while
-   * "Hide the words" is on (D62; owner, 2026-11-14).
-   */
-  plain?: boolean;
 }) {
   // The person's own emoji or picture (roadmap D40), shown as it is, in its
   // own colours: the one place on screen a colour means "your icon".
-  const chosen = useCategoryStore((s) => s.defs.find((d) => d.id === category)?.icon ?? null);
-  const own = plain ? null : chosen;
+  const own = useCategoryStore((s) => s.defs.find((d) => d.id === category)?.icon ?? null);
   if (own) {
     return (
       <View

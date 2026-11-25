@@ -27,7 +27,7 @@ import {
   wrappedSummary,
   type WrappedSpan,
 } from '@/store/statsStore';
-import { isNamedCategory, useCategoryStore } from '@/store/categoryStore';
+import { useCategoryStore } from '@/store/categoryStore';
 
 import { cardHiddenCategories } from './cardCopy';
 import { nextBadgeProgress } from './nextBadgeCopy';
@@ -111,23 +111,13 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
   const storedHidden = useSettingsStore((s) => s.cardHiddenCategories);
   // What the person left off their card stays off the recaps (playtest
   // 2026-11-04, run 3): its counts, its titles and its next badge.
-  // While the words are hidden, the person's own categories stay off and
-  // titles can't go on the card (D62; blind playtest 2026-11-13e, run 4).
-  const hideTitles = useSettingsStore((s) => s.hideTitles);
-  const hidden = cardHiddenCategories(
-    categoryStats,
-    storedHidden,
-    hideTitles ? isNamedCategory : undefined,
-  );
-  // The recap's categories are the card's: answered, not left off, and not
-  // named by the person while hiding. A category with open predictions only
-  // was never on the card, so its next badge named it ("…in Trips") on a
-  // shareable image (record audit and code review, 2026-11-14).
+  const hidden = cardHiddenCategories(categoryStats, storedHidden);
+  // The recap's categories are the card's: answered and not left off. A
+  // category with open predictions only was never on the card, so its next
+  // badge named it ("…in Trips") on a shareable image (record audit and code
+  // review, 2026-11-14).
   const shownStats = categoryStats.filter(
-    (c) =>
-      c.predictions_resolved > 0 &&
-      !hidden.has(c.category) &&
-      !(hideTitles && isNamedCategory(c.category)),
+    (c) => c.predictions_resolved > 0 && !hidden.has(c.category),
   );
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
@@ -149,8 +139,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
   );
   const badgeNews = badgeChanges.find((c) => !hidden.has(c.category)) ?? null;
   const ratingRange = useStatsStore((s) => s.ratingRange);
-  const hasTitles =
-    !hideTitles && (summary.boldest_hit !== null || summary.biggest_miss !== null);
+  const hasTitles = summary.boldest_hit !== null || summary.biggest_miss !== null;
   const revealStyle = useWeeklyReveal(
     new Date(summary.end).toDateString(),
     span === 'week' && summary.resolved > 0,
@@ -212,7 +201,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
             )}
             badgeNews={badgeNews}
             theme={theme}
-            showTitles={showTitles && !hideTitles}
+            showTitles={showTitles}
             hidden={hidden}
           />
         </ScaledCanvas>

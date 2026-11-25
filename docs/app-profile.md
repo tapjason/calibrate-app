@@ -48,35 +48,40 @@ Status: filled in 2026-11-08
   Coach or RevenueCat, no Plus offered, no rating prompt; everything else as usual). Apple
   is asked at every launch; until it has answered on a launch with no band of 13 or over
   stored, sign-in and the Plus plans wait (§3, the under-13 bullet).
-- **Log** (a page sheet from the "+" in the title bar of Today, Insights and History, D21): title,
+- **Log** (a page sheet from the "+" in Today's title bar, D21; on Insights and History too until
+  the owner kept it to Today, 2026-11-25; History's empty state and "Log it again" open it too): title,
   confidence (starts empty, D13), category (starts empty, D29), due date (starts on Tomorrow, D55).
   Save waits for a title, a number and a category, and names the date ("Save, due in 3 days", D55, D78).
   Target: under 15 seconds.
-- **Resolve:** on the due day the 19:00 reminder (or the person's time, D38) offers Happened /
-  Didn't (D8); tapping it opens Resolve: Yes, No or "Can't tell / doesn't apply", and an optional
+- **Resolve:** on the due day the 19:00 reminder (or the person's time, D38) says only "Your
+  prediction from Nov 6 · You said 70%", never the words, and has no Happened / Didn't (both
+  removed 2026-11-25, the owner; one an older build delivered keeps its buttons, still handled under
+  D8's rules); tapping it opens Resolve: Yes, No or "Can't tell / doesn't apply", and an optional
   reflection. Yes and No get identical feedback. An open prediction not yet due opens its details
   (Edit, Delete, Answer it now, D25).
 - **Today** (tab): the identity line and rating (or the calibrating state) and the reminder ask, then
-  ready-to-resolve (D22) with the streak, today's goal and the practice row right after it, then the
+  ready-to-resolve (D22) with the streak, today's goal and the trivia row right after it, then the
   other open predictions; with nothing ready, the open predictions come before the daily rows (D48).
   After a save it scrolls to the new card when it isn't all on screen (D48).
 - **Insights** (tab): the rating, its bar (the give-or-take as its band) and one short line, with
   "What does this mean?" opening the rest in How scoring works (D76), the Brier line, the calibration chart with
   the grey luck bars, the named pattern (D37), categories with badges, the Plus card.
 - **History** (tab): open predictions first, then everything answered, filterable (D26).
-- **You** (tab): Your card and the recaps (Share), Plus, Categories (D39, D40), the streak,
-  hide-the-words and app-lock switches (D59, D61, D64), notifications and their times, Coach, usage
-  stats, CSV export, How scoring works, account.
-- **Return paths:** due-day reminders, the weekly digest, daily practice and its reminder, the
-  weekly reveal on Wrapped.
-- **Practice** (sheet from Today): three questions a day, the same for everyone, never mixed into
-  the real record.
+- **You** (tab): Your card and the recaps (Share), Plus, Categories (D39, D40), the streak and
+  app-lock switches (D59, D64), notifications and their times, Coach, usage stats, CSV export, How
+  scoring works, account. ("Hide the words", D61, "Show the words in reminders", D60, and the practice
+  reminder were removed 2026-11-25, the owner.)
+- **Return paths:** due-day reminders, the weekly digest, the daily trivia (no reminder of its own
+  since 2026-11-25), the weekly reveal on Wrapped.
+- **Trivia** (sheet from Today; "practice" in the code, its route `practice` and its table
+  `practice_answers`): three questions a day, the same for everyone, never mixed into the real
+  record. Every word on screen says trivia since 2026-11-25.
 
 ## §3 Who decides what
 
 - **The device owns:** predictions, resolutions and reflections, the stats derived from them
   (recomputed in the same transaction as every change), the streak and rest days (derived on every
-  read, never stored), practice and Warmup answers (never synced), categories, names and icons (not
+  read, never stored), trivia (practice) and Warmup answers (never synced), categories, names and icons (not
   synced, D39, D40), settings, the age band, the entitlement mirror, deletion tombstones, the counts of late moves
   and of answers moved between categories, with the category each prediction had at its first
   move after the day it was logged (never synced; round 6; round 7: a rewording doesn't move
@@ -232,7 +237,9 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
 - **Ids that saved data references, never changed:** the database file `calibrate.db`, the
   built-in category ids (`work`, `health`, `finance`, `social`, `personal`) and the `c-` prefix of
   added ones, badge ids (`guesser` … `oracle`; "Getting started" is only the label), card theme
-  ids, settings keys, the notification identifiers and category (the Happened / Didn't actions),
+  ids, settings keys (a removed setting's key is left unread, never reused: `hideTitles`,
+  `reminderWords`, `practiceReminder`, 2026-11-25), the notification identifiers and category
+  (the Happened / Didn't actions, kept registered for reminders an older build delivered),
   the analytics event names.
 - **App identity, never changed after the first build:** everything in §1 "Identity values".
 - **Sync flags:** a column the live schema lacks stays out of the wire row behind its flag; the
@@ -666,7 +673,9 @@ tiers confirm a change, each only what it can show:
   haptics; SF Symbols (web falls back to Ionicons);
   `ui-rounded` numerals; Liquid Glass; native sheets (`formSheet`, page sheets) and their gestures;
   the iOS switch (63 × 28 pt on iOS 26, drawn exactly in its measured frame); the date and time
-  pickers; local notifications, their permission dialog and the Happened / Didn't actions; Sign in
+  pickers; local notifications, their permission dialog, the launch reconcile that sets an older
+  build's reminders again without words or buttons and cancels its practice reminders, and the
+  Happened / Didn't actions on a reminder an older build delivered; Sign in
   with Apple; the Declared Age Range sheet and the under-13 band it can return (D70; the
   dev seed's `dev-seed-under13` shows the screens on web, not Apple's answer); the OS share
   sheet and PNG export (view-shot); the

@@ -55,7 +55,7 @@ describe('PracticeCard (roadmap step 88)', () => {
   it("says what's waiting, and opens the sheet", () => {
     const onOpen = jest.fn();
     render(<PracticeCard onOpen={onOpen} />);
-    expect(screen.getByTestId('practice-card-title')).toHaveTextContent('Today’s practice');
+    expect(screen.getByTestId('practice-card-title')).toHaveTextContent('Today’s trivia');
     expect(screen.getByTestId('practice-card-action')).toHaveTextContent('Start');
     fireEvent.press(screen.getByTestId('practice-card'));
     expect(onOpen).toHaveBeenCalled();
@@ -71,11 +71,11 @@ describe('PracticeCard (roadmap step 88)', () => {
     await act(async () => {
       await answerToday();
     });
-    expect(screen.getByTestId('practice-card-title')).toHaveTextContent('Practice done');
+    expect(screen.getByTestId('practice-card-title')).toHaveTextContent('Trivia done');
     expect(screen.queryByTestId('practice-card-action')).toBeNull();
     expect(screen.getByTestId('practice-card').props.accessibilityHint).toBe('See answers');
     expect(screen.getByTestId('practice-card').props.accessibilityLabel).toBe(
-      'Practice done. 2 of 3 right. New ones tomorrow.',
+      'Trivia done. 2 of 3 right. New ones tomorrow.',
     );
   });
 });
@@ -165,7 +165,7 @@ describe('PracticeResult', () => {
       `${PRACTICE_MIN_N - 3} more and this shows which way you lean.`,
     );
     expect(
-      screen.getByText('Practice is just practice. It doesn’t touch your rating, badges or streak.'),
+      screen.getByText('Trivia is just for fun. It doesn’t touch your rating, badges or streak.'),
     ).toBeTruthy();
   });
 
@@ -185,7 +185,7 @@ describe('PracticeResult', () => {
     render(<PracticeResult day={today()} />);
     // By the chart's rule (record audit 2026-11-23): the range it names.
     expect(screen.getByTestId('practice-record-headline')).toHaveTextContent(
-      holdRanges('In practice, you run overconfident at 80–100%'),
+      holdRanges('In trivia, you run overconfident at 80–100%'),
     );
   });
 });

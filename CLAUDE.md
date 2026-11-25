@@ -95,8 +95,7 @@ suggested grid or any emoji typed in) or a picture from the photo library, cropp
 and shrunk to 120 px (`src/media/iconImage.ts`), instead of its symbol. "Use the default"
 goes back. Stored in the same `categories` row (SQLite migration 010, `icon_emoji` /
 `icon_image`): on this phone only, not synced, cleared by Erase. Shown in full colour
-wherever the app shows a category's icon (lists draw the default symbol instead while
-"Hide the words" is on, D62); **never on a share card or Wrapped**, which keep their fixed
+wherever the app shows a category's icon; **never on a share card or Wrapped**, which keep their fixed
 design, so a photo can't leave the phone in a shared image.
 
 ### UserStat
@@ -227,7 +226,7 @@ while showing no skill over saying his own 64% every time.
 Over or under is named only when the share that happened falls outside the central
 80% of what luck gives a perfectly calibrated person at that count and confidence
 (`chanceRange`, `LEAN_MASS`), **and** by at least 5 points (`classifyDirection`). The
-chart's dots, its grey bars (the same 80%), month summaries, Wrapped, practice, the
+chart's dots, its grey bars (the same 80%), month summaries, Wrapped, trivia, the
 Warmup and the Coach's context all use it. Until D35 everything but the Warmup called
 a lean at any 5-point gap, so a dot could be "overconfident" on what the Warmup
 called luck. **No lean mark under 10** (decided 2026-11-10, D58): a range with fewer
@@ -324,14 +323,14 @@ every screen, and the first ±5 steps from it, to 45% or 55%, as VoiceOver's fir
 does (D49, D77).
 
 **The two-choice scale runs 0 to 100%** (decided 2026-11-23 by the owner, D77: "the
-minimum should never be 50%"), in steps of 5 like Log's, here and in practice. A number
+minimum should never be 50%"), in steps of 5 like Log's, here and in trivia. A number
 under 50 is taken as said, the stated chance the picked answer is right, and never
 flipped to the other answer; under the control, "50% means no idea, a coin flip.", which VoiceOver says with the label
 ("How sure are you? 50% means no idea, a coin flip."; no `accessibilityHint`, and the tap tip is
 printed, never spoken). On this
 scale opposite errors cancel more easily (five at 10% all right and five at 90% all wrong
 read "no clear lean"). Answers kept from before run 50–100 and read as ever; no Warm-up or
-practice number leaves the phone.
+trivia number leaves the phone.
 
 **Day 0 is for calibration, not an identity verdict** (D18):
 - The first screen says what the app is for ("How sure are you, really?", D61).
@@ -439,7 +438,7 @@ of your 9 calls happened.", D76), until the rating unlocks, what the number mean
 means right about 7 times in 10. A miss isn't a mistake, and a hit isn't proof.", D76);
 once it's unlocked, what the answer did to it ("Your rating went from 91 to 89. One answer
 only nudges it. The pattern is what counts."; in an answer run the reason comes once),
-including after a reminder's Happened or Didn't, but not after "Change answer", where it
+including after Happened or Didn't on a reminder an older build delivered, but not after "Change answer", where it
 would make a false answer a one-tap comparison. The reflection asks "Anything to remember
 about this one?", and the coverage nudge stays quiet for 30 minutes after any answer.
 
@@ -631,20 +630,8 @@ See the authoritative section above.
 - **What a day takes** (D17): one prediction logged or answered keeps the streak. Three a
   day is the **daily goal**, shown as the streak row's dots and named when met ("Today's
   goal met"), and asked of nobody (`docs/design/research/retention-2026-10.md` §2.1).
-  Practice doesn't count toward either.
-- **The words can be hidden** (D61): "Hide the words" in You, off by default. On, a card
-  shows "Words hidden. Open it to see them.", its number and date, and no note; a category
-  the person named (added, or a built-in renamed) reads "Your own category" with a plain
-  folder (D62), an icon the person chose gives way to the default symbol (a built-in given
-  only an icon keeps its word), and Today's identity and next-badge lines name only
-  categories under the app's own words. Off the cards too: Insights' badge rows,
-  furthest-off line, Trends and Coach cards read "Your own category", and the share card
-  and the recaps leave off a category with a name the person gave (Share says so; the
-  recaps have no titles switch, and their next badge names only a category the card could
-  show). With every category off, the card keeps the rating (or "Calibrating") and "N
-  categories not shown". Opening a card shows everything. For a phone someone else picks
-  up (reminders have their own switch, D60).
-- **The app can be locked** (D64): a switch in You under "Hide the words", off by default,
+  Trivia doesn't count toward either.
+- **The app can be locked** (D64): a switch in You, off by default,
   named for what the phone has ("Lock with Face ID"). On, the app locks once the person has been away from it longer than **"Lock after"**
   says (D75, the owner, 2026-11-23: Immediately, 1, 5 or 15 minutes, 5 to start; a choice
   under the switch), at launch and on coming back alike; "Immediately" locks at every
@@ -658,9 +645,8 @@ See the authoritative section above.
   only a phone with no passcode left opens, saying so and turning the lock off. Nothing
   locks on a build that can't (`src/lock/appLock.ts` is the only module that talks to
   `expo-local-authentication`, loaded lazily). Reminders aren't covered, and the switch
-  says so: their words keep their own switch, and while the lock is on a reminder has no
-  Happened / Didn't (one delivered earlier opens the question behind the lock and records
-  nothing).
+  says so: they never show the words (D79); a reminder an older build delivered, with
+  Happened / Didn't, opens the question behind the lock while it is on and records nothing.
 - **The streak can be hidden** (D59): a switch in You, "Streak and daily goal", on by
   default. Off hides the streak row and its goal, the checkpoints, the streak on the recap
   and Insights and in the welcome back; the streak is still derived, so nothing in the
@@ -698,10 +684,7 @@ See the authoritative section above.
 - **Until the rating unlocks, the Warm-up card leads on Share** (D63; the category card,
   still "Calibrating", is one tap away), and from then on the category card leads with the
   Warm-up card one tap away ("Show my warm-up card", without its "Real predictions next."
-  once there's a category card, D62). While there's no rated card, "Got a friend's card?"
-  explains a friend's Warm-up card ("8 of 10 right. I was 90% sure." means they expected
-  about 9 and got 8: the closer the two, the better, whoever got more right) and a
-  friend's score and squares (D61, D62, D63).
+  once there's a category card, D62). Share has no "Got a friend's card?" (D79).
 - **The recaps lead with the person's own badge news** (D62): a badge gained or lost
   over the span ("New this week: Forecaster in health." / "Back to Tracker in health
   this week. A badge follows the record both ways.", `badgeChangesSince`) takes the
@@ -719,17 +702,16 @@ Nothing that produces a shareable artifact is ever paywalled.
 ### 7. Notification Service
 - **Resolution reminder** — fires at 19:00 local on the due day (due dates are stored at
   noon, which was before most outcomes were known), or at the time the person picks in
-  You (D38). **Happened** and **Didn't** on the reminder record that answer and open the
-  app on the resolved state (D8); tapping the notification itself still opens the
-  question, and "Can't tell" stays in the app. Web has no actions. **The words can be kept
-  off** (D60): "Show the words in reminders" in You, off by default; off, a reminder reads
-  "Your prediction from Nov 6 · You said 70%", so nothing written is on the lock screen,
-  and has no Happened / Didn't: two alike could take the wrong answer. Nor does any
-  reminder while the app lock is on (D64): the answer would be recorded without the lock
-  being opened. A reminder that no longer matches its prediction (set for another date or
-  time, words changed after it arrived) or whose answer now would be same-day (D41) opens
-  the question instead of recording, with the current words and Resolve's note (a
-  delivered reminder outlives a reschedule).
+  You (D38). Every reminder reads "Your prediction from Nov 6 · You said 70%", so nothing
+  written is on the lock screen, and has no Happened / Didn't (D79); tapping it opens the
+  question, and "Can't tell" stays in the app. A reminder an older build already delivered
+  keeps its **Happened** and **Didn't**, which record that answer and open the app on the
+  resolved state (D8), except while the app lock is on (D64): it then opens the question
+  and records nothing. Such a reminder that no longer matches its prediction (set for
+  another date or time, words changed after it arrived) or whose answer now would be
+  same-day (D41) also opens the question instead of recording, with the current words and
+  Resolve's note. Reminders an older build scheduled are rescheduled in this form at
+  launch.
 - **Weekly digest** — fires Sunday at 18:00 local, or on the day and time the person
   picks (D38), and summarizes open and upcoming predictions. The reminder ask's body
   ("Want a nudge at 7 PM on the day it’s due?") names the weekly summary ("Plus a quiet
@@ -738,17 +720,8 @@ Nothing that produces a shareable artifact is ever paywalled.
 - **Trial ending** — 10:00 local two days before a free trial renews, with the
   renewal date and the store's price, and no offer (D16). Cancelled when the trial is
   cancelled or over, or notifications are off.
-- **Practice reminder** — off until the user picks a moment ("With coffee ·
-  8:00 AM", "At lunch · 12:30 PM", "After dinner · 8:30 PM"; in You also **Pick a
-  time**, any time of day, D31), offered under a finished practice and in You.
-  One a day, only on days the practice isn't done, with a different title daily and that
-  day's first question as the body. Scheduled at most three days ahead of the
-  last time the app was open, so someone who stops opening it gets three, then
-  silence. Never the streak, never a loss.
-
-All four follow the Notifications switch. Under it (D31), **Due-day reminders** and
-**Weekly digest** each have their own switch, on by default, and the practice reminder its
-own choice of time; the reminders have a time (`dueReminderTime`) and the digest a day and
+All three follow the Notifications switch. Under it (D31), **Due-day reminders** and
+**Weekly digest** each have their own switch, on by default; the reminders have a time (`dueReminderTime`) and the digest a day and
 time (`digestDay`, `digestTime`), each under its switch (D38). The trial-ending reminder
 follows the main switch alone.
 
@@ -758,7 +731,7 @@ Resolve sheet closes on a finished run or on the answer that unlocked the score,
 only after 7 days and 10 yes/no answers, never in the Warmup, at most once per 90
 days (D15). Never tied to a Yes: reward calibration, not correctness.
 
-### 9. Daily practice
+### 9. Trivia (daily practice)
 Three two-choice questions a day, with the Warmup's 0–100% confidence control (D77),
 the **same three for everyone on the same local day**. Real predictions resolve
 when they come due, which the user doesn't choose, so this is the reason to open
@@ -769,12 +742,13 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
   picked to be tricky. Each kind deals from a shuffled deck of every fair pair: close
   enough not to be a giveaway, far enough apart that no answer rests on which source
   a number came from. This is the representative bank D14 (c) asked for.
-- **Practice is practice.** Stored on the device only (`practice_answers`), never
+- **Trivia is just for fun.** Stored on the device only (`practice_answers`), never
   synced, and never mixed into `UserStat`, `CategoryStat`, the streak, badges or
-  Wrapped, exactly like the Warmup. The app never claims practice improves the real
-  score (the evidence for transfer is mixed).
+  Wrapped, exactly like the Warmup. The app never claims trivia improves the real
+  score (the evidence for transfer is mixed). Its closing line: "Trivia is just for fun. It
+  doesn't touch your rating, badges or streak." (D79).
 - The day's answers land together, with the Warmup's answer key, and "2 of 3 right.
-  You expected about 2." The practice record says which way it leans only from 20
+  You expected about 2." The trivia record says which way it leans only from 20
   answers (the same floor as the rating), and draws its chart from there. Its headline
   follows the chart's per-range rule (the review of 2026-11-23): it names the ranges
   ("In practice, you run overconfident at 80–100%"; both sides as "In practice, you’re too
@@ -784,13 +758,13 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
   no clear lean yet".
 - On Today as one row under the streak, from the first logged prediction on (not on
   Day 0, where the next thing is the first real prediction). Before the first answer
-  it reads "While you wait: today's practice" (D62). Erase clears it.
+  it reads "While you wait: today's trivia" (D62, D79). Erase clears it.
 
 ### 10. Accounts and the data on the phone (D69, security review 2026-11-18/19)
 - **Sign-out removes the account's data from this phone.** It pushes once more, then
   asks first ("Sign out anyway?") if any change hasn't reached the server or any category
   the person added or changed lives only on this phone, recounting just before the wipe.
-  The Warm-up, practice, the age range, settings and this phone's integrity counts stay.
+  The Warm-up, trivia, the age range, settings and this phone's integrity counts stay.
   Signing back in brings the predictions back. `docs/ACCOUNT_SPEC.md` §2 is the detail.
 - **The session lives in the iPhone Keychain** (`expo-secure-store`, this device only,
   cleared on reinstall), and Sign in with Apple carries a nonce (`expo-crypto`).
@@ -1031,17 +1005,17 @@ User taps notification on due_date
 ## Screen List
 
 Four tabs, **Today · Insights · History · You** (D3); Log is a sheet opened by a "+" in
-the title bar of Today, Insights and History (D21), not a tab, because tabs navigate and
+the title bar of Today only (D21, D79), not a tab, because tabs navigate and
 logging is an action. On Today, what's ready to resolve comes before the streak and
-practice rows (D22), and with nothing ready the open predictions do (D48); after a save,
-Today scrolls to the new card (D48). The streak and practice rows sit together as a pair,
+trivia rows (D22), and with nothing ready the open predictions do (D48); after a save,
+Today scrolls to the new card (D48). The streak and trivia rows sit together as a pair,
 and the sign-in nudge follows them (D68).
 
 | Screen | Purpose | Tier |
 |---|---|---|
 | Warmup (onboarding) | Estimation quiz → instant calibration verdict → first share card | Free |
-| Today (tab) | Pending predictions + calibration rating summary + today's practice row; a sign-in nudge after 30 days on one phone without an account (D31); a welcome-back card after 14 days with nothing logged or answered (D51) | Free |
-| Practice (sheet, from Today) | Three daily questions, the answer key, the practice record | Free |
+| Today (tab) | Pending predictions + calibration rating summary + today's trivia row; a sign-in nudge after 30 days on one phone without an account (D31); a welcome-back card after 14 days with nothing logged or answered (D51) | Free |
+| Trivia (sheet, from Today) | Three daily questions, the answer key, the practice record | Free |
 | Log Prediction (sheet, from "+") | Title, confidence slider, due date, category (refine deferred) | Free |
 | Prediction (sheet, from an open card not yet due) | What you said, due date, Edit, Delete, Answer it now (D25) | Free |
 | Resolve (sheet) | Yes / No prompt + optional reflection | Free |
@@ -1049,7 +1023,7 @@ and the sign-in nudge follows them (D68).
 | Share / Wrapped (sheet) | Identity card + weekly/yearly recap, export & share | Free |
 | History (tab) | Open predictions first, then the full list of past ones, filterable (D26) | Free |
 | Paywall | Plus plans, trial, restore purchases | — |
-| You (tab) | Your card, Plus, categories (D39), the streak, hide-the-words and app-lock switches (D59, D61, D64), notification prefs, Coach toggle, usage stats, export CSV, how scoring works, account (sign in, delete account / erase device) | Free |
+| You (tab) | Your card, Plus, categories (D39), the streak and app-lock switches (D59, D64), notification prefs, Coach toggle, usage stats, export CSV, how scoring works, account (sign in, delete account / erase device) | Free |
 | Categories (sheet, from You) | Rename, add or hide categories (D39); an emoji or picture for any of them (D40) | Free |
 
 ---

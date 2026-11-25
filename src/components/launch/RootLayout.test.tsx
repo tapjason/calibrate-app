@@ -6,6 +6,7 @@ import { initLocalOnly } from '@/age/localOnly';
 import { flushEvents } from '@/analytics/flush';
 import { useLaunchSplash } from '@/components/launch/useLaunchSplash';
 import { sweepExportFiles } from '@/export/file';
+import { cancelPracticeReminders } from '@/notifications/practiceReminder';
 import { __setLockDepsForTests } from '@/lock/appLock';
 import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import { syncForUser, useAuthStore } from '@/store/authStore';
@@ -79,7 +80,7 @@ jest.mock('@/notifications/digest', () => ({
 }));
 jest.mock('@/notifications/practiceReminder', () => ({
   ...jest.requireActual('@/notifications/practiceReminder'),
-  initPracticeReminder: jest.fn(),
+  cancelPracticeReminders: jest.fn(async () => 0),
 }));
 jest.mock('@/notifications/trialReminder', () => ({
   ...jest.requireActual('@/notifications/trialReminder'),
@@ -98,6 +99,7 @@ jest.mock('@/store/authStore', () => ({
 const GUEST = 'local-user-v1';
 const flush = flushEvents as jest.Mock;
 const sweep = sweepExportFiles as jest.Mock;
+const cancelPractice = cancelPracticeReminders as jest.Mock;
 const sync = syncForUser as jest.Mock;
 const hydrateAge = hydrateAgeGate as jest.Mock;
 const ensureAge = ensureAgeBucket as jest.Mock;
@@ -263,6 +265,18 @@ describe('the root layout: export files (round 5)', () => {
     // sweep leaves its file for the app it's going to.
     foreground();
     expect(sweep).toHaveBeenCalledTimes(1);
+  });
+});
+
+// The practice reminder is gone (2026-11-25): what an earlier build left
+// scheduled is taken back at launch, the first after the update included.
+describe('the root layout: the practice reminder, removed', () => {
+  it('cancels any practice reminder an earlier build scheduled, once per launch', async () => {
+    seed();
+    await launch();
+    expect(cancelPractice).toHaveBeenCalledTimes(1);
+    foreground();
+    expect(cancelPractice).toHaveBeenCalledTimes(1);
   });
 });
 

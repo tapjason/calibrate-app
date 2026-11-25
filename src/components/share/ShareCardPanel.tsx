@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { TextButton } from '@/components/ui/TextButton';
 import { chosenProps } from '@/components/ui/chosen';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
@@ -16,42 +15,14 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
 import { MIN_N_BAND, type Category } from '@/types';
-import { categoryTitle, isNamedCategory, useCategoryStore } from '@/store/categoryStore';
+import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 import { CARD_CANVAS_HEIGHT, IdentityCard, type CardFormat } from './IdentityCard';
 import { CARD_RADIUS, ScaledCanvas } from './ScaledCanvas';
 import { ThemePicker } from './ThemePicker';
-import {
-  buildShareCard,
-  cardHiddenCategories,
-  shareText as cardText,
-  showsRanges,
-  SQUARES_KEY,
-} from './cardCopy';
+import { buildShareCard, cardHiddenCategories, shareText as cardText, showsRanges } from './cardCopy';
 import { WarmupCard } from './WarmupCard';
 import { warmupCardCopy } from './warmupCardCopy';
-
-
-/**
- * A friend's Warm-up card, the one that travels first: every week-one tester
- * shared it, and the fold explained only the score card (blind playtest
- * 2026-11-14, runs 1, 2, 7, 8). It says who was nearer their word, which the
- * count of right answers doesn't.
- */
-export const FRIEND_WARMUP =
-  `A friend's warm-up card sets what they got beside what they said: "8 of 10 right. I was 90% sure." means they expected about 9 of 10 and got 8. ` +
-  `The closer the two, the better their numbers fit, whoever got more right, though ten answers can't tell close results apart.`;
-
-/**
- * Under the Warm-up card, for someone who came from a friend's card: what
- * its squares mean, before they have any of their own. A friend's message
- * was explained only at the bottom of How scoring works (blind playtest
- * 2026-11-13c, finding 6).
- */
-export const FRIEND_SQUARES =
-  `A friend's score is out of 100: 100 minus how far, range by range and on average, what they said was from how often it happened. "Give or take" is how far luck could move it. ` +
-  `The squares are their five ranges of how sure, 0–20% up to 80–100%, ${SQUARES_KEY.charAt(0).toLowerCase()}${SQUARES_KEY.slice(1)}. ` +
-  `Yours come once your rating unlocks and a range has ${MIN_N_BAND} scored answers.`;
 
 export const SQUARES_LATER =
   `Shared as text, your card gets a row of coloured squares once your rating unlocks and a range has ${MIN_N_BAND} scored answers. How scoring works says what they mean.`;
@@ -91,9 +62,6 @@ export function ShareCardPanel({
   // testers chose the Warm-up card to share (blind playtest 2026-11-14,
   // finding 4). Null until the person switches.
   const [chosenCard, setChosenCard] = useState<'category' | 'warmup' | null>(null);
-  // Folded (D62): noise for anyone who didn't come from a friend's card
-  // (blind playtest 2026-11-13d, run 7).
-  const [friendOpen, setFriendOpen] = useState(false);
   // The shape and the categories left off are kept between visits, like the
   // theme: both reset each time Share opened (blind playtest 2026-11-01).
   const format: CardFormat = useSettingsStore((s) => s.cardFormat);
@@ -104,12 +72,7 @@ export function ShareCardPanel({
   const allOnFile = categoryStats.filter((c) => c.predictions_resolved > 0);
   // Categories the user chose to leave off the card (Any Distance-style
   // show/hide, DESIGN_SYSTEM §7.5). The recaps leave them off too.
-  // While the words are hidden, the categories the person named stay off
-  // the card and the recaps (D62), whatever was chosen.
-  const hideTitles = useSettingsStore((s) => s.hideTitles);
-  const ownOff = hideTitles ? isNamedCategory : undefined;
-  const hidden = cardHiddenCategories(categoryStats, storedHidden, ownOff);
-  const userHidden = cardHiddenCategories(categoryStats, storedHidden);
+  const hidden = cardHiddenCategories(categoryStats, storedHidden);
   // Only what's shown. With nothing left, the card has no categories and
   // says how many are off; nothing unticked comes back (code review, step 179).
   const shown = categoryStats.filter((c) => !hidden.has(c.category));
@@ -117,15 +80,10 @@ export function ShareCardPanel({
     giveOrTake: ratingRange?.giveOrTake,
     hiddenCount: hidden.size,
   });
-  // The toggles: the categories that can be on the card now.
-  const choosable = allOnFile.filter((c) => !ownOff?.(c.category));
-  const keptOff = allOnFile.length - choosable.length;
-  // From the person's own choice only: a category kept off while hiding
-  // isn't stored as unticked, so it comes back when the switch goes off.
   // Every one can come off (owner, 2026-11-14): the card keeps the rating
   // and says how many aren't shown.
   const toggleCategory = (c: Category) => {
-    const next = new Set(userHidden);
+    const next = new Set(hidden);
     if (next.has(c)) next.delete(c);
     else next.add(c);
     void setStoredHidden([...next]);
@@ -138,8 +96,6 @@ export function ShareCardPanel({
   const warmupCopy = warmupCardCopy(warmupResult, card !== null);
   const showWarmup = chosenCard ? chosenCard === 'warmup' : card !== null && card.rating === null;
   const warmup = card && !showWarmup ? null : warmupCopy;
-  // A friend's card explained while the person has no rated card of their own.
-  const friendFold = warmup !== null && (card === null || card.rating === null);
   // Which card the preview and Share my card are about.
   const sharingCard = warmup ? null : card;
 
@@ -243,30 +199,6 @@ export function ShareCardPanel({
         />
       )}
 
-      {/* Only while there's no rated card: once there's one, the squares are
-          the person's own (or SQUARES_LATER says when they come). */}
-      {friendFold && !friendOpen && (
-        <TextButton
-          label="Got a friend's card?"
-          onPress={() => {
-            setFriendOpen(true);
-            // The button goes as the line comes; VoiceOver hears the line
-            // (iOS ignores a live region; code review of step 178).
-            AccessibilityInfo.announceForAccessibility(`${FRIEND_WARMUP} ${FRIEND_SQUARES}`);
-          }}
-          testID="share-friend-open"
-        />
-      )}
-      {friendFold && friendOpen && (
-        <Text
-          style={styles.message}
-          testID="share-friend-squares"
-          accessibilityLiveRegion="polite"
-        >
-          {FRIEND_WARMUP} {FRIEND_SQUARES}
-        </Text>
-      )}
-
       {/* Before the squares, when they come and where they're explained
           (roadmap D60 (c); blind playtest 2026-11-13b, run 5). */}
       {sharingCard && !showsRanges(sharingCard, buckets) && (
@@ -301,17 +233,12 @@ export function ShareCardPanel({
             ))}
           </View>
 
-          {keptOff > 0 && (
-            <Text style={styles.message} testID="share-own-kept-off">
-              Categories you named stay off the card while “Hide the words” is on.
-            </Text>
-          )}
           {/* Even one: it can come off, and back on (owner, 2026-11-14). */}
-          {choosable.length > 0 && (
+          {allOnFile.length > 0 && (
             <>
               <Text style={styles.controlLabel}>On the card</Text>
               <View style={styles.chips}>
-                {choosable.map((c) => {
+                {allOnFile.map((c) => {
                   const on = !hidden.has(c.category);
                   return (
                     <Pressable

@@ -228,7 +228,7 @@ export function DeleteAccountView({
             // from this phone alone (security review, 2026-11-18).
             'This permanently deletes your account, every prediction and reflection ' +
             'and your calibration history, from our servers and from this phone, and ' +
-            'your Warmup and practice answers from this phone. ' +
+            'your Warmup and trivia answers from this phone. ' +
             "It happens immediately and can't be undone."
           : // Everything eraseDeviceData removes, named (blind playtest
             // 2026-11-13b, run 6: the old line left out categories, practice
@@ -242,7 +242,7 @@ export function DeleteAccountView({
             `This permanently erases everything ${APP_NAME} keeps on this phone, including ` +
             'anything left by an account that was signed in here before: ' +
             'every prediction and reflection, ' +
-            'your categories and their icons, your Warmup and practice answers, a ' +
+            'your categories and their icons, your Warmup and trivia answers, a ' +
             'prediction you were still typing, your age range and usage stats not yet ' +
             `sent. Settings, like reminder times, and whether this phone has ${PLUS_NAME} stay. ` +
             "You aren't signed in, so nothing here has another copy unless an account backed it up. It can't be undone."}

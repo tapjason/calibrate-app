@@ -1,18 +1,4 @@
-import { digestBody, REMINDER_ACTIONS, reminderBody, reminderBodyWithoutWords } from './copy';
-
-describe('reminderBody', () => {
-  // The stated confidence rides along so a resolve from the notification
-  // still sees what was said before the outcome (DESIGN_SYSTEM §7.10).
-  it('carries the stated confidence', () => {
-    expect(reminderBody('Ship the beta', 70)).toBe('Ship the beta · You said 70%');
-  });
-
-  it('trims the title, never the confidence, to stay within 80 chars', () => {
-    const body = reminderBody('a'.repeat(200), 85);
-    expect(body.length).toBeLessThanOrEqual(80);
-    expect(body.endsWith('… · You said 85%')).toBe(true);
-  });
-});
+import { digestBody, REMINDER_ACTIONS, reminderBodyWithoutWords } from './copy';
 
 describe('reminder actions', () => {
   it('offers Happened and Didn\'t, in the foreground, and no skip', () => {
@@ -35,7 +21,9 @@ describe('digestBody', () => {
   });
 });
 
-// Roadmap D60 (b): nothing written on the lock screen when the words are off.
+// Roadmap D60 (b), every reminder since 2026-11-25: nothing written on the
+// lock screen. The stated confidence rides along so a resolve from the
+// notification still sees what was said before the outcome (§7.10).
 describe('reminderBodyWithoutWords', () => {
   it('names the day it was made and the number, nothing written', () => {
     const made = new Date(2026, 10, 6, 9);

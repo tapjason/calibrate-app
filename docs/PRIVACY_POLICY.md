@@ -158,7 +158,7 @@ was shared. They tell us whether the app works for people. The full list:
 `prediction_logged`, `prediction_resolved`, `paywall_viewed`,
 `purchase_completed`, `purchase_abandoned`, `coverage_nudge_shown`,
 `coverage_nudge_accepted`, `practice_started`, `practice_completed`,
-`practice_reminder_set`, `coach_requested`, `data_exported`.
+`practice_reminder_set` (sent only by versions before 1.1.0), `coach_requested`, `data_exported`.
 
 These are linked to your account. The sign-in screen says so before you sign
 in, including that events recorded before you signed in and still on the phone
@@ -243,9 +243,9 @@ policies.
 ## 5. Notifications
 
 Reminders are scheduled **on your device**. We don't collect a push token and
-we don't send notifications from a server. A due-day reminder shows only
-the day you made the prediction and the confidence you gave it. Its words appear
-only if you turn on **You → Show the words in reminders**. The weekly digest shows only how many predictions are open.
+we don't send notifications from a server. From version 1.1.0, a due-day reminder shows only
+the day you made the prediction and the confidence you gave it, never its words.
+The weekly digest shows only how many predictions are open.
 
 ## 6. How long we keep it
 

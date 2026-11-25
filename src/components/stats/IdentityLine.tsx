@@ -3,8 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { buildShareCard, shareLines } from '@/components/share/cardCopy';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { colors, space, type } from '@/constants/theme';
-import { isNamedCategory, useCategoryStore } from '@/store/categoryStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useCategoryStore } from '@/store/categoryStore';
 import type { BadgeLevel, CategoryStat, UserStat } from '@/types';
 
 export interface HomeIdentity {
@@ -28,17 +27,6 @@ export function homeIdentity(
   return { ...shareLines(card), badge: best.badge_level };
 }
 
-/**
- * The categories Today may name: all of them, or while "Hide the words" is on
- * only those under the app's own words (D62), so "Forecaster in Divorce"
- * doesn't say what the hidden cards don't. The same set the share card
- * leaves off (step 179): the line draws a badge, never a category's icon, so
- * a built-in given only an icon stays.
- */
-export function namedOnToday(categoryStats: CategoryStat[], hideTitles: boolean): CategoryStat[] {
-  return hideTitles ? categoryStats.filter((c) => !isNamedCategory(c.category)) : categoryStats;
-}
-
 interface IdentityLineProps {
   userStat: UserStat | null;
   categoryStats: CategoryStat[];
@@ -58,8 +46,7 @@ export function IdentityLine({ userStat, categoryStats, onPress }: IdentityLineP
   // The names come from the category store through the card's helpers: a
   // rename re-renders the line (playtest 2026-11-08b, finding 3).
   useCategoryStore((s) => s.defs);
-  const hideTitles = useSettingsStore((s) => s.hideTitles);
-  const line = homeIdentity(userStat, namedOnToday(categoryStats, hideTitles));
+  const line = homeIdentity(userStat, categoryStats);
   if (!line) return null;
   return (
     <Pressable

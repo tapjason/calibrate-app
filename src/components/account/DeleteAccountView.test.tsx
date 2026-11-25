@@ -275,9 +275,9 @@ describe('DeleteAccountView — signed in', () => {
     render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
     const body = screen.getByText(/permanently deletes/);
     expect(body).toHaveTextContent(
-      "This permanently deletes your account, every prediction and reflection and your calibration history, from our servers and from this phone, and your Warmup and practice answers from this phone. It happens immediately and can't be undone.",
+      "This permanently deletes your account, every prediction and reflection and your calibration history, from our servers and from this phone, and your Warmup and trivia answers from this phone. It happens immediately and can't be undone.",
     );
-    expect(body).not.toHaveTextContent(/practice answers, from our servers/);
+    expect(body).not.toHaveTextContent(/trivia answers, from our servers/);
   });
 
   it('disables both buttons while deleting', () => {
@@ -332,7 +332,7 @@ describe('DeleteAccountView — guest', () => {
     for (const part of [
       'prediction and reflection',
       'categories and their icons',
-      'practice answers',
+      'trivia answers',
       'still typing',
       'age range',
       'usage stats not yet sent',
@@ -362,7 +362,7 @@ describe('DeleteAccountView — guest', () => {
     render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
     const body = screen.getByText(/permanently erases/).props.children as string;
     expect(body).toBe(
-      'This permanently erases everything Fairly Sure keeps on this phone, including anything left by an account that was signed in here before: every prediction and reflection, your categories and their icons, your Warmup and practice answers, a prediction you were still typing, your age range and usage stats not yet sent. Settings, like reminder times, and whether this phone has Fairly Sure Plus stay. ' +
+      'This permanently erases everything Fairly Sure keeps on this phone, including anything left by an account that was signed in here before: every prediction and reflection, your categories and their icons, your Warmup and trivia answers, a prediction you were still typing, your age range and usage stats not yet sent. Settings, like reminder times, and whether this phone has Fairly Sure Plus stay. ' +
         "You aren't signed in, so nothing here has another copy unless an account backed it up. It can't be undone.",
     );
     expect(body).not.toContain('without an account');

@@ -1,8 +1,9 @@
-// Words for the daily practice (roadmap step 88). Pure, so tests can hold the
-// copy to the engine's numbers; the counting itself comes from the engine
-// through practiceStore.
+// Words for the daily practice (roadmap step 88), called "trivia" on screen
+// since 2026-11-25 (the owner); the code keeps the name practice. Pure, so
+// tests can hold the copy to the engine's numbers; the counting itself comes
+// from the engine through practiceStore.
 //
-// Tone (DESIGN_SYSTEM §7.9 and §7.22): practice is practice. It never claims
+// Tone (DESIGN_SYSTEM §7.9 and §7.22): trivia is just for fun. It never claims
 // to improve the real score (the evidence for that transfer is mixed,
 // research/retention-2026-10.md §2.5), never says which way someone leans on
 // fewer than PRACTICE_MIN_N answers, and compares a day in counts, as Wrapped
@@ -34,12 +35,12 @@ export function practiceCardCopy(
   beforeFirstAnswer = false,
 ): PracticeCardCopy {
   if (tally.answered >= total) {
-    const title = 'Practice done';
+    const title = 'Trivia done';
     const detail = `${tally.correct} of ${total} right. New ones tomorrow`;
     return { title, detail, action: 'See answers', spoken: `${title}. ${detail}.`, done: true };
   }
   const waiting = beforeFirstAnswer && tally.answered === 0;
-  const title = waiting ? 'While you wait: today’s practice' : 'Today’s practice';
+  const title = waiting ? 'While you wait: today’s trivia' : 'Today’s trivia';
   // The voice pass's words (2026-11-23), waiting or not: the title says
   // "While you wait", so "answers today" (D62) went with the text load. No
   // full stop at the end, like the row's other details.
@@ -88,24 +89,24 @@ const pct = (fraction: number) => `${Math.round(fraction * 100)}%`;
  */
 function practiceHeadline(read: ChartRead | null, record: PracticeRecord): string {
   if (read?.kind === 'both') {
-    return `In practice, you’re too sure at ${rangeLabel(read.sure)} and too cautious at ${rangeLabel(read.cautious)}`;
+    return `In trivia, you’re too sure at ${rangeLabel(read.sure)} and too cautious at ${rangeLabel(read.cautious)}`;
   }
   if (read?.kind === 'lean') {
-    return `In practice, you run ${read.direction} at ${rangeLabel(read.range)}`;
+    return `In trivia, you run ${read.direction} at ${rangeLabel(read.range)}`;
   }
   if (read?.kind === 'calibrated') {
     const pooledClose = closeToSaid(record.mean_confidence, record.accuracy * 100);
     if (read.close && pooledClose) {
       return read.one
-        ? `In practice, you’re close to calibrated at ${rangeLabel(read.shown)}`
-        : 'In practice, you’re close to calibrated';
+        ? `In trivia, you’re close to calibrated at ${rangeLabel(read.shown)}`
+        : 'In trivia, you’re close to calibrated';
     }
-    return 'In practice, no clear lean yet';
+    return 'In trivia, no clear lean yet';
   }
   if (record.direction === 'overconfident' || record.direction === 'underconfident') {
-    return `In practice, you run ${record.direction}`;
+    return `In trivia, you run ${record.direction}`;
   }
-  return 'In practice, no clear lean yet';
+  return 'In trivia, no clear lean yet';
 }
 
 /**
@@ -132,6 +133,9 @@ export function practiceRecordCopy(record: PracticeRecord): { headline: string; 
   };
 }
 
-/** The line that keeps practice in its place (voice pass, 2026-11-23). */
+/**
+ * The line that keeps trivia in its place (voice pass, 2026-11-23: "Practice
+ * is just practice."; trivia since 2026-11-25).
+ */
 export const PRACTICE_APART =
-  'Practice is just practice. It doesn’t touch your rating, badges or streak.';
+  'Trivia is just for fun. It doesn’t touch your rating, badges or streak.';

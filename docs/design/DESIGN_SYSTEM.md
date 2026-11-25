@@ -12,7 +12,7 @@ builds it; nothing here is tagged now.
 done 2026-09-28 and behind §2.5 and §7.10–§7.15; confidence, done 2026-10-05 and
 behind §7.3, §7.14 and §7.18; elements, done 2026-10-06 from 18 apps rated 4.7+ and
 8,057 of their reviews, behind §7.20 and §7.21; retention, done 2026-10-07, behind
-the rest days in §7.9 and §7.22's daily practice and reminder; day 0 and day 1, done
+the rest days in §7.9 and §7.22's daily practice (trivia on screen since 2026-11-25); day 0 and day 1, done
 2026-10-09, behind §7.5's Day-0 card, §7.10's first answer, §7.12's first due date
 and §7.18; the blind dry runs, done 2026-10-09, behind D23–D31 across §7.1, §7.3–§7.5,
 §7.10–§7.12, §7.14, §7.17, §7.21 and §7.23; debiasing and accessibility, done
@@ -127,8 +127,7 @@ Since D33 (2026-11-01) the brand has no hue, and the tokens are named by role.
 | `cautionText` / `cautionBackground` | `#7E4600` / `#FBEFD6` | 6.67:1 (account deletion's warning only) |
 
 `controlBorder` is never an edge on `surfaceSunken` or `selectedFill`: it falls under 3:1
-on both in light, and on `selectedFill` in dark (2.87:1). A control on a sunken card or track (a nudge's button, the practice
-offer's moments, the raised segment of the sign-in switch and of Share's tabs, an empty
+on both in light, and on `selectedFill` in dark (2.87:1). A control on a sunken card or track (a nudge's button, the raised segment of the sign-in switch and of Share's tabs, an empty
 coverage range) or on the
 checkpoint tint takes `textTertiary` for its edge (`onSunken` on `Button` and
 `MomentChips`; steps 193 and 195).
@@ -580,7 +579,7 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
 
 Error bars with caps are banned — lay readers treat the caps as hard limits.
 
-- **The key is folded** (D76, 2026-11-23): the chart's key sits behind "How to read this chart" ("Hide the key" when open), closed to start, on Insights, the Warm-up result and the practice record. Its words and their conditions are unchanged, and the toggle sits outside the chart's image element so VoiceOver can reach it.
+- **The key is folded** (D76, 2026-11-23): the chart's key sits behind "How to read this chart" ("Hide the key" when open), closed to start, on Insights, the Warm-up result and the trivia record. Its words and their conditions are unchanged, and the toggle sits outside the chart's image element so VoiceOver can reach it.
 
 
 ### 7.3 Confidence input (Log and Warmup)
@@ -600,7 +599,7 @@ small ±5 buttons).
   and up to 1.15× text; narrower or larger, under the slider (step 110). On their
   own row they cost ~60pt and pushed Next and Save below the fold on a 667pt phone.
 - **One scale** (D77, the owner, 2026-11-23: "the minimum should never be 50%"): Log, the
-  Warmup and practice all run 0–100 in steps of 5. On a two-choice question a number
+  Warmup and trivia all run 0–100 in steps of 5. On a two-choice question a number
   under 50 is the stated chance the picked answer is right, taken as said and never
   flipped; the hint under the control reads "50% means no idea, a coin flip." (the
   Warmup adds "Tap the bar to pick a number." on its first three questions). VoiceOver
@@ -829,8 +828,8 @@ third row) → **honest timeline** → **one** CTA.
 - **Four tabs** (roadmap D3, decided and built 2026-10-07): *Today · Insights · History
   · You*. Log stopped being a tab (HIG: tabs navigate, they don't perform actions): a
   filled "+" (`LogButton`, a 32pt `action` disc in a 44pt target) sits at the
-  trailing end of the title bar on Today, Insights and History (D21, step 114), and
-  opens Log as a full-height sheet with its title ("New prediction") and the round ×.
+  trailing end of Today's title bar (D21, step 114; on Insights and History too until
+  the owner kept it to Today, 2026-11-25), and opens Log as a full-height sheet with its title ("New prediction") and the round ×.
   It floated above the tab bar until 2026-10-09 and sat over "Answer all", card text
   and the chart's top-right corner; in the header nothing is ever under it. A typed,
   unsaved prediction asks before a swipe or the × discards it (Discard prediction /
@@ -845,9 +844,10 @@ Every empty state has an SF Symbol, one sentence in `textSecondary`, and a way f
 Built as step 56: `EmptyState` takes a `symbol` (36pt, `textSecondary`, hidden from
 screen readers): `calendar.badge.plus` on Today, `clock.arrow.circlepath` on History,
 `square.and.arrow.up` on Share. Its button is the primary capsule, since where an empty
-state shows it is the screen's main action. On Today and History, **Log a prediction**
+state shows it is the screen's main action. On Today, **Log a prediction**
 repeats the title bar's "+" (D3, D21) on purpose: in words, for someone who hasn't
-learned the symbol yet, and only until there's something to list. History's empty state (step 69): before
+learned the symbol yet, and only until there's something to list. On History, which has
+no "+" since 2026-11-25, it is the way to Log from there. History's empty state (step 69): before
 anything resolves it says when the first answer comes ("The first one comes due in 3
 days.") and offers **Answer it now** (one ready), **Answer the first one** (two),
 **Answer all N** (three or more, Today's run threshold), or **Log a prediction**. A list emptied by its filters keeps just the sentence; the
@@ -1035,13 +1035,13 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   let the group header carry the state. No amber, no "Overdue" label, no warning colour.
 - **Order** (D22, step 115): the score or its progress; then, when anything is
   ready, "Ready to answer" with **Answer all N**; then the daily rows, the streak
-  row and today's practice 8 apart as a pair, and the backup card after them (D68,
+  row and today's trivia 8 apart as a pair, and the backup card after them (D68,
   step 196; it sat between the two); then "Next 7 days" and "Later". The pair's 8
   needs both rows: either alone keeps 16 to what follows, and the block keeps 16
   above and below. The streak row is drawn above the rows after it, so a
-  checkpoint's confetti falls over the practice row (step 194). With nothing
+  checkpoint's confetti falls over the trivia row (step 194). With nothing
   ready the open predictions still come first and the daily rows follow "Later"
-  (D48, step 159): at 320 × 568 the score, streak and practice rows filled the
+  (D48, step 159): at 320 × 568 the score, streak and trivia rows filled the
   screen and a card just saved couldn't be seen; with nothing open they follow the
   empty state. The reminder card ("Want a nudge at 7 PM on the day it's due?") stays right
   under the score either way, beside what it's about: on Day 0 it's the ask that
@@ -1075,7 +1075,7 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   Can't tell."
 - **Back it up** (D31, 2026-10-10): on Today, once the oldest prediction on the phone
   is 30 days old and nobody is signed in, a quiet sunken card under the daily rows
-  (after the practice row since step 196):
+  (after the trivia row since step 196):
   "Your predictions live only on this phone" over "Sign in to keep them if it's lost
   or replaced.", with a secondary **Sign in** (opens Account) and **Not now** (30
   days' quiet). Never before 30 days, never once signed in.
@@ -1103,8 +1103,8 @@ the control reads the chosen category.)
   it's the current choice.
 - **Category chips:** SF Symbol + word; selected = `action` (ink) fill with an
   `onAction` label and symbol, plus the bolder weight (not colour alone; D33). The
-  due-date chips, History's filters, Share's category toggles and the practice
-  moments select the same way. **None chosen to start** (D29,
+  due-date chips, History's filters and Share's category toggles select the same
+  way. **None chosen to start** (D29,
   2026-10-10), and Save waits for one as it waits for a confidence; a starter idea or
   "Log it again" chooses it. A preset Work filed an untouched gym prediction under
   Work. The track record line reads all categories until one is chosen.
@@ -1234,14 +1234,14 @@ the same thing, no instructions, title-style titles without ending punctuation.
 
 | Notification | Title | Body | `previewPlaceholder` | `interruptionLevel` |
 |---|---|---|---|---|
-| Resolution reminder | Did it happen | `{title}` · You said 70% (with "Show the words in reminders" on, D60; off, the default: "Your prediction from Nov 6 · You said 70%") | A prediction is ready to resolve | `active` |
+| Resolution reminder | Did it happen | Your prediction from Nov 6 · You said 70% (every reminder since 2026-11-25, the owner; until then `{title} · You said 70%` while "Show the words in reminders" was on, D60) | A prediction is ready to resolve | `active` |
 | Digest, open > 0 | Your week ahead | 3 predictions are coming due. | Weekly check-in | `passive` |
 | Digest, open = 0 | Your week ahead | Nothing open. What do you think will happen this week? | Weekly check-in | `passive` |
 | Trial ending (D16) | Your free trial ends Thursday | Plus then renews for a year at $34.99. | About your Plus trial | default |
-| Practice (step 89) | One of five, changing daily: Today’s three · Three new questions · A quick three · Practice is ready · Today’s practice | That day's first question: "Which is farther north: Dublin or Moscow?" | Daily practice | default |
 
-- The confidence goes in the reminder so that resolving from the notification still
-  puts the stated number first (§7.10).
+- The confidence goes in the reminder so that opening it from the notification still
+  puts the stated number first (§7.10). The words never do (2026-11-25): nothing
+  written shows on a lock screen, and no switch puts them back.
 - **Never mention the streak** in a notification.
 - **Permission in context** (roadmap step 38). Launch only checks; it never shows the
   iOS alert (HIG: "Avoid requesting permission at launch unless the data or resource
@@ -1255,18 +1255,19 @@ the same thing, no instructions, title-style titles without ending punctuation.
   a week (D19, step 108). You's Notifications group adds **Allow
   reminders** while iOS hasn't been asked and **Open Settings** after a refusal.
 - One reminder per prediction; no follow-ups.
-- **The practice reminder is asked for, never assumed** (step 89): off until a moment
-  is picked under a finished practice or in You, one a day only while that day's
-  practice isn't done, and scheduled no more than three days past the last visit, so
-  it falls silent for someone who has stopped opening the app. Its wording changes
-  every day, because a repeated reminder wears out (Yancey & Settles 2020).
-- **Happened / Didn't** (roadmap D8, built as step 145): foreground actions on the
-  reminder. Tapping one records that answer and opens the app on the resolved
-  state (the acknowledgement, the range line, a milestone when this answer
-  earned one). Tapping the notification itself still opens the question.
-  "Can't tell" stays in the app. Background actions are not used: on iOS an
-  action that doesn't open the app is not guaranteed to reach JS when the app
-  is killed (expo#36282).
+- **No practice reminder** (removed 2026-11-25, the owner; step 89 built it): the daily
+  trivia sends nothing. The launch takes back any an older build left scheduled
+  (`cancelPracticeReminders`); one already delivered still opens today's trivia.
+- **No Happened / Didn't** (the owner, 2026-11-25: "we don't need the buttons to be on
+  the lock screen for the time being"). They were foreground actions on the reminder
+  (roadmap D8, step 145) while its words showed. A tap on the notification opens the
+  question. A reminder an older build delivered keeps its buttons until it's cleared,
+  and a tap on one still records that answer and opens the resolved state, under the
+  same rules as before: one that no longer matches its prediction, or whose answer would
+  be same-day, opens the question instead, and so does any while the app lock is on.
+  The category with the buttons stays registered for those. The launch reconcile sets
+  every reminder an older build scheduled with its words or its buttons again, without
+  them.
 - **Evening** (roadmap D9, built as step 60): the reminder fires at 19:00 local on the
   due day (`REMINDER_HOUR`), or at the time picked in You (D38); due dates are stored at noon, which asked about Friday's
   outcome before Friday was over. Each reminder records its time, and the launch
@@ -1314,7 +1315,7 @@ their edges, that bigger bands count for more, one worked example from `CLAUDE.m
 the Brier score in one paragraph (D24: what it adds, that lower is better, and since
 D35 the yardstick of saying your own base rate every time), why it waits, badges (a legend of the five emblems with their
 criteria), the whole range (log unlikely things too), your streak (rest days and why a streak ends, which the streak row
-no longer says since D76), what doesn't count (skips, the Warmup and, since step 95, the daily practice, then the
+no longer says since D76), what doesn't count (skips, the Warmup and, since step 95, the daily trivia, then the
 integrity counts in full, with the category-move rule an answer's details shorten since D76). The chance-bar sentence says what it is: a perfectly calibrated
 forecaster's dot lands inside it 8 times in 10, and the app calls a lean only for a
 dot outside it (D35). Opened with `?section=badges` (from Today's identity line, D27) it
@@ -1438,16 +1439,17 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   back. Categories you added or changed live only on this phone, so signing out removes
   them."; D69 (a)) · *Your card ›* and *Fairly Sure Plus ›* (`PLUS_NAME`; "Active" as its
   value when it is), with Plus's one line as the footer · *Categories ›* (below) ·
-  three switches: **Streak and daily goal** (D59, on by default), **Hide the words**
-  (D61, off) and the app lock, "Lock with Face ID" or as the phone has it (D64, §7.25)
+  two switches: **Streak and daily goal** (D59, on by default) and the app lock, "Lock
+  with Face ID" or as the phone has it (D64, §7.25; **Hide the words**, D61, sat between
+  them until the owner removed it, 2026-11-25)
   · *Notifications* (the main switch; under it, while it's on, **Due-day reminders**
   and **Weekly digest** switches, D31, each with its time under it while on (D38, step
   143: "Reminder time" beside the native compact time picker; the digest's seven day
   chips, Sun to Sat, and "Digest time"), and each switch's line says when ("On the day
-  each prediction comes due, at 7:00 PM.", "How many are open, never their words,
-  Sunday at 6:00 PM."); under the reminders' time, **Show the words in reminders** (D60,
-  off by default); the "Allow reminders" / "Open Settings" row while iOS says no; the
-  practice reminder) · **AI Refine** (hidden while `REFINE_ENABLED` is false), *Coach
+  each prediction comes due, at 7:00 PM. Each shows your number and the day you made it,
+  never its words.", "How many are open, never their words, Sunday at 6:00 PM."); the
+  "Allow reminders" / "Open Settings" row while iOS says no. **Show the words in
+  reminders** (D60) and the practice reminder were removed, 2026-11-25) · **AI Refine** (hidden while `REFINE_ENABLED` is false), *Coach
   (AI)* and *Usage stats* (switches, the whole group gone under the under-13 rule, below;
   without Plus, Coach's line starts "Plus only.",
   and once it's on, "On for when you have Plus. Nothing is sent before then.", step
@@ -1531,36 +1533,34 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   they will be lost." If Erase can't finish a step, the screen shows "Couldn't finish
   erasing your data. Try again.", as before, and now also when a cleanup write failed
   silently.
-- **Practice reminder** (step 89): a stacked row in the Notifications group, its
-  label and one line over five chips (Off, With coffee, At lunch, After dinner, each
-  with its time, and **Pick a time**, D31, which opens the time picker; once a time
-  is picked the chip reads "Your time" over it, as the moments read, step 138), two
-  to a row. With Notifications off the choice is
-  kept and the line says nothing is sent.
 
-### 7.22 Daily practice (built as roadmap steps 88–89)
+### 7.22 Daily practice, called trivia (built as roadmap steps 88–89)
 
 Three two-choice questions a day, the same for everyone on the same day, kept apart
-from everything real (`CLAUDE.md`, Daily practice).
+from everything real (`CLAUDE.md`, Daily practice). Every word on screen says
+"trivia" since 2026-11-25 (the owner: "keep practice as trivia"); the code, the
+`practice_answers` table and the stored keys keep "practice".
 
 - **On Today:** one row under the streak, the streak row's shape: a target symbol,
-  "Today’s practice" over "3 quick questions. About 30 seconds" (D76; "While you wait:
-  today’s practice" before the first answer, D62), and **Start** in `actionText` with
-  a chevron; "1 of 3 answered" and **Continue** partway; done, a check, "Practice
+  "Today’s trivia" over "3 quick questions. About 30 seconds" (D76; "While you wait:
+  today’s trivia" before the first answer, D62), and **Start** in `actionText` with
+  a chevron; "1 of 3 answered" and **Continue** partway; done, a check, "Trivia
   done" over "2 of 3 right. New ones tomorrow", and the chevron alone. The whole row
   opens the sheet. Not shown before the first prediction: on Day 0 the Warmup has
   just asked ten questions, and the next thing is the first real one.
-- **The sheet:** full height like Log, title and the round ×. The Warmup's question
+- **The sheet:** full height like Log, "Today’s trivia" and the round ×. The Warmup's question
   form (segments: answered in `action`, the current one in `controlBorder`, those to
   come in `hairline`, step 137; `title2` prompt, `ChoiceList`, the confidence control, 0–100% since D77
   with "50% means no idea, a coin flip." under it, nothing preset), one question at a time, answers held to the end like the Warmup.
-- **The answers:** "2 of 3 right" in `title1`, never display size (a practice number
+- **The answers:** "2 of 3 right" in `title1`, never display size (a trivia number
   must not look like the rating), "You expected about 2." under it, then the Warmup's
-  answer key in a surface card, "Three new questions tomorrow.", the reminder offer
-  (native only), and *Your practice so far*: counts and how many more until 20, then
-  which way it leans, the two percentages and the chart. It ends on "Practice is
-  just practice. It doesn’t touch your rating, badges or streak." (D76)
-- **Never:** a practice streak (one counter is enough, and it stays about real
+  answer key in a surface card, "Three new questions tomorrow." (the reminder offer
+  under it went with the practice reminder, 2026-11-25), and *Your trivia so far*:
+  counts and how many more until 20, then which way it leans ("In trivia, you run
+  overconfident at 80–100%"), the two percentages and the chart. It ends on "Trivia is
+  just for fun. It doesn’t touch your rating, badges or streak." (D76's "Practice is
+  just practice.", renamed 2026-11-25)
+- **Never:** a trivia streak, a reminder, (one counter is enough, and it stays about real
   predictions), a claim that practice improves the score, red or green for a wrong or
   right answer, or a share card (a scope call, not made).
 
@@ -1650,10 +1650,12 @@ for a built-in as much as for an added category. Tapping it again, or Done, clos
 
 ### 7.25 The app lock (D64, 2026-11-15; built as roadmap step 180)
 
-- **The switch** is one more row in You's group with "Streak and daily goal" and "Hide the
-  words" (§7.21), named for what the phone has in use: "Lock with Face ID", "Lock with Touch
+- **The switch** is one more row in You's group with "Streak and daily goal" (§7.21),
+  named for what the phone has in use: "Lock with Face ID", "Lock with Touch
   ID" or "Lock with iPhone passcode". It never names a method the phone lacks or isn't using,
-  and it is hidden on a build that can't lock. Its line ends by saying reminders aren't covered.
+  and it is hidden on a build that can't lock. Its line ends by saying reminders aren't
+  covered, though they never show a prediction's words ("Reminders aren’t covered, but
+  they never show a prediction’s words.", 2026-11-25).
 - **The lock screen and the cover** are the launch page (§7.19, D66): the mark and the app's name, and when locked a line and an
   **Unlock** button under them, in the page's fixed colours (the app's own primary is ink in
   the light appearance and would vanish on it). The cover (the app not in front while the
@@ -1671,8 +1673,8 @@ for a built-in as much as for an added category. Tapping it again, or Done, clos
   Unlock is tapped, at launch and on coming back alike. Until then it started by itself
   the moment the app was in front, which he found too sudden when switching back.
 - **"Lock after"** (D75, the owner, 2026-11-23) sits under the switch while the lock is on
-  and the phone can lock: the practice reminder's stacked row (label, one line, chips two
-  to a row, a radio group; `OptionChip`), "Immediately", "1 minute", "5 minutes" (the
+  and the phone can lock: a stacked row (label, one line, chips two to a row, a radio
+  group; `OptionChip`), "Immediately", "1 minute", "5 minutes" (the
   default), "15 minutes", the number and its unit kept together. Its line: "It locks every
   time you leave it." or "Come back within 5 minutes and it opens without asking." The
   switch's first sentence follows it: "Locks Fairly Sure each time it opens or comes back

@@ -33,9 +33,10 @@ function tabIcon(sf: [SFSymbol, SFSymbol], ion: [IoniconName, IoniconName]) {
 
 /*
  * Four tabs, Today · Insights · History · You (roadmap D3, decided
- * 2026-10-07): tabs navigate, so Log is no longer one; a "+" in the title
- * bar of Today, Insights and History opens it as a sheet (D21, 2026-10-09: it
- * floated above the tab bar until then, over buttons, cards and the chart).
+ * 2026-10-07): tabs navigate, so Log is no longer one; a "+" in Today's title
+ * bar opens it as a sheet (D21, 2026-10-09: it floated above the tab bar until
+ * then, over buttons, cards and the chart; on Insights and History too until
+ * 2026-11-25, when the owner kept it to Today).
  * JS tabs for now; the native Liquid Glass tabs follow the SDK 58 upgrade.
  *
  * Every tab names itself (tabBarAccessibilityLabel). Without it the name is
@@ -45,10 +46,11 @@ function tabIcon(sf: [SFSymbol, SFSymbol], ion: [IoniconName, IoniconName]) {
  */
 export default function TabsLayout() {
   const router = useRouter();
-  // Not on You: nothing there is a prediction.
+  // Today only (the owner, 2026-11-25; Insights and History had one too).
   const logButton = () => <LogButton onPress={() => router.push('/log' as never)} />;
   // "Saved, due …" over any tab but Today after a save closes onto it (blind
-  // playtests 2026-11-12c, -12d); Today scrolls to the card instead. A count
+  // playtests 2026-11-12c, -12d): History's empty state and You (a reminder's
+  // Resolve, then "Log it again") still open Log. Today scrolls to the card. A count
   // in the key, so a second save with the same words starts afresh.
   const [saved, setSaved] = useState<{ text: string; n: number } | null>(null);
   const clearSaved = useCallback(() => setSaved(null), []);
@@ -107,7 +109,6 @@ export default function TabsLayout() {
           options={{
             title: 'Insights',
             tabBarAccessibilityLabel: 'Insights',
-            headerRight: logButton,
             tabBarIcon: tabIcon(
               ['chart.line.uptrend.xyaxis.circle.fill', 'chart.line.uptrend.xyaxis'],
               ['stats-chart', 'stats-chart-outline'],
@@ -116,7 +117,7 @@ export default function TabsLayout() {
         />
         <Tabs.Screen
           name="history"
-          options={{ title: 'History', tabBarAccessibilityLabel: 'History', headerRight: logButton, tabBarIcon: tabIcon(['clock.fill', 'clock'], ['time', 'time-outline']) }}
+          options={{ title: 'History', tabBarAccessibilityLabel: 'History', tabBarIcon: tabIcon(['clock.fill', 'clock'], ['time', 'time-outline']) }}
         />
         <Tabs.Screen
           name="you"

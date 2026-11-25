@@ -39,7 +39,7 @@ export function parseTimeInputValue(value: string): PracticeReminderTime | null 
 export function PracticeTimePicker({
   value,
   onChange,
-  label = 'Practice reminder time',
+  label = 'Time',
   testID = 'practice-time-picker',
 }: PracticeTimePickerProps) {
   if (Platform.OS === 'web') {

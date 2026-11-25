@@ -7,17 +7,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { track } from '@/analytics/track';
 
 import { PracticeQuiz } from '@/components/practice/PracticeQuiz';
-import { PracticeReminderOffer } from '@/components/practice/PracticeReminderOffer';
 import { PracticeResult } from '@/components/practice/PracticeResult';
 import { CloseButton } from '@/components/ui/CloseButton';
 import { colors, space, type } from '@/constants/theme';
 import { usePracticeStore } from '@/store/practiceStore';
 
 /**
- * Today's practice (roadmap step 88), as a full-height sheet from Today's
- * row: three questions, then the answers and the record so far. The day is
- * fixed when the sheet opens, so a practice started before midnight finishes
- * on the questions it began with.
+ * Today's practice (roadmap step 88), called "trivia" on screen since
+ * 2026-11-25 (the owner), as a full-height sheet from Today's row: three
+ * questions, then the answers and the record so far. The day is fixed when
+ * the sheet opens, so a practice started before midnight finishes on the
+ * questions it began with.
  */
 export default function PracticeScreen() {
   const router = useRouter();
@@ -85,15 +85,12 @@ export default function PracticeScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.title} accessibilityRole="header">
-            Today’s practice
+            Today’s trivia
           </Text>
           <CloseButton onPress={close} testID="practice-close" />
         </View>
         {slot === null ? (
-          <PracticeResult day={day}>
-            {/* "Same time tomorrow?" (roadmap step 89). Native only. */}
-            <PracticeReminderOffer />
-          </PracticeResult>
+          <PracticeResult day={day} />
         ) : (
           <PracticeQuiz key={slot} day={day} slot={slot} reveal={reveal} />
         )}

@@ -229,7 +229,6 @@ beforeEach(async () => {
     remindersEnabled: true,
     digestEnabled: true,
     dueReminderTime: { hour: 19, minute: 0 },
-    reminderWords: true,
     digestDay: 0,
     digestTime: { hour: 18, minute: 0 },
     aiRefineEnabled: true,
@@ -262,13 +261,17 @@ describe('scheduler: schedule on create', () => {
     expect(notifications.scheduled.size).toBe(1);
     const [rec] = Array.from(notifications.scheduled.values());
     expect(rec.title).toBe('Did it happen');
-    expect(rec.body).toBe('Ship the prototype · You said 50%');
+    // Never the words (2026-11-25): the day it was made and the number.
+    expect(rec.body).toBe(reminderBodyWithoutWords(p.created_at, 50));
+    expect(rec.body).not.toContain('Ship');
     // Roadmap D9: the evening of the due day, not the stored noon (Jest runs in UTC).
-    expect(rec.data).toEqual({ predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: true, answerable: true });
+    expect(rec.data).toEqual({ predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: false, answerable: false });
     expect(rec.date.toISOString()).toBe('2099-06-01T19:00:00.000Z');
+    // No category, so no Happened / Didn't on the lock screen.
+    expect(rec.categoryIdentifier).toBeUndefined();
   });
 
-  it('trims very long titles to ~80 chars in the body', async () => {
+  it('keeps a long title out of the body too', async () => {
     const notifications = makeFakeNotifications(true);
     const navigator = makeFakeNavigator();
     __setDepsForTests({ notifications, navigator });
@@ -283,6 +286,7 @@ describe('scheduler: schedule on create', () => {
     });
 
     const [rec] = Array.from(notifications.scheduled.values());
+    expect(rec.body).not.toContain('aaa');
     expect(rec.body.length).toBeLessThanOrEqual(80);
   });
 });
@@ -467,7 +471,9 @@ describe('scheduler: reschedule on edit', () => {
     expect(rec.date.toISOString()).toBe('2099-06-08T19:00:00.000Z');
   });
 
-  it('rewrites the reminder when the title changes', async () => {
+  // The body hasn't quoted the title since 2026-11-25, so new words alone
+  // leave the reminder as it is.
+  it('leaves the reminder alone when only the title changes', async () => {
     const notifications = makeFakeNotifications(true);
     __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
     await initNotifications();
@@ -486,7 +492,11 @@ describe('scheduler: reschedule on edit', () => {
     await new Promise((r) => setImmediate(r));
 
     expect(notifications.scheduled.size).toBe(1);
-    expect(Array.from(notifications.scheduled.values())[0].body).toBe('Ship the beta · You said 50%');
+    expect(notifications.scheduleCalls).toBe(1);
+    expect(notifications.cancelled).toEqual([]);
+    expect(Array.from(notifications.scheduled.values())[0].body).toBe(
+      reminderBodyWithoutWords(p.created_at, 50),
+    );
   });
 
   it('leaves the reminder alone for a category change', async () => {
@@ -784,7 +794,7 @@ describe('scheduler: notifications toggle (kill-switch)', () => {
 
     expect(notifications.scheduled.size).toBe(1);
     const [rec] = Array.from(notifications.scheduled.values());
-    expect(rec.body).toBe('Pending through the toggle · You said 50%');
+    expect(rec.body).toMatch(/^Your prediction from .+ · You said 50%$/);
   });
 
   it('honors an off toggle that was set before init (never schedules)', async () => {
@@ -833,10 +843,11 @@ describe('scheduler: schedule failure is non-fatal', () => {
   });
 });
 
-// DESIGN_SYSTEM §7.15: people who hide previews get a generic line, not a
-// prediction title that may be about their health or money.
+// DESIGN_SYSTEM §7.15: people who hide previews get a generic line. The
+// category (with Happened / Didn't) stays registered for reminders an older
+// build delivered with it; one this build sets carries none (2026-11-25).
 describe('scheduler: hidden-preview placeholder', () => {
-  it('registers the reminder category and tags each reminder with it', async () => {
+  it('registers the reminder category, and sets reminders without it', async () => {
     const notifications = makeFakeNotifications(true);
     const setCategory = jest.fn(async () => undefined);
     notifications.setNotificationCategoryAsync = setCategory;
@@ -867,9 +878,7 @@ describe('scheduler: hidden-preview placeholder', () => {
       confidence: 60,
       due_date: '2099-06-01T12:00:00.000Z',
     });
-    expect(schedule.mock.calls[0][0].content.categoryIdentifier).toBe(
-      'calibrate-resolution-reminder',
-    );
+    expect(schedule.mock.calls[0][0].content.categoryIdentifier).toBeUndefined();
   });
 
   it('still schedules reminders if category registration fails', async () => {
@@ -923,7 +932,12 @@ describe('scheduler: launch-time reconcile', () => {
     const notifications = makeFakeNotifications(true);
     __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
     const p = await openPrediction();
-    leftOver(notifications, 'os-old', { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z' });
+    leftOver(notifications, 'os-old', {
+      predictionId: p.id,
+      fireAt: '2099-06-01T19:00:00.000Z',
+      words: false,
+      answerable: false,
+    });
 
     await initNotifications();
     expect(notifications.scheduleCalls).toBe(0);
@@ -937,8 +951,9 @@ describe('scheduler: launch-time reconcile', () => {
     const notifications = makeFakeNotifications(true);
     __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
     const p = await openPrediction();
-    leftOver(notifications, 'os-keep', { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z' });
-    leftOver(notifications, 'os-dupe', { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z' });
+    const current = { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: false, answerable: false };
+    leftOver(notifications, 'os-keep', current);
+    leftOver(notifications, 'os-dupe', current);
     leftOver(notifications, 'os-gone', { predictionId: 'resolved-on-another-phone' });
 
     await initNotifications();
@@ -971,7 +986,7 @@ describe('scheduler: launch-time reconcile', () => {
     await initNotifications();
     const scheduled = Array.from(notifications.scheduled.values());
     expect(scheduled.map((r) => r.data)).toEqual([
-      { predictionId: future.id, fireAt: '2099-06-01T19:00:00.000Z', words: true, answerable: true },
+      { predictionId: future.id, fireAt: '2099-06-01T19:00:00.000Z', words: false, answerable: false },
     ]);
   });
 
@@ -1027,7 +1042,7 @@ describe('scheduler: permission in context', () => {
     expect(await requestReminderPermission()).toBe('granted');
     expect(notifications.requestCalls).toBe(1);
     expect(Array.from(notifications.scheduled.values()).map((r) => r.data)).toEqual([
-      { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: true, answerable: true },
+      { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: false, answerable: false },
     ]);
 
     // And from then on it watches the store as usual.
@@ -1082,87 +1097,96 @@ describe('scheduler: a chosen reminder time', () => {
   });
 });
 
-// Roadmap D60 (b): a reminder can leave the words off the lock screen (four
-// testers over rounds 18–19 asked what it would show).
-describe('scheduler: reminders without the words', () => {
-  it('says only the day it was made and the number, and is set again when switched', async () => {
-    const notifications = makeFakeNotifications(true);
-    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
-    await initNotifications();
-    const p = await usePredictionStore.getState().create({
-      title: 'Finger exercises on Saturday',
+// The owner, 2026-11-25: every reminder leaves the words off the lock screen
+// and carries no Happened / Didn't ("we don't need the buttons to be on the
+// lock screen for the time being"); the switch (D60 (b)) is gone.
+describe('scheduler: every reminder without the words', () => {
+  const at7 = '2099-06-01T19:00:00.000Z';
+  const make = (title: string) =>
+    usePredictionStore.getState().create({
+      title,
       category: 'health',
       confidence: 70,
       due_date: '2099-06-01T12:00:00.000Z',
     });
-    await flush();
-    let [rec] = Array.from(notifications.scheduled.values());
-    expect(rec.body).toBe('Finger exercises on Saturday · You said 70%');
 
-    useSettingsStore.setState({ reminderWords: false });
+  it('says only the day it was made and the number, with no Happened / Didn’t', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+    const p = await make('Finger exercises on Saturday');
     await flush();
-    expect(notifications.scheduled.size).toBe(1);
-    [rec] = Array.from(notifications.scheduled.values());
+    const [rec] = Array.from(notifications.scheduled.values());
     expect(rec.body).toBe(reminderBodyWithoutWords(p.created_at, 70));
     expect(rec.body).not.toContain('Finger');
-    expect(rec.data).toMatchObject({ predictionId: p.id, words: false });
-    // No one-tap answer on a reminder that does not say which one it is.
+    expect(rec.data).toMatchObject({ predictionId: p.id, words: false, answerable: false });
     expect(rec.categoryIdentifier).toBeUndefined();
   });
 
-  it('leaves one reminder per prediction after quick flips', async () => {
+  // The first launch after the update: what an older build left with iOS is
+  // set again in today's form, and one already in it is kept.
+  it('replaces at launch every reminder an older build set with the words or the buttons', async () => {
+    const notifications = makeFakeNotifications(true);
+    const withWords = await make('A');
+    const preD60 = await make('B');
+    const buttonsOnly = await make('C');
+    const current = await make('D');
+    const old = (id: string, data: Record<string, unknown>, categoryIdentifier?: string) =>
+      notifications.scheduled.set(id, {
+        id,
+        title: 'Did it happen',
+        body: 'from an older build',
+        data,
+        date: new Date(at7),
+        categoryIdentifier,
+      } as never);
+    // Words on, with Happened / Didn't (1.1.0 with the switch on).
+    old('os-words', { predictionId: withWords.id, fireAt: at7, words: true, answerable: true }, 'calibrate-resolution-reminder');
+    // Set before D60: no `words`, and it showed them, with the buttons.
+    old('os-pre-d60', { predictionId: preD60.id, fireAt: at7 }, 'calibrate-resolution-reminder');
+    // iOS handing the booleans back as numbers: words off, buttons on.
+    old('os-buttons', { predictionId: buttonsOnly.id, fireAt: at7, words: 0, answerable: 1 });
+    // Already today's form (1.1.0 with the switch off).
+    old('os-current', { predictionId: current.id, fireAt: at7, words: false, answerable: false });
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+
+    await initNotifications();
+
+    expect(notifications.cancelled.sort()).toEqual(['os-buttons', 'os-pre-d60', 'os-words']);
+    expect(notifications.scheduled.has('os-current')).toBe(true);
+    const all = Array.from(notifications.scheduled.values());
+    expect(all).toHaveLength(4);
+    for (const rec of all) {
+      expect(rec.data).toMatchObject({ fireAt: at7, words: false, answerable: false });
+      expect(rec.categoryIdentifier).toBeUndefined();
+      expect(rec.body).not.toMatch(/^[ABCD] ·/);
+    }
+    expect(new Set(all.map((r) => r.data?.predictionId))).toEqual(
+      new Set([withWords.id, preD60.id, buttonsOnly.id, current.id]),
+    );
+  });
+
+  it('leaves one reminder per prediction after quick changes of the time', async () => {
     const notifications = makeFakeNotifications(true);
     __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
     await initNotifications();
-    for (const title of ['A', 'B']) {
-      await usePredictionStore.getState().create({
-        title,
-        category: 'work',
-        confidence: 50,
-        due_date: '2099-06-01T12:00:00.000Z',
-      });
-    }
+    for (const title of ['A', 'B']) await make(title);
     await flush();
-    // Off, on, off, with no time to settle between.
-    useSettingsStore.setState({ reminderWords: false });
-    useSettingsStore.setState({ reminderWords: true });
-    useSettingsStore.setState({ reminderWords: false });
+    // Three times, with no time to settle between.
+    useSettingsStore.setState({ dueReminderTime: { hour: 20, minute: 0 } });
+    useSettingsStore.setState({ dueReminderTime: { hour: 21, minute: 0 } });
+    useSettingsStore.setState({ dueReminderTime: { hour: 22, minute: 0 } });
     for (let i = 0; i < 20; i += 1) await flush();
     const left = Array.from(notifications.scheduled.values());
     expect(left).toHaveLength(2);
-    expect(left.every((r) => r.data?.words === false)).toBe(true);
-  });
-
-  it('replaces at launch a reminder set with the other choice', async () => {
-    useSettingsStore.setState({ reminderWords: false });
-    const notifications = makeFakeNotifications(true);
-    const p = await usePredictionStore.getState().create({
-      title: 'A',
-      category: 'work',
-      confidence: 50,
-      due_date: '2099-06-01T12:00:00.000Z',
-    });
-    // Set before D60, so with no `words`: it showed them.
-    notifications.scheduled.set('os-old', {
-      id: 'os-old',
-      title: 'Did it happen',
-      body: 'A · You said 50%',
-      data: { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z' },
-      date: new Date('2099-06-01T19:00:00.000Z'),
-    } as never);
-    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
-    await initNotifications();
-    const kept = Array.from(notifications.scheduled.entries());
-    expect(kept).toHaveLength(1);
-    expect(kept[0][0]).not.toBe('os-old');
-    expect(kept[0][1].data).toMatchObject({ words: false });
+    expect(left.every((r) => r.data?.fireAt === '2099-06-01T22:00:00.000Z' && r.data?.words === false)).toBe(true);
   });
 });
 
-// Roadmap D8: Happened / Didn't on the resolution reminder. Foreground actions
-// record the answer once, then open Resolve already resolved. The body still
-// opens the question. Older reminders are not rewritten; the category registered
-// at launch is what the OS attaches when they are delivered.
+// Roadmap D8: Happened / Didn't on the resolution reminder. No reminder this
+// build sets has them (2026-11-25), but one an older build delivered keeps
+// them until it is cleared: a tap records the answer once, then opens Resolve
+// already resolved, under the same rules. The body still opens the question.
 describe('scheduler: reminder actions', () => {
   // Logged the day before: a same-day answer isn't scored (roadmap D41).
   async function pending(title = 'Ship the prototype') {
@@ -1642,27 +1666,25 @@ describe('scheduler: reminders while the app lock is on', () => {
       }),
     );
 
-  it('sets a reminder with its words and no Happened / Didn’t, and again when the lock changes', async () => {
+  // Since 2026-11-25 no reminder carries the buttons, so the lock changes
+  // nothing about one: it isn't set again when the lock goes on or off.
+  it('sets the same reminder with the lock on or off, and not again when it changes', async () => {
     const notifications = makeFakeNotifications(true);
     __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
     await initNotifications();
     const p = await create();
     await flush();
-    let [rec] = Array.from(notifications.scheduled.values());
-    expect(rec.categoryIdentifier).toBeDefined();
+    const [rec] = Array.from(notifications.scheduled.values());
+    expect(rec.categoryIdentifier).toBeUndefined();
+    expect(rec.data).toMatchObject({ predictionId: p.id, words: false, answerable: false });
+    const calls = notifications.scheduleCalls;
 
     useSettingsStore.setState({ appLock: true });
     for (let i = 0; i < 10; i += 1) await flush();
-    expect(notifications.scheduled.size).toBe(1);
-    [rec] = Array.from(notifications.scheduled.values());
-    expect(rec.body).toBe('Ship the prototype · You said 70%');
-    expect(rec.data).toMatchObject({ predictionId: p.id, words: true });
-    expect(rec.categoryIdentifier).toBeUndefined();
-
     useSettingsStore.setState({ appLock: false });
     for (let i = 0; i < 10; i += 1) await flush();
-    [rec] = Array.from(notifications.scheduled.values());
-    expect(rec.categoryIdentifier).toBeDefined();
+    expect(notifications.scheduleCalls).toBe(calls);
+    expect(notifications.cancelled).toEqual([]);
   });
 
   // One delivered before the lock was turned on still shows the buttons.
@@ -1701,9 +1723,9 @@ describe('scheduler: reminders while the app lock is on', () => {
     expect(navigator.pushed).toEqual([`/resolve/${p.id}`]);
   });
 
-  // Step 183: a reminder left with its buttons (setting them all again didn't
-  // finish before the app closed) is replaced at the next launch.
-  it('replaces at launch a reminder whose buttons no longer match the lock', async () => {
+  // Step 183: a reminder left with its buttons is replaced at the next launch,
+  // now always without them (2026-11-25).
+  it('replaces at launch a reminder an older build left with its buttons', async () => {
     const p = await create();
     useSettingsStore.setState({ appLock: true });
     const notifications = makeFakeNotifications(true);
@@ -1713,20 +1735,21 @@ describe('scheduler: reminders while the app lock is on', () => {
       body: 'Ship the prototype · You said 70%',
       data: { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: true, answerable: true },
       date: new Date('2099-06-01T19:00:00.000Z'),
-      categoryIdentifier: 'calibrate-reminder',
+      categoryIdentifier: 'calibrate-resolution-reminder',
     } as never);
     __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
     await initNotifications();
     const kept = Array.from(notifications.scheduled.entries());
     expect(kept).toHaveLength(1);
     expect(kept[0][0]).not.toBe('os-old');
-    expect(kept[0][1].data).toMatchObject({ words: true, answerable: false });
+    expect(kept[0][1].data).toMatchObject({ words: false, answerable: false });
     expect(kept[0][1].categoryIdentifier).toBeUndefined();
   });
 
-  // One from before step 183 has no `answerable`: with the lock off and its
-  // words shown it had the buttons, which is still right, so it stays.
-  it('keeps at launch an older reminder that still matches', async () => {
+  // One from before step 183 has no `answerable`: with its words shown it
+  // had the buttons. It was kept with the lock off until 2026-11-25; now it is
+  // replaced, lock or no lock.
+  it('replaces at launch an older reminder that showed its words', async () => {
     const p = await create();
     const notifications = makeFakeNotifications(true);
     notifications.scheduled.set('os-old', {
@@ -1738,12 +1761,15 @@ describe('scheduler: reminders while the app lock is on', () => {
     } as never);
     __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
     await initNotifications();
-    expect(Array.from(notifications.scheduled.keys())).toEqual(['os-old']);
+    expect(notifications.cancelled).toEqual(['os-old']);
+    const [rec] = Array.from(notifications.scheduled.values());
+    expect(rec.data).toMatchObject({ predictionId: p.id, words: false, answerable: false });
   });
 });
 
 // Security review, 2026-11-18: a reminder already delivered kept the words
-// that signing out, the words switch or the app lock were meant to hide.
+// that signing out or the app lock were meant to hide. Since 2026-11-25 only
+// an older build's can show them.
 describe('scheduler: dismissDeliveredReminderWords', () => {
   const delivered = (identifier: string, data: Record<string, unknown> | null) => ({
     identifier,
@@ -1776,7 +1802,7 @@ describe('scheduler: dismissDeliveredReminderWords', () => {
     return notifications;
   }
 
-  afterEach(() => useSettingsStore.setState({ appLock: false, reminderWords: true }));
+  afterEach(() => useSettingsStore.setState({ appLock: false }));
 
   it('takes off only the ones that may show words', async () => {
     const dismiss = jest.fn(async (_id: string) => {});
@@ -1791,11 +1817,11 @@ describe('scheduler: dismissDeliveredReminderWords', () => {
     ]);
   });
 
-  it('runs when the words are switched off, even without notification permission', async () => {
+  it('runs when the app lock is switched on, even without notification permission', async () => {
     const dismiss = jest.fn(async (_id: string) => {});
     install(dismiss, false);
     await initNotifications();
-    useSettingsStore.setState({ reminderWords: false });
+    useSettingsStore.setState({ appLock: true });
     await flush();
     expect(dismiss.mock.calls.map(([id]) => id)).toContain('words-on');
     expect(dismiss.mock.calls.map(([id]) => id)).not.toContain('digest');
@@ -1811,12 +1837,11 @@ describe('scheduler: dismissDeliveredReminderWords', () => {
     expect(dismiss.mock.calls.map(([id]) => id)).not.toContain('trial');
   });
 
-  it('leaves the lock screen alone when the words go on or the lock goes off', async () => {
-    useSettingsStore.setState({ reminderWords: false, appLock: true });
+  it('leaves the lock screen alone when the lock goes off or the time changes', async () => {
+    useSettingsStore.setState({ appLock: true });
     const dismiss = jest.fn(async (_id: string) => {});
     install(dismiss);
     await initNotifications();
-    useSettingsStore.setState({ reminderWords: true });
     useSettingsStore.setState({ appLock: false });
     useSettingsStore.setState({ dueReminderTime: { hour: 20, minute: 0 } });
     await flush();

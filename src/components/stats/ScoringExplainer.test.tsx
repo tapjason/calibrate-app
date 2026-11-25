@@ -149,7 +149,7 @@ describe('scoringCopy (roadmap step 29)', () => {
   // CLAUDE.md §9: practice stays out of the score like the Warmup (step 95).
   it('names the daily practice among what does not count', () => {
     expect(allText()).toContain(
-      'And the Warmup and the daily practice, which are practice and kept apart from your real record.',
+      'And the Warmup and the daily trivia, which are kept apart from your real record.',
     );
   });
 

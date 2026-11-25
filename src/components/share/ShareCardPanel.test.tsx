@@ -7,7 +7,7 @@ import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { CategoryStat, UserStat, WarmupResult } from '@/types';
 
-import { FRIEND_SQUARES, FRIEND_WARMUP, ShareCardPanel, SQUARES_LATER } from './ShareCardPanel';
+import { ShareCardPanel, SQUARES_LATER } from './ShareCardPanel';
 
 const USER_STAT: UserStat = {
   user_id: 'u1',
@@ -234,12 +234,9 @@ describe('ShareCardPanel — Day 0', () => {
     // The text share is the category card's; it goes while the warm-up shows.
     expect(screen.queryByTestId('share-text-button')).toBeNull();
     expect(screen.getByTestId('share-switch-card')).toHaveTextContent('Show my category card');
-    // Their own squares exist or are coming: no "yours come once…" here.
-    expect(screen.queryByTestId('share-friend-squares')).toBeNull();
 
     fireEvent.press(screen.getByTestId('share-switch-card'));
     expect(screen.getByTestId('identity-card')).toBeTruthy();
-    expect(screen.queryByTestId('share-friend-squares')).toBeNull();
   });
 
   // Step 181 (blind playtest 2026-11-14, finding 4): in week one the category
@@ -252,14 +249,11 @@ describe('ShareCardPanel — Day 0', () => {
 
     expect(screen.getByTestId('warmup-card')).toBeTruthy();
     expect(screen.queryByTestId('identity-card')).toBeNull();
-    // A friend's card is explained while there's no rated card of one's own.
-    expect(screen.getByTestId('share-friend-open')).toBeTruthy();
     expect(screen.getByTestId('share-switch-card')).toHaveTextContent('Show my category card');
 
     fireEvent.press(screen.getByTestId('share-switch-card'));
     expect(screen.getByTestId('identity-card')).toBeTruthy();
     expect(screen.getByText('17 more scored answers until my calibration unlocks')).toBeTruthy();
-    expect(screen.queryByTestId('share-friend-open')).toBeNull();
     fireEvent.press(screen.getByTestId('share-switch-card'));
     expect(screen.getByTestId('warmup-card')).toBeTruthy();
   });
@@ -283,25 +277,15 @@ describe('ShareCardPanel — Day 0', () => {
     expect(screen.queryByTestId('share-switch-card')).toBeNull();
   });
 
-  // Blind playtest 2026-11-13c, finding 6: a friend's squares, explained
-  // where someone who came from one first looks.
-  it("explains a friend's squares under the warm-up card", () => {
+  // "Got a friend's card?" and its explanations (D61–D63) were removed on
+  // 2026-11-25 (the owner).
+  it("offers no friend's-card explanation under the warm-up card", () => {
     seedStats(null);
     useWarmupStore.setState({ result: WARMUP });
     render(<ShareCardPanel />);
-    // Folded behind "Got a friend's card?" (D62).
-    expect(screen.queryByTestId('share-friend-squares')).toBeNull();
-    fireEvent.press(screen.getByTestId('share-friend-open'));
-    expect(screen.getByTestId('share-friend-squares')).toHaveTextContent(
-      `${FRIEND_WARMUP} ${FRIEND_SQUARES}`,
-    );
-    // The card that travels first, and who was nearer their word (step 181).
-    expect(FRIEND_WARMUP).toBe(
-      'A friend' + "'" + 's warm-up card sets what they got beside what they said: "8 of 10 right. I was 90% sure." means they expected about 9 of 10 and got 8. The closer the two, the better their numbers fit, whoever got more right, though ten answers can' + "'" + 't tell close results apart.',
-    );
-    expect(FRIEND_SQUARES).toBe(
-      'A friend' + "'" + 's score is out of 100: 100 minus how far, range by range and on average, what they said was from how often it happened. "Give or take" is how far luck could move it. The squares are their five ranges of how sure, 0–20% up to 80–100%, low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under 10 answers. Yours come once your rating unlocks and a range has 10 scored answers.',
-    );
+    expect(screen.getByTestId('warmup-card')).toBeTruthy();
+    expect(screen.queryByTestId('share-friend-open')).toBeNull();
+    expect(screen.queryByText(/friend/i)).toBeNull();
   });
 
   it('offers the warm-up when there is nothing at all', () => {
@@ -355,8 +339,10 @@ describe('ShareCardPanel — shape and contents', () => {
     expect(canvas.transformOrigin).toBe('top left');
   });
 
-  // Step 179 (blind playtest 2026-11-13e, runs 1 and 4).
-  it('keeps a category the person named off the card while the words are hidden', () => {
+  // "Hide the words" is gone (2026-11-25): a category the person named is on
+  // the card's choices under its own name, and only their own choice keeps
+  // one off (D42).
+  it('offers a category the person named under its own name', () => {
     const { useCategoryStore } = jest.requireActual('@/store/categoryStore') as typeof import('@/store/categoryStore');
     seedStats(USER_STAT, CATEGORY_STATS);
     const named = CATEGORY_STATS.filter((c) => c.predictions_resolved > 0)[0]!.category;
@@ -373,88 +359,18 @@ describe('ShareCardPanel — shape and contents', () => {
         },
       ],
     });
-    useSettingsStore.setState({ hideTitles: true });
     try {
       render(<ShareCardPanel />);
-      expect(screen.queryByText(/Divorce/)).toBeNull();
-      expect(screen.queryByTestId(`share-toggle-${named}`)).toBeNull();
-      expect(screen.getByTestId('share-own-kept-off')).toBeTruthy();
-      // Not stored as unticked: it comes back when the switch goes off.
-      expect(useSettingsStore.getState().cardHiddenCategories).toEqual([]);
+      const chip = screen.getByTestId(`share-toggle-${named}`);
+      expect(chip.props.accessibilityLabel).toBe('Show Divorce on the card');
+      expect(chip.props.accessibilityState).toMatchObject({ checked: true });
+      expect(screen.queryByText(/Hide the words/)).toBeNull();
+      expect(screen.queryByText('2 categories not shown (still counted)')).toBeNull();
     } finally {
-      useSettingsStore.setState({ hideTitles: false });
       useCategoryStore.setState({ defs: [] });
     }
   });
 
-  // Code review of step 179: nothing comes back, and the card doesn't vanish.
-  describe('with the words hidden', () => {
-    const { useCategoryStore } = jest.requireActual('@/store/categoryStore') as typeof import('@/store/categoryStore');
-    const def = (id: 'health' | 'finance', over: { name?: string | null; icon?: { kind: 'emoji'; emoji: string } | null }) => ({
-      id,
-      user_id: 'u1',
-      name: over.name ?? null,
-      icon: over.icon ?? null,
-      hidden: false,
-      position: 0,
-      created_at: '2026-11-01T00:00:00.000Z',
-    });
-    afterEach(() => {
-      useSettingsStore.setState({ hideTitles: false, cardHiddenCategories: [] });
-      useCategoryStore.setState({ defs: [] });
-    });
-
-    it('keeps the category card when every category is the person\'s own', () => {
-      seedStats(USER_STAT, CATEGORY_STATS);
-      useCategoryStore.setState({
-        defs: [def('health', { name: 'Divorce' }), def('finance', { name: 'Rent' })],
-      });
-      useSettingsStore.setState({ hideTitles: true });
-      render(<ShareCardPanel />);
-      expect(screen.getByTestId('card-identity')).toHaveTextContent('Calibration 88/100');
-      expect(screen.getByText('2 categories not shown (still counted)')).toBeTruthy();
-      expect(screen.queryByText(/Divorce|Rent/)).toBeNull();
-      expect(screen.getByTestId('share-own-kept-off')).toBeTruthy();
-      expect(screen.queryByTestId('share-empty')).toBeNull();
-    });
-
-    it('never puts back a category the person unticked', () => {
-      seedStats(USER_STAT, CATEGORY_STATS);
-      useCategoryStore.setState({ defs: [def('health', { name: 'Divorce' })] });
-      useSettingsStore.setState({ hideTitles: true, cardHiddenCategories: ['finance'] });
-      render(<ShareCardPanel />);
-      expect(screen.queryByText(/finance/)).toBeNull();
-      expect(screen.getByText('2 categories not shown (still counted)')).toBeTruthy();
-      // Its chip stays, so it can come back on.
-      const finance = screen.getByTestId('share-toggle-finance');
-      expect(finance.props.accessibilityState).toMatchObject({ checked: false });
-      fireEvent.press(finance);
-      expect(useSettingsStore.getState().cardHiddenCategories).toEqual([]);
-    });
-
-    it('lets the one category left come off as well (owner, 2026-11-14)', () => {
-      seedStats(USER_STAT, CATEGORY_STATS);
-      const onFile = CATEGORY_STATS.filter((c) => c.predictions_resolved > 0).map((c) => c.category);
-      const [left, ...named] = onFile;
-      useCategoryStore.setState({
-        defs: named.map((id) => def(id as 'health' | 'finance', { name: `Mine ${id}` })),
-      });
-      useSettingsStore.setState({ hideTitles: true });
-      render(<ShareCardPanel />);
-      fireEvent.press(screen.getByTestId(`share-toggle-${left}`));
-      expect(screen.queryAllByTestId(/^card-badge-/)).toHaveLength(0);
-      expect(useSettingsStore.getState().cardHiddenCategories).toEqual([left]);
-    });
-
-    it('keeps a built-in that has only an icon: the card draws none', () => {
-      seedStats(USER_STAT, CATEGORY_STATS);
-      useCategoryStore.setState({ defs: [def('health', { icon: { kind: 'emoji', emoji: '🏃' } })] });
-      useSettingsStore.setState({ hideTitles: true });
-      render(<ShareCardPanel />);
-      expect(screen.getByTestId('card-identity')).toHaveTextContent('Sharp in health');
-      expect(screen.queryByTestId('share-own-kept-off')).toBeNull();
-    });
-  });
 
   // Every one can come off (owner, 2026-11-14): the card keeps the rating.
   it('leaves categories off the card, the last one too', () => {

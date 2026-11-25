@@ -2,10 +2,9 @@ import { render, screen } from '@testing-library/react-native';
 
 import { relativeDay } from '@/components/ui/dates';
 import { useCategoryStore } from '@/store/categoryStore';
-import { useSettingsStore } from '@/store/settingsStore';
 import type { Prediction } from '@/types';
 
-import { HIDDEN_CATEGORY, HIDDEN_TITLE, PredictionCard, rowPosition } from './PredictionCard';
+import { PredictionCard, rowPosition } from './PredictionCard';
 
 const prediction: Prediction = {
   id: 'p1',
@@ -220,57 +219,26 @@ describe('PredictionCard — as a row in a group', () => {
   });
 });
 
-// D61 (blind playtest 2026-11-13c, finding 7): on a phone someone else picks
-// up, the words wait for a tap; the category and the number stay.
-describe('PredictionCard with the words hidden', () => {
-  afterEach(() => useSettingsStore.setState({ hideTitles: false }));
-
-  it('shows neither the words nor the note, and says so', () => {
-    useSettingsStore.setState({ hideTitles: true });
+// "Hide the words" (D61) was removed on 2026-11-25 (the owner): every card
+// shows its words, its note, the category's own name and its chosen icon.
+describe('PredictionCard shows everything (2026-11-25)', () => {
+  it('shows the words and the note, and says them', () => {
     const noted = { ...prediction, reflection: 'Blood pressure was fine' };
     render(<PredictionCard prediction={noted} onPress={jest.fn()} />);
-    expect(screen.getByTestId('prediction-card-title')).toHaveTextContent(HIDDEN_TITLE);
-    expect(screen.queryByText(/I ship the report/)).toBeNull();
-    expect(screen.queryByTestId('prediction-card-reflection')).toBeNull();
+    expect(screen.getByTestId('prediction-card-title')).toHaveTextContent('I ship the report by Friday');
+    expect(screen.getByTestId('prediction-card-reflection')).toHaveTextContent(/Blood pressure was fine/);
     const label = screen.getByRole('button').props.accessibilityLabel as string;
-    expect(label.startsWith(`${HIDDEN_TITLE} Work, 70% confident`)).toBe(true);
-    expect(label).not.toMatch(/report|Blood/);
+    expect(label.startsWith('I ship the report by Friday. Work, 70% confident')).toBe(true);
+    expect(label).toMatch(/Your note: Blood pressure was fine/);
   });
 
-  it('hides a category the person named, and keeps a built-in one (D62)', () => {
-    useSettingsStore.setState({ hideTitles: true });
+  it('names a category the person named, with the icon they chose', () => {
     useCategoryStore.setState({
       defs: [
         {
           id: 'c-trips',
           user_id: 'u1',
           name: '✈️ Family & travel',
-          icon: null,
-          hidden: false,
-          position: 0,
-          created_at: '2026-11-01T00:00:00.000Z',
-        },
-      ],
-    });
-    try {
-      const view = render(<PredictionCard prediction={{ ...prediction, category: 'c-trips' }} />);
-      expect(view.getByTestId('prediction-card-category')).toHaveTextContent(HIDDEN_CATEGORY);
-      expect(view.queryByText(/Family/)).toBeNull();
-      view.rerender(<PredictionCard prediction={prediction} />);
-      expect(view.getByTestId('prediction-card-category')).toHaveTextContent('Work');
-    } finally {
-      useCategoryStore.setState({ defs: [] });
-    }
-  });
-
-  it('keeps a built-in given only an icon under its word, with its own symbol (owner, 2026-11-14)', () => {
-    useSettingsStore.setState({ hideTitles: true });
-    useCategoryStore.setState({
-      defs: [
-        {
-          id: 'work',
-          user_id: 'u1',
-          name: null,
           icon: { kind: 'emoji', emoji: '🏃' },
           hidden: false,
           position: 0,
@@ -279,19 +247,12 @@ describe('PredictionCard with the words hidden', () => {
       ],
     });
     try {
-      const view = render(<PredictionCard prediction={prediction} />);
-      expect(view.getByTestId('prediction-card-category')).toHaveTextContent('Work');
-      expect(view.queryByTestId('category-icon-emoji', { includeHiddenElements: true })).toBeNull();
-      useSettingsStore.setState({ hideTitles: false });
-      view.rerender(<PredictionCard prediction={{ ...prediction }} />);
+      const view = render(<PredictionCard prediction={{ ...prediction, category: 'c-trips' }} />);
+      expect(view.getByTestId('prediction-card-category')).toHaveTextContent('✈️ Family & travel');
       expect(view.getByTestId('category-icon-emoji', { includeHiddenElements: true })).toBeTruthy();
+      expect(view.queryByText('Your own category')).toBeNull();
     } finally {
       useCategoryStore.setState({ defs: [] });
     }
-  });
-
-  it('shows the words when it is off', () => {
-    render(<PredictionCard prediction={prediction} />);
-    expect(screen.getByTestId('prediction-card-title')).toHaveTextContent('I ship the report by Friday');
   });
 });

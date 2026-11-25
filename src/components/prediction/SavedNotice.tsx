@@ -13,8 +13,9 @@ export const SAVED_NOTICE_ANNOUNCE_MS = 700;
 
 /**
  * "Saved, due tomorrow." over the tab a Log sheet closed back to, when that
- * tab isn't Today (Insights and History from their "+", You after a
- * reminder's Resolve and "Log it again") (Today scrolls to the new card instead, D48). Blind
+ * tab isn't Today (History from its empty state, You after a reminder's
+ * Resolve and "Log it again"; Insights and History from their "+" until
+ * 2026-11-25) (Today scrolls to the new card instead, D48). Blind
  * playtests 2026-11-12c and -12d: a save from Insights or History closed to an
  * unchanged screen, and four testers didn't know whether it had worked.
  * Not pressable and not in the way: it sits above the tab bar and goes by

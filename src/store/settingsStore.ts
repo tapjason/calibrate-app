@@ -94,29 +94,17 @@ export interface StoredSettings {
    * would have left over the pressure (rounds 13–15).
    */
   streakShown: boolean;
-  /**
-   * Whether a due-day reminder shows the prediction's words (roadmap D60 (b)).
-   * Off by default (owner, 2026-11-13: HIG and Guideline 4.5.4 discourage
-   * sensitive content in notifications). Off, it says only the day it was made
-   * and the number, with no Happened / Didn't, so
-   * nothing written shows on a lock screen (four testers over rounds 18–19
-   * asked; one turned reminders off "just in case").
-   */
-  reminderWords: boolean;
-  /**
-   * Whether Today and History show each prediction's words (D61). Off by
-   * default; on, a card shows its category and number until it's opened, for
-   * a phone someone else picks up: a health prediction sat word for word at
-   * the top of Today, and two testers took to writing in code (blind
-   * playtest 2026-11-13c, finding 7).
-   */
-  hideTitles: boolean;
+  // "Show the words in reminders" (`reminderWords`, D60 (b)) and "Hide the
+  // words" (`hideTitles`, D61) were removed on 2026-11-25 (the owner): every
+  // reminder now reads without its words, and every screen shows them. A
+  // record from an earlier build may still hold either; nothing reads it, and
+  // the next write leaves it out, since a write is always the whole snapshot.
   /**
    * Whether the app locks at launch and on a return after the "Lock after"
    * time away (`appLockGraceMinutes`, D75), with Face ID or the passcode asked
-   * when Unlock is tapped (roadmap D64, step 180; D74). Off by default. "Hide
-   * the words" is a curtain: one tap opens a card (the top privacy finding of
-   * blind playtests 2026-11-13e and 2026-11-14). The choice is kept here;
+   * when Unlock is tapped (roadmap D64, step 180; D74). Off by default, for a
+   * phone someone else picks up (the top privacy finding of blind playtests
+   * 2026-11-13e and 2026-11-14). The choice is kept here;
    * whether the app is locked right now is `lockStore`'s, and never stored.
    * Changing it forgets `appLockAwaySince` (`setAppLock`).
    */
@@ -194,15 +182,10 @@ export interface StoredSettings {
    * null. The cooldown's memory, like the two above.
    */
   ratingAskedAt: string | null;
-  /**
-   * The local time of the daily practice reminder (roadmap step 89), or null
-   * for none. Off until the person picks a moment: a daily notification is
-   * something to be asked for, not assumed. Still follows the single
-   * Notifications switch above.
-   */
-  practiceReminder: PracticeReminderTime | null;
-  /** When the practice sheet's reminder offer was last waved off, or null. */
-  practiceReminderOfferDismissedAt: string | null;
+  // The daily practice reminder (`practiceReminder`, step 89) and its offer's
+  // "Not now" (`practiceReminderOfferDismissedAt`) were removed on 2026-11-25
+  // (the owner); `cancelPracticeReminders` takes back any an earlier build
+  // scheduled. Left in an old record, unread, like the two switches above.
   /**
    * The local day a streak checkpoint's moment last played (step 194, D67),
    * as `localDayKey` writes it ("Wed Nov 18 2026"), or null. Like the
@@ -250,7 +233,10 @@ export type CardShape = 'post' | 'story';
  */
 export type NotificationPermission = 'granted' | 'denied' | 'undetermined';
 
-/** A local time of day for the practice reminder. */
+/**
+ * A local time of day: the due-day reminders' and the weekly digest's. Named
+ * for the practice reminder, the first to use it (removed 2026-11-25).
+ */
 export interface PracticeReminderTime {
   hour: number;
   minute: number;
@@ -272,9 +258,9 @@ interface SettingsState extends StoredSettings {
    * threw twice, or what came back wasn't a settings object). Not set for a
    * fresh install, which has no record. Every privacy choice then reads as
    * its private side (security review, 2026-11-18), since the record may have
-   * held it: the app lock on (Face ID or the passcode opens it), "Hide the
-   * words" on, the words off reminders, and usage stats off. Each is the
-   * safe way to be wrong, and each can be changed back in You as usual.
+   * held it: the app lock on (Face ID or the passcode opens it) and usage
+   * stats off. Each is the safe way to be wrong, and each can be changed back
+   * in You as usual.
    */
   loadFailed: boolean;
   /**
@@ -315,8 +301,6 @@ interface SettingsState extends StoredSettings {
   setCoachEnabled: (enabled: boolean) => Promise<void>;
   setAnalyticsEnabled: (enabled: boolean) => Promise<void>;
   setStreakShown: (shown: boolean) => Promise<void>;
-  setReminderWords: (shown: boolean) => Promise<void>;
-  setHideTitles: (hidden: boolean) => Promise<void>;
   /**
    * Store the lock choice. The check that allows it is `lockStore`'s. Either
    * way it forgets the stored time away (D75), in the same write, so a time
@@ -350,10 +334,6 @@ interface SettingsState extends StoredSettings {
   dismissWelcomeBack: (lastActiveAt: string) => Promise<void>;
   /** The rating prompt was requested now: start its cooldown. */
   markRatingAsked: () => Promise<void>;
-  /** Set the practice reminder's time, or null to turn it off. */
-  setPracticeReminder: (time: PracticeReminderTime | null) => Promise<void>;
-  /** "Not now" on the practice reminder offer: a week before it asks again. */
-  dismissPracticeReminderOffer: () => Promise<void>;
   /** The day a checkpoint's moment played, or null to forget it (Erase, account deletion). */
   setStreakMomentDay: (day: string | null) => Promise<void>;
   /**
@@ -406,8 +386,6 @@ const DEFAULTS: HeldSettings = {
   analyticsEnabled: true,
   analyticsChosen: false,
   streakShown: true,
-  reminderWords: false,
-  hideTitles: false,
   appLock: false,
   appLockGraceMinutes: DEFAULT_LOCK_GRACE_MINUTES,
   appLockAwaySince: null,
@@ -420,8 +398,6 @@ const DEFAULTS: HeldSettings = {
   backupNudgeDismissedAt: null,
   welcomeBackDismissedFor: null,
   ratingAskedAt: null,
-  practiceReminder: null,
-  practiceReminderOfferDismissedAt: null,
   streakMomentDay: null,
   usageNoticeShownAt: null,
 };
@@ -478,16 +454,13 @@ type SettingsChange = (current: StoredSettings) => Partial<StoredSettings>;
  *                setNotificationsEnabled, setRemindersEnabled,
  *                setDigestEnabled, setDueReminderTime, setDigestDay,
  *                setDigestTime, setAiRefineEnabled, setCoachEnabled,
- *                setAnalyticsEnabled, setStreakShown, setReminderWords,
- *                setHideTitles: You's switches and pickers (SettingsView,
- *                their only caller).
+ *                setAnalyticsEnabled, setStreakShown: You's switches and
+ *                pickers (SettingsView, their only caller).
  *                setAppLock: You's switch, through lockStore.setEnabled, and
  *                Continue on the lock screen of a phone with no passcode
  *                (lockStore.continueWithoutLock). Both are the person's
  *                choice of this very setting.
  *                setAppLockGraceMinutes: "Lock after" in You (D75).
- *                setPracticeReminder: choosePracticeReminder, from You or
- *                from the practice sheet's offer; the person picks the time.
  *   automatic  everything else. Held in memory only while the record can't
  *              be read, then applied over it once it reads.
  *                markCoverageNudgeShown, markRatingAsked, setStreakMomentDay
@@ -502,8 +475,7 @@ type SettingsChange = (current: StoredSettings) => Partial<StoredSettings>;
  *                is applied over the record once it reads, and a stamp the
  *                record already has is kept);
  *                dismissReminderPrompt, dismissBackupNudge,
- *                dismissWelcomeBack, dismissPracticeReminderOffer ("Not now"
- *                on Today's cards and the practice sheet's);
+ *                dismissWelcomeBack ("Not now" on Today's cards);
  *                setCardThemeId, setCardFormat, setCardHiddenCategories (the
  *                share card's choices, made on Share; the last is also
  *                cleared at Erase and account deletion).
@@ -673,9 +645,6 @@ function fromStored(stored: Partial<StoredSettings>): HeldSettings {
     analyticsChosen: stored.analyticsChosen === true,
     streakShown:
       typeof stored.streakShown === 'boolean' ? stored.streakShown : DEFAULTS.streakShown,
-    reminderWords:
-      typeof stored.reminderWords === 'boolean' ? stored.reminderWords : DEFAULTS.reminderWords,
-    hideTitles: typeof stored.hideTitles === 'boolean' ? stored.hideTitles : DEFAULTS.hideTitles,
     appLock: typeof stored.appLock === 'boolean' ? stored.appLock : DEFAULTS.appLock,
     // Anything that isn't one of the choices reads as the default (D75).
     appLockGraceMinutes: isLockGraceMinutes(stored.appLockGraceMinutes)
@@ -703,9 +672,6 @@ function fromStored(stored: Partial<StoredSettings>): HeldSettings {
         ? stored.welcomeBackDismissedFor
         : DEFAULTS.welcomeBackDismissedFor,
     ratingAskedAt: stored.ratingAskedAt ?? DEFAULTS.ratingAskedAt,
-    practiceReminder: validTime(stored.practiceReminder) ?? DEFAULTS.practiceReminder,
-    practiceReminderOfferDismissedAt:
-      stored.practiceReminderOfferDismissedAt ?? DEFAULTS.practiceReminderOfferDismissedAt,
     streakMomentDay:
       typeof stored.streakMomentDay === 'string' ? stored.streakMomentDay : DEFAULTS.streakMomentDay,
     // Anything that isn't a time reads as never shown: the line is shown
@@ -820,9 +786,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
         //   - "Lock after" Immediately (D75), with no time away remembered:
         //     every trip to the background locks until the record reads or
         //     the person picks another time in You;
-        //   - "Hide the words" on: a card opens with a tap, as always;
-        //   - the words off reminders (already the default): no words and no
-        //     Happened / Didn't on the lock screen;
         //   - usage stats off: nothing is recorded or sent until they're turned
         //     back on. What was queued before stays queued, unsent: nobody
         //     asked for it to be deleted, and track() and flushEvents() both
@@ -841,8 +804,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
           appLock: true,
           appLockGraceMinutes: 0,
           appLockAwaySince: null,
-          hideTitles: true,
-          reminderWords: false,
           analyticsEnabled: false,
         });
         watchForeground();
@@ -917,16 +878,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
 
     setStreakShown: async (shown) => {
       change(() => ({ streakShown: shown }));
-      await save('explicit');
-    },
-
-    setReminderWords: async (shown) => {
-      change(() => ({ reminderWords: shown }));
-      await save('explicit');
-    },
-
-    setHideTitles: async (hidden) => {
-      change(() => ({ hideTitles: hidden }));
       await save('explicit');
     },
 
@@ -1019,18 +970,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     markRatingAsked: async () => {
       const ratingAskedAt = new Date().toISOString();
       change(() => ({ ratingAskedAt }));
-      await save('automatic');
-    },
-
-    setPracticeReminder: async (time) => {
-      const practiceReminder = time === null ? null : validTime(time);
-      change(() => ({ practiceReminder }));
-      await save('explicit');
-    },
-
-    dismissPracticeReminderOffer: async () => {
-      const practiceReminderOfferDismissedAt = new Date().toISOString();
-      change(() => ({ practiceReminderOfferDismissedAt }));
       await save('automatic');
     },
 
@@ -1162,8 +1101,6 @@ function settingsValues(state: StoredSettings): Omit<StoredSettings, 'analyticsC
     coachEnabled: state.coachEnabled,
     analyticsEnabled: state.analyticsEnabled,
     streakShown: state.streakShown,
-    reminderWords: state.reminderWords,
-    hideTitles: state.hideTitles,
     appLock: state.appLock,
     appLockGraceMinutes: state.appLockGraceMinutes,
     appLockAwaySince: state.appLockAwaySince,
@@ -1176,8 +1113,6 @@ function settingsValues(state: StoredSettings): Omit<StoredSettings, 'analyticsC
     backupNudgeDismissedAt: state.backupNudgeDismissedAt,
     welcomeBackDismissedFor: state.welcomeBackDismissedFor,
     ratingAskedAt: state.ratingAskedAt,
-    practiceReminder: state.practiceReminder,
-    practiceReminderOfferDismissedAt: state.practiceReminderOfferDismissedAt,
     streakMomentDay: state.streakMomentDay,
     usageNoticeShownAt: state.usageNoticeShownAt,
   };

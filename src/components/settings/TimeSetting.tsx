@@ -5,7 +5,7 @@ import {
   PracticeTimePicker,
 } from '@/components/practice/PracticeTimePicker';
 import { colors, radius, space, type } from '@/constants/theme';
-import { reminderTimeLabel } from '@/notifications/practiceReminder';
+import { reminderTimeLabel } from '@/notifications/copy';
 import type { PracticeReminderTime } from '@/store/settingsStore';
 
 interface TimeSettingProps {
@@ -19,7 +19,7 @@ interface TimeSettingProps {
  * A time of day in You (roadmap D38): the due-day reminder's and the digest's.
  * The native compact picker on iOS (itself a tappable time) and the browser's
  * time input on web, beside the label; Android opens its system dialog from a
- * button, as the practice reminder's time does.
+ * button.
  */
 export function TimeSetting({ label, value, onChange, testID }: TimeSettingProps) {
   return (

@@ -24,8 +24,8 @@ interface OptionChipProps {
 
 /**
  * One choice in a radio group of a few named options under a label in You:
- * the practice reminder's moments (`MomentChips`, roadmap step 89) and "Lock
- * after" (D75). One chip, so the two look and read the same. The selection is
+ * "Lock after" (D75; the practice reminder's moments used it too, until
+ * 2026-11-25). The selection is
  * the outline and a weight change as well as the ink fill (§0.5, D33), and it
  * is said on web as well as iOS (`chosenProps`). Place it inside a View with
  * `accessibilityRole="radiogroup"` and the group's name.

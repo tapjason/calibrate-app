@@ -36,10 +36,10 @@ describe('practiceCardCopy (roadmap step 88)', () => {
   // The voice pass's words (2026-11-23).
   it('says what is waiting', () => {
     expect(practiceCardCopy({ answered: 0, correct: 0, expected: 0 }, 3)).toEqual({
-      title: 'Today’s practice',
+      title: 'Today’s trivia',
       detail: '3 quick questions. About 30\u00A0seconds',
       action: 'Start',
-      spoken: 'Today’s practice. 3 quick questions. About 30\u00A0seconds.',
+      spoken: 'Today’s trivia. 3 quick questions. About 30\u00A0seconds.',
       done: false,
     });
   });
@@ -54,7 +54,7 @@ describe('practiceCardCopy (roadmap step 88)', () => {
 
   it('says what it came to once done, and when the next ones come', () => {
     expect(practiceCardCopy({ answered: 3, correct: 2, expected: 2.4 }, 3)).toMatchObject({
-      title: 'Practice done',
+      title: 'Trivia done',
       detail: '2 of 3 right. New ones tomorrow',
       action: 'See answers',
       done: true,
@@ -87,7 +87,7 @@ describe('practiceRecordCopy', () => {
     // 20 at 90%, 12 right, over 10 days: one range, too sure.
     const answers = Array.from({ length: 20 }, (_, i) => answer(90, i < 12, 20_000 + (i % 10)));
     expect(practiceRecordCopy(scorePractice(answers))).toEqual({
-      headline: 'In practice, you run overconfident at 80–100%',
+      headline: 'In trivia, you run overconfident at 80–100%',
       detail: '20 answered over 10 days: 90% sure on average, right 60% of the time.',
     });
   });
@@ -107,7 +107,7 @@ describe('practiceRecordCopy', () => {
       const r = scorePractice(answers);
       expect(r.direction).toBe('calibrated'); // the pooled read the headline doesn't use here
       expect(practiceRecordCopy(r)).toEqual({
-        headline: 'In practice, you’re too sure at 80–100% and too cautious at 0–20%',
+        headline: 'In trivia, you’re too sure at 80–100% and too cautious at 0–20%',
         detail: '20 answered over 1 day: 50% sure on average, right 50% of the time.',
       });
     });
@@ -122,8 +122,8 @@ describe('practiceRecordCopy', () => {
       const range = r.buckets.find((b) => b.low === 60)!;
       expect(headline).toBe(
         range.direction === 'calibrated'
-          ? 'In practice, no clear lean yet'
-          : `In practice, you run ${range.direction} at 60–80%`,
+          ? 'In trivia, no clear lean yet'
+          : `In trivia, you run ${range.direction} at 60–80%`,
       );
     });
 
@@ -142,7 +142,7 @@ describe('practiceRecordCopy', () => {
       expect(detail).toBe('29 answered over 1 day: 71% sure on average, right 55% of the time.');
       expect(headline).not.toMatch(/calibrated/);
       // The two ranges with 10 lean by nothing, so no lean is named.
-      expect(headline).toBe('In practice, no clear lean yet');
+      expect(headline).toBe('In trivia, no clear lean yet');
     });
 
     it('reads the pooled lean while no range has 10 answers (case B)', () => {
@@ -157,8 +157,8 @@ describe('practiceRecordCopy', () => {
       // Whatever the engine's lean rule calls the pooled answers.
       expect(practiceRecordCopy(r).headline).toBe(
         r.direction === 'calibrated' || r.direction === null
-          ? 'In practice, no clear lean yet'
-          : `In practice, you run ${r.direction}`,
+          ? 'In trivia, no clear lean yet'
+          : `In trivia, you run ${r.direction}`,
       );
     });
 
@@ -169,12 +169,12 @@ describe('practiceRecordCopy', () => {
         ...Array.from({ length: 10 }, (_, i) => answer(30, i < 3)),
       ];
       expect(practiceRecordCopy(scorePractice(answers)).headline).toBe(
-        'In practice, you’re close to calibrated',
+        'In trivia, you’re close to calibrated',
       );
       // One range only: it is named.
       expect(
         practiceRecordCopy(scorePractice(Array.from({ length: 20 }, (_, i) => answer(70, i < 14)))).headline,
-      ).toBe('In practice, you’re close to calibrated at 60–80%');
+      ).toBe('In trivia, you’re close to calibrated at 60–80%');
     });
 
     it('names a single leaning range beside one inside luck', () => {
@@ -185,7 +185,7 @@ describe('practiceRecordCopy', () => {
         ...Array.from({ length: 10 }, (_, i) => answer(70, i < 7)),
       ];
       expect(practiceRecordCopy(scorePractice(answers)).headline).toBe(
-        'In practice, you run underconfident at 20–40%',
+        'In trivia, you run underconfident at 20–40%',
       );
     });
 
@@ -200,8 +200,8 @@ describe('practiceRecordCopy', () => {
       expect(headline).not.toMatch(/%/);
       expect(headline).toBe(
         r.direction === 'calibrated' || r.direction === null
-          ? 'In practice, no clear lean yet'
-          : `In practice, you run ${r.direction}`,
+          ? 'In trivia, no clear lean yet'
+          : `In trivia, you run ${r.direction}`,
       );
     });
 
@@ -216,7 +216,7 @@ describe('practiceRecordCopy', () => {
       ];
       const r = scorePractice(answers);
       expect(r.direction).toBe('calibrated');
-      expect(practiceRecordCopy(r).headline).toBe('In practice, no clear lean yet');
+      expect(practiceRecordCopy(r).headline).toBe('In trivia, no clear lean yet');
     });
 
     it('says the pooled lean when no range has 10 and the engine names one', () => {
@@ -225,12 +225,12 @@ describe('practiceRecordCopy', () => {
         practiceRecordCopy(
           record({ answered: 20, days: 5, direction: 'overconfident', mean_confidence: 85, accuracy: 0.5 }),
         ).headline,
-      ).toBe('In practice, you run overconfident');
+      ).toBe('In trivia, you run overconfident');
       expect(
         practiceRecordCopy(
           record({ answered: 20, days: 5, direction: 'underconfident', mean_confidence: 55, accuracy: 0.85 }),
         ).headline,
-      ).toBe('In practice, you run underconfident');
+      ).toBe('In trivia, you run underconfident');
     });
   });
 
@@ -248,15 +248,15 @@ describe('practiceCardCopy before the first answer (D62)', () => {
   // voice pass (2026-11-23).
   it('says "While you wait" while the first prediction waits', () => {
     expect(practiceCardCopy({ answered: 0, correct: 0, expected: 0 }, 3, true)).toEqual({
-      title: 'While you wait: today’s practice',
+      title: 'While you wait: today’s trivia',
       detail: '3 quick questions. About 30\u00A0seconds',
       action: 'Start',
-      spoken: 'While you wait: today’s practice. 3 quick questions. About 30\u00A0seconds.',
+      spoken: 'While you wait: today’s trivia. 3 quick questions. About 30\u00A0seconds.',
       done: false,
     });
     // Started: the usual words.
     expect(practiceCardCopy({ answered: 1, correct: 1, expected: 0.8 }, 3, true).title).toBe(
-      'Today’s practice',
+      'Today’s trivia',
     );
   });
 });
@@ -265,7 +265,7 @@ describe('PRACTICE_APART', () => {
   // The voice pass's words (2026-11-23): practice touches nothing real.
   it('keeps practice in its place', () => {
     expect(PRACTICE_APART).toBe(
-      'Practice is just practice. It doesn’t touch your rating, badges or streak.',
+      'Trivia is just for fun. It doesn’t touch your rating, badges or streak.',
     );
   });
 });
