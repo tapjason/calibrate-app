@@ -11,7 +11,9 @@ due today reads "due today by 11:59 PM" (24-hour phones "by 23:59"); the reminde
 forbids the medal words too. `check.sh` exit 0: 254 suites, 5,531 tests. Built by a general-purpose agent
 on Opus at xhigh. Web captures in `.tooling/web/2026-11-25-badges/`. Not on any device: HUMAN_VERIFICATION
 "Medals and 11:59 (D80)".
-- **His:** redeploy the coach Edge Function (the server half of the medal-word rule); at submission, the
+- **Coach redeployed by the owner, 2026-11-25:** version 18, from 1d8cde0 on this branch (the server half
+  of the medal-word rule; the only server change from `master`); a request with no token gets 401.
+- **His:** at submission, the
   slogan for the subtitle/promotional text (APP_STORE_LISTING.md), a new line for promotional text line 2
   ("Sharp in health, shaky with money?"), and a retaken share-card screenshot.
 - **Release plan, confirmed by the owner 2026-11-25:** 1.1.0 = everything on this branch stack and the Plus
