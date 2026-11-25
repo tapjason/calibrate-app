@@ -4,8 +4,9 @@ import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { localCount } from '@/components/ui/count';
 import { holdTarget } from '@/components/ui/holdRanges';
 import { LensEmblem } from '@/components/ui/LensEmblem';
-import { BADGE_META } from '@/constants/badges';
-import { colors, type } from '@/constants/theme';
+import { useAppearance } from '@/components/ui/useAppearance';
+import { BADGE_META, CHIP_EMBLEM_INVERTED } from '@/constants/badges';
+import { colors, paletteOnInk, type } from '@/constants/theme';
 import type { CategoryCounts, CategoryStat, NextBadgeTarget } from '@/types';
 import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
@@ -13,11 +14,11 @@ import { plainCountsLine } from './beforeScoreCopy';
 
 interface CategoryBadgeProps {
   stat: CategoryStat;
-  /** The next badge up the ladder, or null when already at the top (oracle). */
+  /** The next badge up the ladder, or null when already at the top (Platinum, id oracle). */
   next: NextBadgeTarget | null;
   /**
    * The category score's give-or-take (roadmap D35): said beside the score,
-   * and taken off it before a tier above Tracker counts.
+   * and taken off it before a tier above Bronze counts.
    */
   giveOrTake?: number;
   /** The list's widest pill, so every row's pill is that wide (finding 18). */
@@ -44,6 +45,9 @@ export function CategoryBadge({
 }: CategoryBadgeProps) {
   const meta = BADGE_META[stat.badge_level];
   const hint = progressHint(stat, next, giveOrTake);
+  // On Platinum's ink chip the emblem takes the other appearance's tones (D80).
+  const appearance = useAppearance();
+  const chipPalette = CHIP_EMBLEM_INVERTED.has(stat.badge_level) ? paletteOnInk(appearance) : undefined;
 
   // One sentence for a screen reader (roadmap step 43) instead of the name,
   // the hint with its arrow read aloud, and the badge word as three stops.
@@ -99,7 +103,8 @@ export function CategoryBadge({
         onLayout={onPillWidth ? (e) => onPillWidth(e.nativeEvent.layout.width) : undefined}
         testID={`badge-${stat.category}`}
       >
-        <LensEmblem tier={stat.badge_level} size={22} />
+        {/* On Platinum's ink chip, in tones that read on it (D80). */}
+        <LensEmblem tier={stat.badge_level} size={22} palette={chipPalette} />
         <Text style={[styles.chipLabel, { color: meta.color }]}>{meta.label}</Text>
       </View>
     </View>
@@ -119,7 +124,7 @@ export function scoreReceipt(score: number, resolved: number, giveOrTake = 0): s
 }
 
 /**
- * The hint as it should sound: "3 more scored answers to reach Tracker". The hint
+ * The hint as it should sound: "3 more scored answers to reach Bronze". The hint
  * is written that way now (roadmap D33 dropped the "→"), so this is the
  * written hint itself; kept so screen-reader labels have one source.
  */
@@ -130,7 +135,7 @@ export function spokenHint(hint: string): string {
 /**
  * Build the progress line. When there's a next badge, name every requirement
  * still unmet: more resolutions, a higher score, or both. Naming only the
- * count when the score is short too ("20 more scored answers to reach Sharp" for a work
+ * count when the score is short too ("20 more scored answers to reach Gold" for a work
  * score of 80) promised a badge that resolving alone can't earn (roadmap
  * step 47). At the top of the ladder, celebrate instead.
  */

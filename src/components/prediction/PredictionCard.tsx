@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { relativeDay } from '@/components/ui/dates';
+import { dueDay, relativeDay } from '@/components/ui/dates';
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { spokenExcerpt } from '@/components/ui/textLanguage';
 import { colors, radius, space, tabularNums, type } from '@/constants/theme';
@@ -80,9 +80,12 @@ export function PredictionCard({
   // A resolved row dates itself by when it was answered, not when it was due:
   // "due in 3 days", "answered yesterday", "due Nov 21 (Friday)" (the owner,
   // 2026-11-24), held together with no-break spaces so a narrow row never
-  // strands a word on a line of its own.
+  // strands a word on a line of its own. An open one due today says until
+  // when: "due today by 11:59 PM" (D80).
   const answered = prediction.status !== 'pending' && prediction.resolved_at;
-  const day = relativeDay(new Date(answered || prediction.due_date), now);
+  const day = answered
+    ? relativeDay(new Date(answered), now)
+    : dueDay(new Date(prediction.due_date), now);
   const when = `${answered ? 'answered' : 'due'} ${day.text}`;
   const whenSpoken = `${answered ? 'answered' : 'due'} ${day.spoken}`;
   // Outcome glyphs in neutral ink, filled vs hollow — never green/red

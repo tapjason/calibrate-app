@@ -1,6 +1,8 @@
 import { render } from '@testing-library/react-native';
 
 import { CategoryBadge, spokenHint } from '@/components/stats/CategoryBadge';
+import { LensEmblem } from '@/components/ui/LensEmblem';
+import { palettes } from '@/constants/theme';
 import type { CategoryStat, NextBadgeTarget } from '@/types';
 
 function stat(overrides: Partial<CategoryStat> = {}): CategoryStat {
@@ -21,7 +23,18 @@ describe('CategoryBadge', () => {
     const view = render(
       <CategoryBadge stat={stat({ badge_level: 'forecaster' })} next={null} />,
     );
-    expect(view.getByText('Forecaster')).toBeTruthy();
+    expect(view.getByText('Silver')).toBeTruthy();
+  });
+
+  // Roadmap D80: Platinum's chip is ink, and its emblem's face is ink too, so
+  // on that chip the emblem takes the other appearance's tones. Light here.
+  it("draws Platinum's emblem in tones that show on its ink chip", () => {
+    const view = render(<CategoryBadge stat={stat({ badge_level: 'oracle' })} next={null} />);
+    expect(view.getByText('Platinum')).toBeTruthy();
+    expect(view.UNSAFE_getByType(LensEmblem).props.palette).toBe(palettes.dark);
+    view.rerender(<CategoryBadge stat={stat({ badge_level: 'sharp' })} next={null} />);
+    expect(view.getByText('Gold')).toBeTruthy();
+    expect(view.UNSAFE_getByType(LensEmblem).props.palette).toBeUndefined();
   });
 
   // Roadmap D53 (blind playtest 2026-11-09b, finding 2).
@@ -51,7 +64,7 @@ describe('CategoryBadge', () => {
     const view = render(
       <CategoryBadge stat={stat({ predictions_resolved: 8 })} next={next} />,
     );
-    expect(view.getByText('12 more scored answers to reach Tracker')).toBeTruthy();
+    expect(view.getByText('12 more scored answers to reach Bronze')).toBeTruthy();
   });
 
   // Web check, blind playtest 2026-11-10: "1 more scored answers".
@@ -60,7 +73,7 @@ describe('CategoryBadge', () => {
     const view = render(
       <CategoryBadge stat={stat({ predictions_resolved: 19 })} next={next} />,
     );
-    expect(view.getByText('1 more scored answer to reach Tracker')).toBeTruthy();
+    expect(view.getByText('1 more scored answer to reach Bronze')).toBeTruthy();
   });
 
   it('shows the score target when the next badge gates on score', () => {
@@ -75,11 +88,11 @@ describe('CategoryBadge', () => {
         next={next}
       />,
     );
-    expect(view.getByText('Score above 70 at its low end to reach Forecaster')).toBeTruthy();
+    expect(view.getByText('Score above 70 at its low end to reach Silver')).toBeTruthy();
   });
 
-  // Roadmap step 47: a Forecaster at 30 answered with a score of 80 needs
-  // both for Sharp; the count alone promised a badge resolving can't earn.
+  // Roadmap step 47: a Silver at 30 answered with a score of 80 needs
+  // both for Gold; the count alone promised a badge resolving can't earn.
   it('names the score as well when both requirements are short', () => {
     const next: NextBadgeTarget = { badge: 'sharp', needResolved: 50, needScore: 85 };
     const view = render(
@@ -93,9 +106,9 @@ describe('CategoryBadge', () => {
         next={next}
       />,
     );
-    expect(view.getByText('20 more scored answers and a score above 85 at its low end to reach Sharp')).toBeTruthy();
+    expect(view.getByText('20 more scored answers and a score above 85 at its low end to reach Gold')).toBeTruthy();
     expect(view.getByTestId('category-health').props.accessibilityLabel).toBe(
-      'Health: Forecaster, score 80 from 30 scored. 20 more scored answers and a score above 85 at its low end to reach Sharp.',
+      'Health: Silver, score 80 from 30 scored. 20 more scored answers and a score above 85 at its low end to reach Gold.',
     );
   });
 
@@ -129,7 +142,7 @@ describe('CategoryBadge', () => {
         next={next}
       />,
     );
-    expect(view.getByText('20 more scored answers to reach Sharp')).toBeTruthy();
+    expect(view.getByText('20 more scored answers to reach Gold')).toBeTruthy();
   });
 
   it('celebrates when there is no next badge (top of the ladder)', () => {
@@ -149,13 +162,13 @@ describe('CategoryBadge — screen readers', () => {
     const next: NextBadgeTarget = { badge: 'tracker', needResolved: 20, needScore: null };
     const view = render(<CategoryBadge stat={stat({ predictions_resolved: 17 })} next={next} />);
     expect(view.getByTestId('category-health').props.accessibilityLabel).toBe(
-      'Health: Getting started. 3 more scored answers to reach Tracker.',
+      'Health: Getting started. 3 more scored answers to reach Bronze.',
     );
   });
 
   // Roadmap D33: the hint is written in words, so it is spoken as written.
   it('speaks the hint as written', () => {
-    expect(spokenHint('Score above 70 at its low end to reach Forecaster')).toBe('Score above 70 at its low end to reach Forecaster');
+    expect(spokenHint('Score above 70 at its low end to reach Silver')).toBe('Score above 70 at its low end to reach Silver');
     expect(spokenHint('120 scored, top badge reached')).toBe('120 scored, top badge reached');
   });
 });
@@ -193,7 +206,7 @@ describe('CategoryBadge with a give-or-take', () => {
       />,
     );
     expect(view.getByTestId('category-health-hint')).toHaveTextContent(
-      /^Score above 85 at its low end to.reach.Sharp$/,
+      /^Score above 85 at its low end to.reach.Gold$/,
     );
   });
 });

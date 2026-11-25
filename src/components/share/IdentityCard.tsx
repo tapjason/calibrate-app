@@ -77,10 +77,10 @@ function marksFor(background: string): Record<Direction, string> {
  * The category identity card — the app's core shareable artifact.
  *
  * Hierarchy (DESIGN_SYSTEM §7.5), built to read as a thumbnail in a chat
- * thread: the identity line large ("Sharp in health"), the contrast line
- * beneath it ("Guesser in finance"), one receipt, a five-range strip from 0%
+ * thread: the identity line large ("Gold in health"), the contrast line
+ * beneath it ("Bronze in finance"), one receipt, a five-range strip from 0%
  * to 100% whose marks say each range's lean by shape and colour (D47),
- * then the badges and a footer hook phrased as a question.
+ * then the badges and a footer hook, "Learn when to trust your gut" (D80).
  *
  * Plain Views (and the SVG emblems) so react-native-view-shot rasterises
  * exactly what is on screen. The footer is the growth hook and is never
@@ -299,12 +299,13 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
         >
           {APP_NAME}
         </Text>
-        {/* The growth hook, as a question: never the faintest line on the card. */}
+        {/* The growth hook: never the faintest line on the card. A question,
+            "What are you sharp at?", until D80 (the owner's line since). */}
         <Text
           maxFontSizeMultiplier={CARD_MAX_SCALE}
           style={[styles.footerHook, { color: theme.accent }]}
         >
-          What are you sharp at?
+          Learn when to trust your gut
         </Text>
       </View>
     </View>

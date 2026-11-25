@@ -19,17 +19,17 @@ export interface BadgeProgress {
   category: Category;
   /** The tier being worked toward, drawn as a blueprint emblem. */
   badge: BadgeLevel;
-  /** Display label of the badge being worked toward, e.g. "Tracker". */
+  /** Display label of the badge being worked toward, e.g. "Bronze". */
   badgeLabel: string;
   /**
-   * The recap card's words: "To reach Tracker or higher in health: 3 more
+   * The recap card's words: "To reach Bronze or higher in health: 3 more
    * scored answers". Led by "To reach", since on a shared card a line led by
    * the tier read as a claim to it (record audit 2026-11-12).
    */
   text: string;
   /**
    * Today's words (D76, the voice pass, 2026-11-23), a full sentence or two:
-   * "3 more scored answers to your first badge in health.", "Forecaster in
+   * "3 more scored answers to your first badge in health.", "Silver in
    * work needs a score that clears 70 with room to spare. You’re at 64." The
    * low-end rule and the give-or-take are behind the line's tap, at Badges.
    */
@@ -63,7 +63,7 @@ export function nextBadgeProgress(
   stats: readonly CategoryStat[],
   nextBadges: NextBadges,
   /**
-   * Each category score's give-or-take (roadmap D35): a tier above Tracker
+   * Each category score's give-or-take (roadmap D35): a tier above Bronze
    * needs the score minus it over the bar, so that is what "short" means.
    */
   giveOrTake: Partial<Record<Category, number>> = {},
@@ -101,24 +101,24 @@ export function nextBadgeProgress(
       category: stat.category,
       badge: next.badge,
       badgeLabel,
-      // Today (D76). The first badge is named as the first, not as "Tracker
-      // or higher": at 20 a category can go straight to Forecaster.
+      // Today (D76). The first badge is named as the first, not as "Bronze
+      // or higher": at 20 a category can go straight to Silver.
       line: scoreShort
         ? `${badgeLabel} in ${label} needs ${answers} and a score that clears ${next.needScore} with room to spare.`
         : next.badge === 'tracker'
           ? `${answers} to your first badge in ${label}.`
           : `${answers} to ${badgeLabel} in ${label}.`,
       text: scoreShort
-        ? // "To reach": on a shared card "Sharp in work: …" read as a claim
-          // to be Sharp in work (blind playtest 2026-11-05, run 5).
+        ? // "To reach": on a shared card "Gold in work: …" (then "Sharp in
+          // work: …") read as a claim to it (blind playtest 2026-11-05, run 5).
           `To reach ${badgeLabel} in ${label}: ${answers} and a score above ${next.needScore} at its low end`
         : // "of what" (blind playtest 2026-11-12e, run 3: with two guesses
           // logged, "20 to go" read as if they hadn't been counted), and "To
           // reach" as the score-short line has it: on a shared card a line
           // led by the tier reads as a claim to it (record audit 2026-11-12).
           // "or higher" for the first badge: at 20 a category whose score
-          // already clears 70 at its low end goes straight to Forecaster, and
-          // "Tracker, 1 more" then read as a broken promise (blind playtest
+          // already clears 70 at its low end goes straight to Silver, and
+          // "Bronze, 1 more" then read as a broken promise (blind playtest
           // 2026-11-13, run 8; Insights says it since step 172).
           `To reach ${badgeLabel}${next.badge === 'tracker' ? ' or higher' : ''} in ${label}: ${answers}`,
       progress: stat.predictions_resolved / (next.needResolved as number),

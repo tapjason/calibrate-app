@@ -246,7 +246,13 @@ count in `overall` and the weekday pattern, which name no category.
     inside a sentence, with no "badge", "tier", "level" or the like after it). Even the
     plain phrase passes only where the first tier is true: every category the insight is
     about has fewer than `MIN_N_CATEGORY` answers, or, with none named, the whole record
-    fewer than `MIN_N_OVERALL`.
+    fewer than `MIN_N_OVERALL`. The medals (D80, 2026-11-25: the tiers read Bronze,
+    Silver, Gold, Platinum in the app) are dropped beside the old names, read as "sharp"
+    is: a tier ("Gold in health", "health is gold", "a silver badge", "platinum level")
+    unless "standard", "lining", "bullet", "mine" or "rush" follows ("the gold standard",
+    "a silver lining"), and always when capitalised inside a sentence. Both validators,
+    in lockstep (`coachLockstep.test.ts`); the Edge Function's half needs the owner's
+    redeploy, and the app's validator covers it until then.
   - **No numbers written as words** ("two", "half", "twice", "dozens"…), which can't be
     checked against a figure; "one" is let through, being mostly a pronoun, and so are
     idioms that claim no number ("the older half", "think twice", "double-check", "zero in
@@ -435,8 +441,8 @@ rounded or spelled out), and the JSON shape spelled out. The lines added on 2026
 (rounds 5, 6 and 7 of the security review), so the model writes what the validators (§5.1)
 let through:
 
-- the badge words by name: "never use the words Getting started, Tracker, Forecaster,
-  Sharp or Oracle";
+- the badge words by name: "never use the words Getting started, Bronze, Silver, Gold,
+  Platinum, Tracker, Forecaster, Sharp or Oracle" (the medals added by D80);
 - `drift_half_answers_<category>` in the glossary ("for the threshold only, never cite
   it"), and a drift's own threshold: at least `DRIFT_HALF_MIN_N` in it;
 - a weekday card cites `weakest_day_score`, never the day's index or its answer count,

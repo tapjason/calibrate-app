@@ -23,8 +23,9 @@ The two primary goals:
 1. **Goal tracking** — Did you do what you said you'd do?
 2. **Self-knowledge** — Did your confidence level reflect reality?
 
-The product framing is **identity, not statistics**: "Sharp in health, Tracker in money"
-is a personality-test result with receipts. The math is the engine, never the pitch.
+The product framing is **identity, not statistics**: "Gold in health, Bronze in money"
+is a personality-test result with receipts. The badges are medals since D80 (2026-11-25), and
+each says how far you can trust your gut in that category. The math is the engine, never the pitch.
 
 ---
 
@@ -173,7 +174,7 @@ size, the two agree.
 
 **Why absolute and not squared error.** Squared error compresses the usable range into
 roughly 84–100 for anyone who isn't at an extreme — a user stating 90% who is right 50%
-of the time would score 84, one point below "Sharp." Absolute error makes the score drop
+of the time would score 84, one point below Gold's 85. Absolute error makes the score drop
 about one point per average percentage point of miscalibration, which is both
 discriminating and directly interpretable to the user.
 
@@ -377,7 +378,9 @@ aren't filed under a preset. A starter idea or "Log it again" fills it.
 "Save, due in 3 days" (up to 7 days out), "Save, due Nov 21 (Friday)" (further; the year
 only when it isn't this one), so the date is in view when the chips aren't. Every on-screen
 due date uses the same words (`relativeDay`, the owner, 2026-11-24): cards ("due in 3 days",
-"answered yesterday"), Log, Edit, details and Resolve. "Pick a date" opens the full calendar
+"answered yesterday"), Log, Edit, details and Resolve. An open prediction due today reads
+"due today by 11:59 PM" (`dueDay`, D80; "by 23:59" on a 24-hour phone): the due day runs
+until midnight. The reminder stays at 7 PM. "Pick a date" opens the full calendar
 at once (inline on iOS).
 
 **"Log it again"** (step 22; on History's details too, D56) is offered after an answer on Resolve and on an answered
@@ -583,7 +586,7 @@ See the authoritative section above.
   furthest off, past `MIN_N_CATEGORY` ("Furthest off: finance. You said about 85%, and 9
   of 21 happened."; a tap on the row unfolds what would have matched, "About 45% would
   have matched.", and how it fits that category's badge, D59: "That gap is already in its
-  score, 80, which still clears Forecaster's 70 at its low end.", D76); the chart's title
+  score, 80, which still clears Silver's 70 at its low end.", D76); the chart's title
   naming both sides when there are both ("You're too sure at 80–100% and too cautious at
   60–80%"); and "since last week" under the rating once it's unlocked at both ends ("About
   the same as last week." within its give-or-take, "Up 4 since last week." beyond it; in
@@ -609,15 +612,15 @@ See the authoritative section above.
   off or nearer, D63, on Insights always): scored answers over the last 28
   days (or since the first prediction, a week at least), no estimate with fewer than 3
 - **The identity line** (D27): on Today and the share card, a tier is named only for a
-  category past the count gate (20 resolved, so Tracker or above). The first tier means
+  category past the count gate (20 resolved, so Bronze or above). The first tier means
   "fewer than 20 scored here", which would read as a verdict; it stays on Insights' badge
   rows, where the count to go sits beside it, named **"Getting started"** there (D36; the
   stored id stays `guesser`). Until a category has a badge, Insights says the first comes
   at 20 ("Each category earns its first badge at 20 scored answers.", D76), or, once the
   total would have earned one, that the answers are spread over N categories (D59), and
   Today names the closest badge ("13 more scored answers to your first badge in finance.":
-  the first, not "Tracker", since at 20 a category can go straight to Forecaster; short on
-  score, "Forecaster in work needs a score that clears 70 with room to spare. You’re at
+  the first, not "Bronze", since at 20 a category can go straight to Silver; short on
+  score, "Silver in work needs a score that clears 70 with room to spare. You’re at
   64.", D76, the score rounded as Insights' badge row rounds it, so 64.8 reads 65 in both; the recap card keeps "To reach …", since on a shared card a line led by the
   tier reads as a claim). Tapping the streak row on Today opens How scoring works at Your streak.
   Tapping the identity line on Today explains the tiers (How scoring works, at Badges)
@@ -663,9 +666,10 @@ See the authoritative section above.
 - Coach insight cards (Plus — see `COACH_AGENT.md`)
 
 ### 6. Share & Wrapped Module (free — this is the growth engine)
-- **Category identity card** — "Sharp in health · Tracker in money," screenshot-native,
-  one-tap share, with a subtle "get your own" hook. Its lines follow D27 (above): only
-  categories past the count gate are named, every one at the top tier ("Forecaster in
+- **Category identity card** — "Gold in health · Bronze in money," screenshot-native,
+  one-tap share, with a subtle "get your own" hook: "Learn when to trust your gut" (D80;
+  "What are you sharp at?" until then), on the Wrapped card too. Its lines follow D27 (above): only
+  categories past the count gate are named, every one at the top tier ("Silver in
   health and money", D54); with none yet, it reads "Calibrating" and the count to go,
   or, once the rating is unlocked, leads with it ("Calibration 89/100").
 - **Calibration Wrapped** — weekly and yearly recap of the user's forecasting story.
@@ -686,7 +690,7 @@ See the authoritative section above.
   Warm-up card one tap away ("Show my warm-up card", without its "Real predictions next."
   once there's a category card, D62). Share has no "Got a friend's card?" (D79).
 - **The recaps lead with the person's own badge news** (D62): a badge gained or lost
-  over the span ("New this week: Forecaster in health." / "Back to Tracker in health
+  over the span ("New this week: Silver in health." / "Back to Bronze in health
   this week. A badge follows the record both ways.", `badgeChangesSince`) takes the
   next badge's place, never "Back to Getting started" (D27); the year card carries the
   rating ("All time: calibration 87/100, give or take 3, from 148 scored answers.").
@@ -942,10 +946,19 @@ coverage nudge instead (Range coverage caveat).
 | Level | Name | Criteria |
 |---|---|---|
 | 1 | Getting started (id `guesser`; "Guesser" until D36) | Default starting badge: fewer than 20 resolved in the category |
-| 2 | Tracker | 20 predictions resolved |
-| 3 | Forecaster | Calibration score above 70 **at its low end** **and ≥ 20 resolved** |
-| 4 | Sharp | Calibration score above 85 **at its low end** **and ≥ 50 resolved** |
-| 5 | Oracle | Calibration score above 90 **at its low end** **and ≥ 100 resolved** |
+| 2 | Bronze (id `tracker`; "Tracker" until D80) | 20 predictions resolved |
+| 3 | Silver (id `forecaster`; "Forecaster" until D80) | Calibration score above 70 **at its low end** **and ≥ 20 resolved** |
+| 4 | Gold (id `sharp`; "Sharp" until D80) | Calibration score above 85 **at its low end** **and ≥ 50 resolved** |
+| 5 | Platinum (id `oracle`; "Oracle" until D80) | Calibration score above 90 **at its low end** **and ≥ 100 resolved** |
+
+**Medals** (decided 2026-11-25 by the owner, D80): the old names had to be learned, and he
+wanted "sharp" out of the app, so the tiers read as medals. Display names only: ids, bars, sync and the
+Coach context don't change. Where badges are introduced (the top of Insights' badge
+section, the opening of How scoring works → Badges) one line says what they are: "Badges
+go Bronze, Silver, Gold, Platinum. Each one says how far you can trust your gut in that
+category." The word "sharp" appears nowhere in the app. Chips stay grey for Getting
+started, Bronze and Silver, gold for Gold, and ink for Platinum, the strongest; no bronze,
+orange, blue or green (DESIGN_SYSTEM §7.4).
 
 The resolution minimums are required, not decorative — a badge earned on three lucky
 predictions actively misleads the user about themselves, which is the opposite of the
@@ -959,18 +972,18 @@ calls or repeated titles.
 
 **A badge that falls is said** (D60): badges follow the record both ways, and the answer
 that takes one back says so under the range's box, the same after Yes and No ("Back to
-Tracker in health: after this answer its score's low end is no longer above Forecaster's
+Bronze in health: after this answer its score's low end is no longer above Silver's
 70. A badge follows the record both ways."), never after "Change answer" (D50's reason).
-No hysteresis. A badge earned says "New badge: Forecaster in health", with "Badges follow
+No hysteresis. A badge earned says "New badge: Silver in health", with "Badges follow
 how well your numbers match what happens, not how often you're right." after Yes and No
 alike (D62). One card shows per answer; when the rating unlocks on the same answer, its
-card names the badge too ("New badge, too: Forecaster in health.").
+card names the badge too ("New badge, too: Silver in health.").
 
 **How hard the bars are** (D62): a perfectly calibrated forecaster on a typical 55–95% mix
-earns Forecaster in a category about 9 times in 10 at 20 answers, Sharp about 6 in 10 at
-50, Oracle about 5 in 10 at 100. Left as decided, for the owner to revisit.
+earns Silver in a category about 9 times in 10 at 20 answers, Gold about 6 in 10 at
+50, Platinum about 5 in 10 at 100. Left as decided, for the owner to revisit.
 
-Badges are per-category. A user can be Sharp in health and Tracker in finance
+Badges are per-category. A user can be Gold in health and Bronze in finance
 simultaneously — this specificity is the key insight and the core shareable artifact.
 Today and the share card name only tiers past the count gate (D27, above).
 
@@ -1040,7 +1053,7 @@ and the sign-in nudge follows them (D68).
   particular confidence (D23).
 - **Resolution is the data hook; identity is the retention hook.** Users return to watch
   their badges climb and get their weekly reveal.
-- **Per-category insight is the core value.** "Sharp in health, Tracker in finance" is
+- **Per-category insight is the core value.** "Gold in health, Bronze in finance" is
   the aha moment and the thing that travels socially.
 - **The free tier is the marketing budget.** Never paywall a shareable artifact.
 

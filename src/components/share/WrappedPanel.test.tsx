@@ -304,10 +304,10 @@ describe('WrappedPanel', () => {
     expect(screen.getByTestId("wrapped-category-work")).toBeTruthy();
     expect(screen.queryByTestId("wrapped-category-finance")).toBeNull();
     expect(screen.getByTestId("wrapped-hidden")).toHaveTextContent("1 category not shown (still counted)");
-    expect(screen.getByTestId("wrapped-next-badge")).toHaveTextContent(/^To reach Tracker or higher in work/);
+    expect(screen.getByTestId("wrapped-next-badge")).toHaveTextContent(/^To reach Bronze or higher in work/);
     // A screen reader hears the same card (playtest 2026-11-04b, run 2).
     const spoken = () => screen.getByTestId("wrapped-card").props.accessibilityLabel as string;
-    expect(spoken()).toMatch(/Tracker or higher in work/);
+    expect(spoken()).toMatch(/Bronze or higher in work/);
     expect(spoken()).toContain("By category: Work, 2 scored.");
     expect(spoken()).toContain("1 category not shown (still counted).");
     expect(spoken()).not.toMatch(/Finance/);
@@ -435,10 +435,10 @@ describe('WrappedPanel', () => {
     render(<WrappedPanel span="week" />);
 
     expect(screen.getByTestId('wrapped-next-badge')).toBeTruthy();
-    expect(screen.getByText('To reach Tracker or higher in health: 3 more scored answers')).toBeTruthy();
+    expect(screen.getByText('To reach Bronze or higher in health: 3 more scored answers')).toBeTruthy();
     // The spoken label keeps the final "s" (blind playtest 2026-11-12f, run 8).
     expect(screen.getByTestId('wrapped-card').props.accessibilityLabel).toContain(
-      'To reach Tracker or higher in health: 3 more scored answers.',
+      'To reach Bronze or higher in health: 3 more scored answers.',
     );
     expect(screen.getByTestId('lens-tracker-progress', { includeHiddenElements: true })).toBeTruthy();
   });

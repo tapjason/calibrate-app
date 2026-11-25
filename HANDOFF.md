@@ -1,5 +1,24 @@
 # Handoff
 
+**Now, 2026-11-25: `builder/badges`, branched from `builder/removals` (ad0c41b), committed, not merged or pushed.**
+The owner's calls of 2026-11-25 (D80), for 1.1.0: badge names are medals (Tracker → Bronze, Forecaster →
+Silver, Sharp → Gold, Oracle → Platinum; "Getting started" and every stored id unchanged, nothing about
+earning changes); the word "sharp" is gone from the app's text; one explainer line ("Badges go Bronze,
+Silver, Gold, Platinum. Each one says how far you can trust your gut in that category.") on Insights and in
+How scoring works; card footers read "Learn when to trust your gut" (his slogan); Gold takes the gold chip,
+Platinum the ink chip; Platinum's emblem face, blank on iOS and web before, now draws. An open prediction
+due today reads "due today by 11:59 PM" (24-hour phones "by 23:59"); the reminder stays 7 PM. The Coach
+forbids the medal words too. `check.sh` exit 0: 254 suites, 5,531 tests. Built by a general-purpose agent
+on Opus at xhigh. Web captures in `.tooling/web/2026-11-25-badges/`. Not on any device: HUMAN_VERIFICATION
+"Medals and 11:59 (D80)".
+- **His:** redeploy the coach Edge Function (the server half of the medal-word rule); at submission, the
+  slogan for the subtitle/promotional text (APP_STORE_LISTING.md), a new line for promotional text line 2
+  ("Sharp in health, shaky with money?"), and a retaken share-card screenshot.
+- **Release plan, confirmed by the owner 2026-11-25:** 1.1.0 = everything on this branch stack and the Plus
+  subscriptions; the You page redesign waits for 1.2.0, reviewed by him before any of it is committed.
+
+---
+
 **Now, 2026-11-25: `builder/removals`, branched from `builder/phase1-fixes` (d3444da), committed, not merged or pushed.**
 The owner's Phase 4 removals (D79): "Hide the words" gone; "Show the words in reminders" gone, so every
 reminder reads "Your prediction from Nov 6 · You said 70%" with no Happened / Didn't (older builds'

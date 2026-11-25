@@ -2,7 +2,7 @@
 // line that goes on it. Pure and testable, same shape as stats/ratingHeadline.ts
 // and warmup/verdictCopy.ts.
 //
-// The headline is the product's whole social pitch — "Sharp in health · Guesser
+// The headline is the product's whole social pitch — "Gold in health · Bronze
 // in money" is a personality-test result with receipts. So the card leads with
 // the CONTRAST between the user's best and worst category, not with an average.
 // An average says nothing anyone wants to post.
@@ -118,7 +118,7 @@ export function shareLines(card: ShareCard): { identity: string; contrast: strin
   const label = (c: ShareCard['categories'][number]) =>
     `${BADGE_META[c.badge_level].label} in ${categoryLabel(c.category)}`;
   // Every category at the top tier, not one picked by an unstated rule
-  // (finding 10): "Forecaster in health and money".
+  // (finding 10): "Silver in health and money".
   const top = gated.filter((c) => c.badge_level === best.badge_level).map((c) => categoryLabel(c.category));
   const identity = `${BADGE_META[best.badge_level].label} in ${joinNames(top)}`;
   const worst = gated[gated.length - 1];
@@ -139,7 +139,7 @@ function joinNames(names: readonly string[]): string {
   return `${names[0]} and ${names.length - 1} more`;
 }
 
-/** The headline on one line, for the text share: "Sharp in health · Tracker in finance". */
+/** The headline on one line, for the text share: "Gold in health · Bronze in finance". */
 export function shareHeadline(card: ShareCard): string {
   const { identity, contrast } = shareLines(card);
   return contrast ? `${identity} · ${contrast}` : identity;
@@ -254,7 +254,7 @@ export const SQUARES_KEY =
  * a handful of predictions is exactly the noise CLAUDE.md forbids publishing.
  *
  *   My calibration · Fairly Sure
- *   Sharp in health · Guesser in finance
+ *   Gold in health · Bronze in finance
  *   ⬜🟩🟩🟧🟧 score 81
  *   https://apps.apple.com/app/apple-store/id…?pt=…&ct=share-card-text&mt=8
  *

@@ -422,6 +422,19 @@ describe('CalibrationView first badge', () => {
   it('stops once a category has one', () => {
     expect(view([cat('health', 19), cat('work', 20)]).queryByTestId('badges-first')).toBeNull();
   });
+
+  // Roadmap D80: one plain line where badges are introduced, whatever the
+  // record holds.
+  it('says what the medals are, once, at the top of the section', () => {
+    for (const stats of [[], [cat('health', 19), cat('work', 20)]]) {
+      const v = view(stats);
+      expect(v.getAllByTestId('badges-intro')).toHaveLength(1);
+      expect(v.getByTestId('badges-intro')).toHaveTextContent(
+        'Badges go Bronze, Silver, Gold, Platinum. Each one says how far you can trust your gut in that category.',
+      );
+      v.unmount();
+    }
+  });
 });
 
 // Roadmap D34: the Can't tell answers the rating leaves out, said beside it.
@@ -775,7 +788,7 @@ describe('CalibrationView step 173', () => {
     expect(getByTestId('stats-furthest-off')).not.toHaveTextContent(/That gap/);
     fireEvent.press(getByTestId('stats-furthest-off-toggle'));
     expect(getByTestId('stats-furthest-off-detail')).toHaveTextContent(
-      "About 70% would have matched. That gap is already in its score, 80, which still clears Forecaster's 70 at its low end.",
+      "About 70% would have matched. That gap is already in its score, 80, which still clears Silver's 70 at its low end.",
     );
   });
 });

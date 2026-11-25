@@ -274,8 +274,8 @@ exists to move.
 
 ### 5.2 Acquisition: identity cards and Wrapped (free)
 
-- **Identity card:** "Sharp in health · Tracker in money", a personality-test result
-  with receipts. Screenshot-native, one tap to share, Post and Story shapes.
+- **Identity card:** "Gold in health · Bronze in money" (medals since D80), a personality-test result
+  with receipts, ending on the hook "Learn when to trust your gut". Screenshot-native, one tap to share, Post and Story shapes.
 - **Calibration Wrapped:** weekly and yearly recaps of the user's forecasting story.
 - **Daily practice** (built 2026-10-07): the same three questions for everyone each
   day, which is what made Wordle's grid travel; its share card is parked (FUTURE_UI A11).

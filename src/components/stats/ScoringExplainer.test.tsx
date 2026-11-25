@@ -12,13 +12,37 @@ import {
   STREAK_DAY_MIN,
 } from '@/types';
 
-import { badgeRows, scoringSections } from './scoringCopy';
+import { BADGE_META } from '@/constants/badges';
+
+import { BADGES_INTRO, badgeRows, scoringSections } from './scoringCopy';
 import { ScoringExplainer } from './ScoringExplainer';
 
 const allText = () =>
   scoringSections()
     .flatMap((s) => [s.title, ...s.paragraphs])
     .join('\n');
+
+// Roadmap D80 (the owner, 2026-11-25): medals, said once where badges are
+// introduced, and never the word "sharp".
+describe('scoringCopy, medals (D80)', () => {
+  it('opens Badges with what the medals are', () => {
+    expect(BADGES_INTRO).toBe(
+      'Badges go Bronze, Silver, Gold, Platinum. Each one says how far you can trust your gut in that category.',
+    );
+    const badges = scoringSections().find((s) => s.title === 'Badges');
+    expect(badges?.paragraphs[0]).toBe(BADGES_INTRO);
+    expect(badges?.paragraphs[1]).toMatch(/^Each category earns its own badge, so you can be Gold in one and just getting started in another\./);
+    expect(badges?.paragraphs[1]).toContain('Above Bronze, the score has to clear the bar at its low end');
+  });
+
+  it('says no old tier name and never "sharp"', () => {
+    const text = [allText(), ...badgeRows().map((r) => `${r.label} ${r.criteria}`)].join('\n');
+    expect(text).not.toMatch(/sharp/i);
+    // "a perfectly calibrated forecaster" is a plain word; the tier names aren't.
+    expect(text).not.toMatch(/\b(?:Tracker|Forecaster|Oracle)\b/);
+    for (const meta of Object.values(BADGE_META)) expect(meta.label).not.toMatch(/sharp/i);
+  });
+});
 
 describe('scoringCopy (roadmap step 29)', () => {
   // The page explains the engine, so it must quote the engine's own numbers.
@@ -187,10 +211,10 @@ describe('scoringCopy (roadmap step 29)', () => {
   it('lists the five badges in ladder order with their criteria', () => {
     expect(badgeRows().map((r) => r.label)).toEqual([
       'Getting started',
-      'Tracker',
-      'Forecaster',
-      'Sharp',
-      'Oracle',
+      'Bronze',
+      'Silver',
+      'Gold',
+      'Platinum',
     ]);
     expect(badgeRows()[2].criteria).toBe('Above 70 at its low end, with 20 or more scored answers');
     expect(badgeRows()[0].criteria).toBe('Fewer than 20 scored here');
@@ -206,7 +230,7 @@ describe('ScoringExplainer', () => {
       expect(screen.getByText(section.title)).toBeTruthy();
     }
     expect(screen.getByTestId('scoring-badge-oracle').props.accessibilityLabel).toBe(
-      'Oracle: Above 90 at its low end, with 100 or more scored answers',
+      'Platinum: Above 90 at its low end, with 100 or more scored answers',
     );
     expect(screen.queryByTestId('scoring-close')).toBeNull();
   });

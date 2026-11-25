@@ -72,14 +72,17 @@ export interface Palette {
 
   // The Lens emblem (DESIGN_SYSTEM §7.4). Tier is carried by fill, rings and
   // the written label; these give the filled tiers their faces.
-  /** Forecaster's face. */
+  /** Silver's face. */
   emblemMid: string;
-  /** Sharp's face, and where Oracle's gradient starts. */
+  /** Gold's face, and where Platinum's gradient starts. */
   emblemDeep: string;
   /** The diagonal and bezel drawn on a filled face. */
   emblemMark: string;
-  /** Oracle only: the gold hairline and the gradient's far stop. */
-  oracleGold: string;
+  /**
+   * Gold and Platinum only (D80; Oracle's alone until then, as `oracleGold`):
+   * the gold hairline and bezel, and the far stop of Platinum's gradient.
+   */
+  medalGold: string;
 
   // "Continue with Google" (step 192): a third-party mark, drawn to Google's
   // branding guidelines (developers.google.com/identity/branding-guidelines),
@@ -95,7 +98,7 @@ export interface Palette {
   googleButtonText: string;
   // The four-colour "G", Google's trademark colours, the same in both
   // appearances: Google forbids a monochrome G. The only hues outside the
-  // calibration, caution, destructive and Oracle roles, exempted by name in
+  // calibration, caution, destructive and medal-gold roles, exempted by name in
   // theme.test.ts. Values from Google's own button SVGs (GoogleSignInButton).
   googleBlue: string;
   googleGreen: string;
@@ -139,7 +142,7 @@ const light: Palette = {
   emblemMid: '#5B5F69',
   emblemDeep: '#15171B',
   emblemMark: '#FFFFFF',
-  oracleGold: '#B7791F',
+  medalGold: '#B7791F',
 
   // Google's Light theme.
   googleButtonFill: '#FFFFFF',
@@ -185,7 +188,7 @@ const dark: Palette = {
   emblemMid: '#9EA2AB',
   emblemDeep: '#F2F3F5',
   emblemMark: '#15171B',
-  oracleGold: '#E8B64C',
+  medalGold: '#E8B64C',
 
   // Google's Dark theme.
   googleButtonFill: '#131314',
@@ -261,6 +264,26 @@ export const colors: Palette = Object.fromEntries(
     themed(key, light[key], dark[key]),
   ]),
 ) as unknown as Palette;
+
+/**
+ * The palette `colors` resolves to in this appearance, as fixed hex, for what
+ * can't take a dynamic token: an SVG gradient's stops, which react-native-svg
+ * drops unless the colour is a plain value (Platinum's face, D80). Android
+ * draws light only, as `themed` does.
+ */
+export function paletteFor(appearance: 'light' | 'dark'): Palette {
+  return Platform.OS === 'android' || appearance === 'light' ? light : dark;
+}
+
+/**
+ * The other appearance's palette, as fixed hex (roadmap D80): Platinum's chip
+ * is `action`'s ink in each appearance, and the emblem's own face is ink too,
+ * so in the screen's tones it vanished into the chip. There the emblem takes
+ * these, as `paletteOn` gives a share card the palette that reads on it.
+ */
+export function paletteOnInk(appearance: 'light' | 'dark'): Palette {
+  return paletteFor(appearance) === light ? dark : light;
+}
 
 // ---- Type (DESIGN_SYSTEM §3) ----
 // Instrument Sans everywhere (roadmap D33, decided 2026-11-01; Inter until

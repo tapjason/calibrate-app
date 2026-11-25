@@ -9,6 +9,7 @@ import { chartTakeaway, rangeLabel } from '@/components/stats/chartTakeaway';
 import { expectedPhrase } from '@/components/stats/expectedPhrase';
 import { CoverageRow } from '@/components/stats/CoverageRow';
 import { furthestOffDetail, furthestOffLine } from '@/components/stats/patternCopy';
+import { BADGES_INTRO } from '@/components/stats/scoringCopy';
 import { firstLookLine } from '@/components/stats/beforeScoreCopy';
 import {
   chartNamesLean,
@@ -441,6 +442,11 @@ export function CalibrationView({
       <View style={styles.sectionGap}>
         <SectionHeader title="Category badges" />
       </View>
+      {/* What the medals are, once, where badges are introduced (D80: the
+          tier names were confusing at first). */}
+      <Text style={styles.badgesIntro} testID="badges-intro">
+        {BADGES_INTRO}
+      </Text>
       {/* The area furthest off, said plainly (roadmap D37): a power user found
           her finance pattern only through History's filters. What would have
           matched, and how it fits the badge, unfold under it in place (D76),
@@ -487,9 +493,10 @@ export function CalibrationView({
       )}
       {spread === null && categoryStats.every((c) => c.predictions_resolved < FIRST_BADGE_AT) && (
         <Text style={styles.empty} testID="badges-first">
-          {/* "First badge", not "Tracker": Forecaster needs 20 too (blind
+          {/* "First badge", not "Bronze": Silver needs 20 too (blind
               playtest 2026-11-12e, run 5 went from Getting started to
-              Forecaster). What each tier takes is in How scoring works (D76). */}
+              Forecaster, Silver since D80). What each tier takes is in How
+              scoring works (D76). */}
           Each category earns its first badge at {FIRST_BADGE_AT} scored answers.
         </Text>
       )}
@@ -538,6 +545,8 @@ const styles = StyleSheet.create({
   // The first line of a group under the rating (D68): within a group 4, between 12.
   groupStart: { marginTop: space.md },
   sectionGap: { marginTop: space.xl },
+  // Plain and small under the section's header (D80).
+  badgesIntro: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },
   // Apart from the chart's key above it, which it otherwise read as a line of.
   empty: { ...type.subhead, color: colors.textSecondary, marginTop: space.md },
   chartTitle: { ...type.title3, color: colors.textPrimary, marginBottom: space.xs },
@@ -661,5 +670,5 @@ export function sameDayLine(count: number): string {
     : `${count} answers came the day they were logged, so they aren’t scored.`;
 }
 
-/** Tracker's count (CLAUDE.md badge table): where a category's first badge comes. */
+/** Bronze's count (CLAUDE.md badge table): where a category's first badge comes. */
 const FIRST_BADGE_AT = 20;

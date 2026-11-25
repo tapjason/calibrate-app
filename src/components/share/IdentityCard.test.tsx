@@ -30,6 +30,17 @@ describe('fitScale', () => {
   });
 });
 
+// Roadmap D80 (the owner, 2026-11-25): the card's hook in his words, and the
+// word "sharp" gone ("What are you sharp at?" until then).
+describe('IdentityCard hook', () => {
+  it('ends on "Learn when to trust your gut", with the medal named', () => {
+    render(<IdentityCard card={CARD} />);
+    expect(screen.getByText('Learn when to trust your gut')).toBeTruthy();
+    expect(screen.getByText('Gold in health')).toBeTruthy();
+    expect(screen.queryByText(/sharp/i)).toBeNull();
+  });
+});
+
 describe('IdentityCard on its canvas', () => {
   it('shrinks the content as one piece when it is taller than the room', () => {
     render(<IdentityCard card={CARD} format="post" />);

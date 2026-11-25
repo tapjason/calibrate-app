@@ -59,8 +59,9 @@
 //     "no gap between what you said and what happened") only for a
 //     `calibrated` category within CLOSE_TO_SAID_POINTS; never overall.
 //   - No links, addresses, phone numbers, markup, invisible or unusual
-//     characters, spelled-out numbers, badge names (as badges: "a sharp drop"
-//     and "just getting started" are words), numeric health targets, domain
+//     characters, spelled-out numbers, badge names, the old and the medals
+//     (as badges: "a sharp drop", "just getting started" and "the gold
+//     standard" are words), numeric health targets, domain
 //     advice, referrals or mental-state claims.
 
 export const MIN_N_OVERALL = 20;
@@ -429,9 +430,10 @@ const NUMBER_WORDS =
 const NUMBER_WORD_IDIOMS =
   /\b(?:(?:older|newer|earlier|recent|later|latest|first|second) half|both halves|think(?:ing)? twice|double[\s-]check\w*|zero(?:ing)? in on)\b/g;
 
-// Badge tiers: the context has none, so any tier named is a guess. Two of
-// the names are ordinary words too ("a sharp drop", "just getting started"),
-// so those two are read as badges only where they read as one (round 6).
+// Badge tiers: the context has none, so any tier named is a guess. Some of
+// the names are ordinary words too ("a sharp drop", "just getting started",
+// "the gold standard"), so those are read as badges only where they read as
+// one (round 6; the medals since D80).
 // Read on the text in its own case, apostrophes and dashes made plain.
 
 /** The tier nouns, in any case: no ordinary Coach sentence needs them. */
@@ -444,6 +446,15 @@ const BADGE_NOUNS = /\b(?:oracles?|forecasters?|trackers?|guessers?)\b/i;
 const SHARP = /\bsharp\b/gi;
 const SHARP_ORDINARY_AFTER =
   /^\s+(?:drops?|rises?|falls?|jumps?|dips?|declines?|increases?|decreases?|improvements?|changes?|shifts?|swings?|turns?|turnarounds?|reversals?|contrasts?|differences?|splits?|spikes?|climbs?|slides?|slumps?|upticks?|downturns?|moves?|start|eye|focus)\b/i;
+/**
+ * The medal tiers (roadmap D80: Bronze, Silver, Gold, Platinum) are ordinary
+ * words too, so they are read as "sharp" is: a tier ("Gold in health",
+ * "health is gold", "a silver badge", "platinum level") unless one of these
+ * nouns follows it ("the gold standard", "a silver lining"); capitalised
+ * inside a sentence, always. The old names stay forbidden beside them.
+ */
+const MEDALS = /\b(?:bronze|silver|gold|platinum)\b/gi;
+const MEDAL_ORDINARY_AFTER = /^(?:\s+|-)(?:standards?|linings?|bullets?|mines?|rush)\b/i;
 /**
  * "getting started" is the first tier's label ("still at Getting started",
  * "the getting started badge") unless it is the plain phrase: not
@@ -468,10 +479,15 @@ function opensSentence(text: string, index: number): boolean {
  */
 function badgeUse(cased: string): 'badge' | 'plain' | 'none' {
   if (BADGE_NOUNS.test(cased)) return 'badge';
-  const sharp = new RegExp(SHARP.source, 'gi');
-  for (let m = sharp.exec(cased); m !== null; m = sharp.exec(cased)) {
-    if (m[0][0] === 'S' && !opensSentence(cased, m.index)) return 'badge';
-    if (!SHARP_ORDINARY_AFTER.test(cased.slice(m.index + m[0].length))) return 'badge';
+  for (const [word, ordinaryAfter] of [
+    [SHARP, SHARP_ORDINARY_AFTER],
+    [MEDALS, MEDAL_ORDINARY_AFTER],
+  ] as const) {
+    const re = new RegExp(word.source, 'gi');
+    for (let m = re.exec(cased); m !== null; m = re.exec(cased)) {
+      if (m[0][0] !== m[0][0].toLowerCase() && !opensSentence(cased, m.index)) return 'badge';
+      if (!ordinaryAfter.test(cased.slice(m.index + m[0].length))) return 'badge';
+    }
   }
   let plain = false;
   const started = new RegExp(GETTING_STARTED.source, 'gi');
@@ -1802,7 +1818,7 @@ export const SYSTEM_PROMPT = [
   'Do not diagnose, infer mental states or personality, or give medical, financial, legal, or',
   'clinical advice. Do not give diet, weight, sleep, or exercise targets. Do not refer the person',
   'to professionals, products, or helplines, and do not name badges or tiers: never use the words',
-  'Getting started, Tracker, Forecaster, Sharp or Oracle. A short "not a',
+  'Getting started, Bronze, Silver, Gold, Platinum, Tracker, Forecaster, Sharp or Oracle. A short "not a',
   'substitute for professional advice" note is fine.',
   'Write plain sentences: no links, email addresses, phone numbers, markdown, HTML, or emoji,',
   'and at most one line break in a field.',

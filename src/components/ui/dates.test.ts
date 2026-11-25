@@ -1,6 +1,6 @@
-import { __setDeviceLocaleForTests } from '@/constants/locale';
+import { __setDeviceLocaleForTests, __setPhoneClockForTests } from '@/constants/locale';
 
-import { dateWithWeekday, localDate, localDaysFrom, relativeDay } from './dates';
+import { dateWithWeekday, dueDay, localDate, localDaysFrom, relativeDay } from './dates';
 
 const now = new Date(2026, 10, 8, 12);
 
@@ -94,6 +94,58 @@ describe('relativeDay', () => {
     expect(relativeDay(new Date(2026, 10, 25, 0, 1), late).spoken).toBe('tomorrow');
     const early = new Date(2026, 10, 25, 0, 1);
     expect(relativeDay(new Date(2026, 10, 24, 23, 59), early).spoken).toBe('yesterday');
+  });
+});
+
+// Roadmap D80 (the owner, 2026-11-25): the due day runs until 11:59 PM, and
+// an open prediction due today says so, on the phone's own clock.
+describe('dueDay', () => {
+  // Tuesday 24 November 2026, 9 AM local; due dates sit at local noon.
+  const at = new Date(2026, 10, 24, 9, 0);
+  const noon = (y: number, m: number, d: number) => new Date(y, m, d, 12);
+  const NB = String.fromCharCode(0xa0);
+
+  afterEach(() => {
+    __setPhoneClockForTests(undefined);
+    __setDeviceLocaleForTests(null);
+  });
+
+  it('says until when on the day itself, on a 12-hour clock', () => {
+    __setPhoneClockForTests(true);
+    expect(dueDay(noon(2026, 10, 24), at)).toEqual({
+      text: `today by${NB}11:59${NB}PM`,
+      spoken: 'today by 11:59 PM',
+    });
+  });
+
+  it('writes the time on a 24-hour clock', () => {
+    __setPhoneClockForTests(false);
+    expect(dueDay(noon(2026, 10, 24), at)).toEqual({
+      text: `today by${NB}23:59`,
+      spoken: 'today by 23:59',
+    });
+    // A phone in another language keeps its own clock, in English words.
+    __setDeviceLocaleForTests('de-DE');
+    expect(dueDay(noon(2026, 10, 24), at).spoken).toBe('today by 23:59');
+  });
+
+  it('breaks only after "today", never inside the time', () => {
+    __setPhoneClockForTests(true);
+    expect(dueDay(noon(2026, 10, 24), at).text.split(' ')).toEqual(['today', `by${NB}11:59${NB}PM`]);
+  });
+
+  it('leaves every other day as relativeDay says it', () => {
+    for (const d of [noon(2026, 10, 25), noon(2026, 10, 23), noon(2026, 10, 27), noon(2026, 11, 2)]) {
+      expect(dueDay(d, at)).toEqual(relativeDay(d, at));
+    }
+  });
+
+  it('counts by the calendar near midnight', () => {
+    __setPhoneClockForTests(true);
+    const late = new Date(2026, 10, 24, 23, 58);
+    expect(dueDay(noon(2026, 10, 24), late).spoken).toBe('today by 11:59 PM');
+    const early = new Date(2026, 10, 25, 0, 1);
+    expect(dueDay(noon(2026, 10, 24), early).spoken).toBe('yesterday');
   });
 });
 

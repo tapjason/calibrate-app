@@ -9,16 +9,17 @@ import { StreakCheckpointCard } from '@/components/resolution/StreakCheckpointCa
 import { StreakLine } from '@/components/stats/StreakLine';
 import type { CheckpointMoment } from '@/components/stats/checkpointMoment';
 import { Button } from '@/components/ui/Button';
+import { BADGE_META } from '@/constants/badges';
 import { colors, space, type } from '@/constants/theme';
 import type { Milestone, StreakStatus } from '@/types';
 
 const SAMPLES: { label: string; milestone: Milestone }[] = [
   {
-    label: 'Tier-up: Guesser → Forecaster',
+    label: `Tier-up: ${BADGE_META.guesser.label} → ${BADGE_META.forecaster.label}`,
     milestone: { kind: 'tier_up', category: 'health', badge: 'forecaster', from: 'guesser' },
   },
   {
-    label: 'Tier-up: Sharp → Oracle',
+    label: `Tier-up: ${BADGE_META.sharp.label} → ${BADGE_META.oracle.label}`,
     milestone: { kind: 'tier_up', category: 'work', badge: 'oracle', from: 'sharp' },
   },
   { label: 'Score unlock', milestone: { kind: 'rating_unlocked', rating: 78 } },

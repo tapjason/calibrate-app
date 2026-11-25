@@ -70,7 +70,7 @@ describe('NextBadgeLine', () => {
     });
     render(<NextBadgeLine onPress={jest.fn()} />);
     expect(screen.getByTestId('home-next-badge')).toHaveTextContent(
-      "Forecaster in work needs a score that clears 70 with room to spare. You’re at 65.",
+      "Silver in work needs a score that clears 70 with room to spare. You’re at 65.",
     );
     expect(screen.getByTestId('home-next-badge')).not.toHaveTextContent(/give or take|low end/);
   });

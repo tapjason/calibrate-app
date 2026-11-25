@@ -15,7 +15,7 @@ Most people are systematically **overconfident** or **underconfident**, and usua
 
 The core principle: **reward calibration, not correctness.** A prediction you made at 60% confidence that didn't pan out is *expected and fine* — the score measures the honesty of your confidence, not whether you were right. A perfectly calibrated person's "stated confidence vs. actual outcome" chart plots as a straight diagonal line.
 
-The product's "aha" moment is per-category insight — discovering you're an **Oracle** in health but only a **Tracker** in finance.
+The product's "aha" moment is per-category insight — discovering you're **Platinum** in health but only **Bronze** in finance. The badges are medals (Bronze, Silver, Gold, Platinum), each saying how far you can trust your gut in that category.
 
 ---
 
@@ -91,7 +91,7 @@ bucket_error      = | stated_confidence_mean/100 − actual_rate |    (absolute,
 calibration_score = 100 − (count-weighted mean bucket_error × 100)  (clamped to 0–100)
 ```
 
-Scores built on too little data are never shown as a headline number: the overall rating is provisional below 20 scored answers and a category below 20, and badges above Tracker need both a resolution minimum and a score whose low end (the score minus its give-or-take) clears the bar. `CLAUDE.md` is the authoritative spec; [`docs/CALIBRATION.md`](./docs/CALIBRATION.md) expands on it.
+Scores built on too little data are never shown as a headline number: the overall rating is provisional below 20 scored answers and a category below 20, and badges above Bronze need both a resolution minimum and a score whose low end (the score minus its give-or-take) clears the bar. `CLAUDE.md` is the authoritative spec; [`docs/CALIBRATION.md`](./docs/CALIBRATION.md) expands on it.
 
 The engine (`src/engine/`) is **pure** — plain objects in, plain objects out, no I/O — which makes it the highest-value unit-test target in the project.
 

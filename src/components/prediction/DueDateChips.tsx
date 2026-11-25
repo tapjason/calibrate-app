@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { relativeDay } from '@/components/ui/dates';
+import { dueDay } from '@/components/ui/dates';
 import { chipStyles } from '@/components/prediction/CategoryChips';
 import { DuePicker, openDueDialog } from '@/components/prediction/DuePicker';
 import { noonInDays } from '@/components/prediction/logAgain';
@@ -144,9 +144,10 @@ export function DueDateChips({
         </Text>
       )}
       {/* "Due in 3 days", "Due Nov 21 (Friday)" (the owner, 2026-11-24), as
-          Save and every card say it. */}
+          Save and every card say it; "Due today by 11:59 PM" when an edit
+          leaves it today (D80). */}
       <Text style={styles.dateValue} testID="due-sentence">
-        Due {relativeDay(new Date(value)).text}
+        Due {dueDay(new Date(value)).text}
       </Text>
     </View>
   );

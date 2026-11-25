@@ -98,7 +98,7 @@ describe('buildShareCard', () => {
         calibration_score: 68,
       }),
     ]);
-    expect(shareLines(card!).contrast).toBe('Tracker in finance');
+    expect(shareLines(card!).contrast).toBe('Bronze in finance');
   });
 
   // CLAUDE.md: never present a number built on noise — least of all on the
@@ -125,14 +125,14 @@ describe('shareHeadline', () => {
       categoryStat({ category: 'finance', badge_level: 'guesser' }),
     ])!;
     // Roadmap D27: finance, a Guesser (fewer than 20 answered), isn't named.
-    expect(shareHeadline(card)).toBe('Sharp in health · Tracker in work');
+    expect(shareHeadline(card)).toBe('Gold in health · Bronze in work');
   });
 
   it('stands alone when there is only one category to show', () => {
     const card = buildShareCard(userStat(), [
       categoryStat({ category: 'health', badge_level: 'forecaster' }),
     ])!;
-    expect(shareHeadline(card)).toBe('Forecaster in health');
+    expect(shareHeadline(card)).toBe('Silver in health');
   });
 });
 
@@ -186,7 +186,7 @@ describe('shareText', () => {
       bucket(80, 'underconfident'),
     ]);
     expect(text).toBe(
-      'My calibration · Fairly Sure\nSharp in health · Tracker in finance\n⬜🟩🟩🟧🟦 score 81\n' +
+      'My calibration · Fairly Sure\nGold in health · Bronze in finance\n⬜🟩🟩🟧🟦 score 81\n' +
         SQUARES_KEY,
     );
   });
@@ -263,15 +263,15 @@ describe('shareLines', () => {
 
   it('splits best and worst into an identity line and a contrast line', () => {
     expect(shareLines(card([['health', 'sharp'], ['finance', 'tracker']]))).toEqual({
-      identity: 'Sharp in health',
-      contrast: 'Tracker in finance',
+      identity: 'Gold in health',
+      contrast: 'Bronze in finance',
     });
   });
 
   // Roadmap D27: Guesser means fewer than 20 answered, so it's never named.
   it('never names a Guesser as the contrast', () => {
     expect(shareLines(card([['health', 'sharp'], ['finance', 'guesser']]))).toEqual({
-      identity: 'Sharp in health',
+      identity: 'Gold in health',
       contrast: null,
     });
   });
@@ -289,7 +289,7 @@ describe('shareLines', () => {
 
   it('draws no contrast with a single category', () => {
     expect(shareLines(card([['work', 'tracker']]))).toEqual({
-      identity: 'Tracker in work',
+      identity: 'Bronze in work',
       contrast: null,
     });
   });
@@ -313,9 +313,9 @@ describe('identityCardSummary', () => {
     ])!;
     // The lines name gated tiers only (D27); the chips, read in full, show all.
     expect(identityCardSummary(card)).toBe(
-      'Share card. Sharp in health. ' +
+      'Share card. Gold in health. ' +
         'Calibration 88/100 from 55 scored answers. ' +
-        'By category: Sharp in health, Getting started in finance.',
+        'By category: Gold in health, Getting started in finance.',
     );
   });
 });
@@ -368,13 +368,13 @@ describe('shareLines and shareSubline, the headline that agrees with itself', ()
 
   it('names every category at the top tier', () => {
     expect(shareLines(card([['health', 'forecaster'], ['finance', 'forecaster'], ['work', 'tracker']], 80))).toEqual({
-      identity: 'Forecaster in health and finance',
-      contrast: 'Tracker in work',
+      identity: 'Silver in health and finance',
+      contrast: 'Bronze in work',
     });
     expect(
       shareLines(card([['health', 'tracker'], ['finance', 'tracker'], ['work', 'tracker'], ['social', 'tracker']], 80))
         .identity,
-    ).toBe('Tracker in health and 3 more');
+    ).toBe('Bronze in health and 3 more');
   });
 
   it("pairs two names only when both are short, so a person's own long name doesn't shrink the card", () => {
@@ -384,7 +384,7 @@ describe('shareLines and shareSubline, the headline that agrees with itself', ()
       ],
     });
     expect(shareLines(card([['health', 'forecaster'], ['finance', 'forecaster']], 80)).identity).toBe(
-      'Forecaster in health and 1 more',
+      'Silver in health and 1 more',
     );
     useCategoryStore.setState({ defs: [] });
   });

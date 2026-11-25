@@ -9,11 +9,11 @@
 //
 // The shape is chosen to exercise every unlocked surface honestly: real
 // miscalibration rather than a flattering curve. Health is well calibrated
-// with ≥ 50 resolved (Sharp), work is a little overconfident (Forecaster),
-// finance is badly overconfident on 21 resolved (score unlocked, Tracker),
+// with ≥ 50 resolved (Gold), work is a little overconfident (Silver),
+// finance is badly overconfident on 21 resolved (score unlocked, Bronze),
 // personal runs underconfident, and social is unlocked but young. Every
-// category is past MIN_N_CATEGORY (20 since roadmap D46). Together: "Sharp in
-// health · Tracker in finance", the product's own example.
+// category is past MIN_N_CATEGORY (20 since roadmap D46). Together: "Gold in
+// health · Bronze in finance", the product's own example.
 
 import type { Category, Prediction } from '@/types';
 

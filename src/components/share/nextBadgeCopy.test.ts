@@ -38,25 +38,25 @@ describe('nextBadgeProgress', () => {
     expect(progressFor([stat('health', 17, 60)])).toEqual({
       category: 'health',
       badge: 'tracker',
-      badgeLabel: 'Tracker',
-      text: 'To reach Tracker or higher in health: 3 more scored answers',
+      badgeLabel: 'Bronze',
+      text: 'To reach Bronze or higher in health: 3 more scored answers',
       line: '3 more scored answers to your first badge in health.',
       progress: 17 / 20,
     });
   });
 
-  // Roadmap step 47: Forecaster → Sharp needs 50 answered and a score above
+  // Roadmap step 47: Silver → Gold needs 50 answered and a score above
   // 85; with both short, the count alone over-promised.
   it('names the score threshold too when both requirements are short', () => {
     expect(progressFor([stat('work', 30, 80)])?.text).toBe(
-      'To reach Sharp in work: 20 more scored answers and a score above 85 at its low end',
+      'To reach Gold in work: 20 more scored answers and a score above 85 at its low end',
     );
-    expect(progressFor([stat('work', 30, 92)])?.text).toBe('To reach Sharp in work: 20 more scored answers');
+    expect(progressFor([stat('work', 30, 92)])?.text).toBe('To reach Gold in work: 20 more scored answers');
   });
 
   it('counts the last answer in the singular', () => {
     expect(progressFor([stat('work', 49, 80)])?.text).toBe(
-      'To reach Sharp in work: 1 more scored answer and a score above 85 at its low end',
+      'To reach Gold in work: 1 more scored answer and a score above 85 at its low end',
     );
   });
 
@@ -67,7 +67,7 @@ describe('nextBadgeProgress', () => {
       stat('finance', 2, 50),
     ]);
     expect(p?.category).toBe('health');
-    expect(p?.text).toBe('To reach Tracker or higher in health: 2 more scored answers');
+    expect(p?.text).toBe('To reach Bronze or higher in health: 2 more scored answers');
   });
 
   it('breaks ties by predictions made, then by id so the story is stable', () => {
@@ -85,18 +85,18 @@ describe('nextBadgeProgress', () => {
   });
 
   it('prefers a resolution countdown over a score gate', () => {
-    // work is a Tracker needing score > 70 for Forecaster; social needs 4 more.
+    // work is a Bronze needing score > 70 for Silver; social needs 4 more.
     const p = progressFor([stat('work', 25, 65), stat('social', 16, 50)]);
-    expect(p?.text).toBe('To reach Tracker or higher in social: 4 more scored answers');
+    expect(p?.text).toBe('To reach Bronze or higher in social: 4 more scored answers');
   });
 
   it('names the score gate when no category is short on resolutions', () => {
     expect(progressFor([stat('work', 25, 64.8)])).toEqual({
       category: 'work',
       badge: 'forecaster',
-      badgeLabel: 'Forecaster',
-      text: 'To reach Forecaster in work: a score above 70 at its low end (now 65)',
-      line: "Forecaster in work needs a score that clears 70 with room to spare. You’re at 65.",
+      badgeLabel: 'Silver',
+      text: 'To reach Silver in work: a score above 70 at its low end (now 65)',
+      line: "Silver in work needs a score that clears 70 with room to spare. You’re at 65.",
       progress: null,
     });
   });
@@ -110,7 +110,7 @@ describe('nextBadgeProgress', () => {
       const p = nextBadgeProgress([s], target);
       const shown = String(Math.round(score));
       expect(p?.line).toBe(
-        `Forecaster in work needs a score that clears 90 with room to spare. You’re at ${shown}.`,
+        `Silver in work needs a score that clears 90 with room to spare. You’re at ${shown}.`,
       );
       expect(p?.text).toContain(`(now ${shown})`);
     }
@@ -139,12 +139,12 @@ describe("nextBadgeProgress, Today's line", () => {
   });
 
   it('names a higher tier when only answers are short', () => {
-    expect(progressFor([stat('work', 30, 92)])?.line).toBe('20 more scored answers to Sharp in work.');
+    expect(progressFor([stat('work', 30, 92)])?.line).toBe('20 more scored answers to Gold in work.');
   });
 
   it('says both when the score is short too, without printing the score', () => {
     expect(progressFor([stat('work', 30, 80)])?.line).toBe(
-      'Sharp in work needs 20 more scored answers and a score that clears 85 with room to spare.',
+      'Gold in work needs 20 more scored answers and a score that clears 85 with room to spare.',
     );
   });
 
@@ -152,12 +152,12 @@ describe("nextBadgeProgress, Today's line", () => {
     const stats = [{ ...stat('health', 60, 87.4), badge_level: 'forecaster' as const }];
     const next = { health: { badge: 'sharp' as const, needResolved: 50, needScore: 85 } };
     expect(nextBadgeProgress(stats, next, { health: 4 })?.line).toBe(
-      "Sharp in health needs a score that clears 85 with room to spare. You’re at 87.",
+      "Gold in health needs a score that clears 85 with room to spare. You’re at 87.",
     );
   });
 });
 
-// Roadmap D35: a tier above Tracker needs the score minus its give-or-take
+// Roadmap D35: a tier above Bronze needs the score minus its give-or-take
 // over the bar; over the bar itself isn't enough.
 describe('nextBadgeProgress with a give-or-take', () => {
   it('says what is short when only the low end is under the bar', () => {
@@ -174,7 +174,7 @@ describe('nextBadgeProgress with a give-or-take', () => {
     ];
     const next = { health: { badge: 'sharp' as const, needResolved: 50, needScore: 85 } };
     expect(nextBadgeProgress(stats, next, { health: 4 })?.text).toBe(
-      'To reach Sharp in health: a score above 85 at its low end (now 87, give or take 4)',
+      'To reach Gold in health: a score above 85 at its low end (now 87, give or take 4)',
     );
     expect(nextBadgeProgress(stats, next, {})).toBeNull();
   });

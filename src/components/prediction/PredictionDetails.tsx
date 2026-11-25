@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
-import { localDate, relativeDay } from '@/components/ui/dates';
+import { dueDay, localDate } from '@/components/ui/dates';
 import { textLanguage } from '@/components/ui/textLanguage';
 import { AnsweredDetails } from '@/components/prediction/AnsweredDetails';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
@@ -335,8 +335,9 @@ export function PredictionDetails({
   // the morning was "not scored" three times per tick (blind playtest
   // 2026-11-10, run 2). Resolve doesn't repeat it when opened from here.
   const sameDayNow = answerNowIsSameDay(prediction);
-  // "in 3 days", "tomorrow", "Nov 21 (Friday)" (the owner, 2026-11-24).
-  const dueOn = relativeDay(new Date(prediction.due_date)).text;
+  // "in 3 days", "tomorrow", "Nov 21 (Friday)" (the owner, 2026-11-24);
+  // "today by 11:59 PM" on its day (D80).
+  const dueOn = dueDay(new Date(prediction.due_date)).text;
   // In D76's words (the voice pass, 2026-11-23), the date as the owner's
   // (2026-11-24): "It's due in 3 days." The same-day note is Resolve's too
   // (`sameDayHeadsUp`), which it skips when opened from here.

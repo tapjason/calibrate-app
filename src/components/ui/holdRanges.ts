@@ -14,8 +14,8 @@ export function holdRanges(text: string): string {
 }
 
 /**
- * "3 more scored answers to reach Tracker" with its target held together, so at
- * 320pt the line breaks before "to" and never strands "Tracker" alone
+ * "3 more scored answers to reach Bronze" with its target held together, so at
+ * 320pt the line breaks before "to" and never strands "Bronze" alone
  * (roadmap D33, when "→ Tracker" became "to reach Tracker").
  */
 export function holdTarget(text: string): string {

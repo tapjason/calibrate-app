@@ -44,12 +44,12 @@ export interface FurthestOffBadge {
 
 /**
  * How the miss and the category's badge fit together (step 173): Insights
- * said "Forecaster in health" and "Furthest off: health" about the same 22
+ * said "Forecaster in health" (Silver since D80) and "Furthest off: health" about the same 22
  * walks, and read as contradicting itself (blind playtest 2026-11-12f,
  * finding 5). The pooled gap is already inside the score, which checks each
  * range and is never kinder than pooling (record audit 2026-11-12); the badge
  * only asks the score's low end to clear its bar. Every category here has 20
- * scored answers, so it holds Tracker at least.
+ * scored answers, so it holds Bronze at least.
  */
 function badgeClause({ level, score, giveOrTake }: FurthestOffBadge): string {
   const bar = BADGE_SCORE_BAR[level];
@@ -58,7 +58,7 @@ function badgeClause({ level, score, giveOrTake }: FurthestOffBadge): string {
   }
   const next = BADGE_SCORE_BAR.forecaster;
   const spread = giveOrTake > 0 ? `, give or take ${giveOrTake},` : ',';
-  return `Its score, ${score}${spread} isn't above ${next} at its low end yet, so it's ${BADGE_META.tracker.label}, which counts answers only.`;
+  return `Its score, ${score}${spread} isn't above ${next} at its low end yet, so it has the ${BADGE_META.tracker.label} badge, which counts answers only.`;
 }
 
 /**

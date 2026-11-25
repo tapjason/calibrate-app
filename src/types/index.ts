@@ -241,6 +241,11 @@ export type PredictionStatus =
 /** Status values that represent a resolved (no longer pending) prediction. */
 export type ResolvedStatus = Exclude<PredictionStatus, 'pending'>;
 
+/**
+ * A category's badge, by its stored id. Shown as Getting started, Bronze,
+ * Silver, Gold and Platinum since roadmap D80 (BADGE_META's labels); the ids
+ * are stored, synced and checked by the schema, so they stay.
+ */
 export type BadgeLevel =
   | 'guesser'
   | 'tracker'
@@ -840,7 +845,7 @@ export interface WarmupQuestion {
 // ---- Share cards ----
 //
 // The growth engine. Per CLAUDE.md nothing that produces a shareable artifact
-// is ever paywalled, and the per-category contrast ("Sharp in health, Guesser
+// is ever paywalled, and the per-category contrast ("Gold in health, Bronze
 // in money") is the thing that actually travels.
 
 /** One category as it appears on a share card. */
@@ -1056,7 +1061,7 @@ export type ComputeCalibration = (resolved: Prediction[]) => CalibrationResult;
 
 /**
  * Decide the badge level for a category given its rolled-up stats. Above
- * Tracker the score minus its give-or-take must clear the bar (roadmap D35);
+ * Bronze (tracker) the score minus its give-or-take must clear the bar (roadmap D35);
  * the give-or-take defaults to 0 for callers that have none.
  */
 export type EvaluateBadge = (

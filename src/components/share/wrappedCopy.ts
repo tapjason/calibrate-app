@@ -101,8 +101,8 @@ export interface OverallProgress {
 }
 
 /**
- * The recap's lead badge news (D62): "New this week: Forecaster in health."
- * or "Back to Tracker in health this week. A badge follows the record both
+ * The recap's lead badge news (D62): "New this week: Silver in health."
+ * or "Back to Bronze in health this week. A badge follows the record both
  * ways." The recaps led with the next badge in a category barely used and
  * left out one earned that week (blind playtest 2026-11-13d, finding 13).
  */

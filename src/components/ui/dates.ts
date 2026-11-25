@@ -1,4 +1,4 @@
-import { dateLocale } from '@/constants/locale';
+import { dateLocale, localTime } from '@/constants/locale';
 
 /**
  * A date in the person's locale, with the year added whenever it isn't this
@@ -81,4 +81,22 @@ export function relativeDay(date: Date, now: Date = new Date()): DayWords {
   else if (days <= -2 && days >= -7) spoken = `${-days} days ago`;
   else spoken = dateWithWeekday(date, now);
   return { text: holdDayWords(spoken), spoken };
+}
+
+/**
+ * An open prediction's due day (roadmap D80, the owner, 2026-11-25): on the
+ * day itself "today by 11:59 PM", since the day runs until midnight, with the
+ * time on the phone's own clock ("today by 23:59"); any other day as
+ * `relativeDay` says it. On screen "by" and the time hold together, so a
+ * narrow line breaks after "today", never inside "11:59 PM". Not for an
+ * answered one ("answered today") or Save, which is never today.
+ */
+export function dueDay(date: Date, now: Date = new Date()): DayWords {
+  if (localDaysFrom(now, date) !== 0) return relativeDay(date, now);
+  const lastMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
+  // Any space the formatter puts before "PM" (a narrow no-break one, on newer
+  // ICU) as one plain space, or one no-break space on screen.
+  const time = localTime(lastMinute, { hour: 'numeric', minute: '2-digit' }).replace(/\s+/g, ' ');
+  const spoken = `today by ${time}`;
+  return { text: `today by${NBSP}${time.replace(/ /g, NBSP)}`, spoken };
 }

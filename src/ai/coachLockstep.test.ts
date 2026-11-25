@@ -657,6 +657,17 @@ const KEEP: Fixture[] = [
     insight: { type: 'pattern', category: 'finance', message: 'Your finance score slipped by 6.5 points.\nSharp drops can follow very sure calls.', evidence: -6.5 },
   },
 
+  // --- D80 (2026-11-25): the medal names, as ordinary words. Each has a dropped twin below. ---
+  {
+    name: 'D80 "the gold standard"',
+    insight: { type: 'strength', category: 'work', message: 'Work scores 88, the gold standard in your record.', evidence: 88 },
+  },
+  { name: 'D80 "a silver lining"', insight: over(BASE, { suggestion: 'The silver lining: lower finance numbers are easy to try.' }) },
+  {
+    name: 'D80 "Gold standard" opening a line',
+    insight: { type: 'strength', category: 'work', message: 'Gold standard work: a score of 88.', evidence: 88 },
+  },
+
   // === Round 7 (2026-11-19, final Coach re-review). Each has a dropped twin below. ===
 
   // --- R7.1 (L2): the new words for what happened, beside a share (a count beside them drops) ---
@@ -1348,6 +1359,18 @@ const DROP: Fixture[] = [
     name: 'R6.7 "just getting started" about a record past 20',
     insight: { type: 'encouragement', category: 'overall', message: 'You are just getting started with 81 answers.', evidence: 81 },
   },
+
+  // --- D80 (2026-11-25): the medals as badges ---
+  { name: 'D80 "work is gold"', insight: { type: 'strength', category: 'work', message: 'Work is gold, with a score of 88.', evidence: 88 } },
+  { name: 'D80 "Gold in work"', insight: { type: 'strength', category: 'work', message: 'Gold in work at 88.', evidence: 88 } },
+  { name: 'D80 Silver capitalised in a sentence', insight: { type: 'strength', category: 'work', message: 'Work is Silver at 88.', evidence: 88 } },
+  { name: 'D80 "a silver badge"', insight: { type: 'strength', category: 'work', message: 'Work holds a silver badge at 88.', evidence: 88 } },
+  { name: 'D80 "platinum level"', insight: { type: 'strength', category: 'work', message: 'Work is at platinum level, with a score of 88.', evidence: 88 } },
+  { name: 'D80 "a gold medal"', insight: { type: 'strength', category: 'work', message: 'Work earns a gold medal at 88.', evidence: 88 } },
+  { name: 'D80 "at Bronze"', insight: { type: 'strength', category: 'finance', message: 'Finance is at Bronze with a score of 61.', evidence: 61 } },
+  { name: 'D80 "Platinum" opening a sentence, with no ordinary noun after it', insight: { type: 'strength', category: 'work', message: 'Platinum for work: a score of 88.', evidence: 88 } },
+  // The old names stay forbidden beside the medals.
+  { name: 'D80 an old name still dropped: Oracle', insight: { type: 'strength', category: 'work', message: 'Work is near Oracle at 88.', evidence: 88 } },
 
   // === Round 7 (2026-11-19). The twins of the round-7 KEEP fixtures. ===
 

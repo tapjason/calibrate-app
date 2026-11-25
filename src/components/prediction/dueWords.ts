@@ -6,7 +6,7 @@
 // tomorrow" (D56), "Logged again, due …" and "Saved, due …" build on it.
 
 import { logAgainDraft } from '@/components/prediction/logAgain';
-import { localDaysFrom, relativeDay, type DayWords } from '@/components/ui/dates';
+import { dueDay, localDaysFrom, type DayWords } from '@/components/ui/dates';
 import type { Prediction } from '@/types';
 
 export type DueWords = DayWords;
@@ -16,14 +16,14 @@ function localDaysUntil(dueIso: string, now: Date): number {
 }
 
 /**
- * How a due date reads from `now` (`relativeDay`): "today", "tomorrow", "in 2
- * days" to "in 7 days", then the date with its weekday, "Nov 21 (Friday)",
+ * How a due date reads from `now` (`dueDay`): "today by 11:59 PM" (D80),
+ * "tomorrow", "in 2 days" to "in 7 days", then the date with its weekday, "Nov 21 (Friday)",
  * with the year when it isn't this one. On screen the words hold together
  * with no-break spaces, so a wrapping label breaks after "due" or before the
  * weekday's bracket, never inside "in 3 days" or between a month and its day.
  */
 export function dueWords(dueIso: string, now: Date = new Date()): DueWords {
-  return relativeDay(new Date(dueIso), now);
+  return dueDay(new Date(dueIso), now);
 }
 
 /**

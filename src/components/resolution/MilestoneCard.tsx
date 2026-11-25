@@ -57,8 +57,9 @@ export const BADGE_FOLLOWS =
 
 const EMBLEM_SIZE = 64;
 
-/** Oracle is the one tier whose emblem carries gold, so its confetti may too. */
-const ORACLE_CONFETTI: readonly string[] = [...BRAND_CONFETTI, colors.oracleGold];
+/** Gold and Platinum are the tiers whose emblems carry gold (D80), so their confetti may too. */
+const GOLD_CONFETTI: readonly string[] = [...BRAND_CONFETTI, colors.medalGold];
+const GOLD_TIERS: ReadonlySet<string> = new Set(['sharp', 'oracle']);
 
 /**
  * One of the design system's few full celebrations (DESIGN_SYSTEM §6.2):
@@ -109,7 +110,7 @@ export function MilestoneCard({ milestone }: { milestone: Milestone }) {
           <Confetti
             originX={EMBLEM_SIZE / 2}
             originY={EMBLEM_SIZE / 2}
-            palette={milestone.badge === 'oracle' ? ORACLE_CONFETTI : BRAND_CONFETTI}
+            palette={GOLD_TIERS.has(milestone.badge) ? GOLD_CONFETTI : BRAND_CONFETTI}
           />
         </View>
       ) : (

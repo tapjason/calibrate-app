@@ -329,10 +329,10 @@ describe('streakLine', () => {
 describe('the recap leads with its own badge news (D62)', () => {
   it('says a badge gained or lost over the span', () => {
     expect(badgeNewsLine({ category: 'health', from: 'tracker', to: 'forecaster' }, 'week')).toBe(
-      'New this week: Forecaster in health.',
+      'New this week: Silver in health.',
     );
     expect(badgeNewsLine({ category: 'health', from: 'forecaster', to: 'tracker' }, 'year')).toBe(
-      'Back to Tracker in health this year. A badge follows the record both ways.',
+      'Back to Bronze in health this year. A badge follows the record both ways.',
     );
   });
 

@@ -38,7 +38,7 @@ interface IdentityLineProps {
 }
 
 /**
- * "Sharp in health", with the contrast smaller beneath: the product's
+ * "Gold in health", with the contrast smaller beneath: the product's
  * identity framing (CLAUDE.md) on the screen people open most, not only on
  * the share card.
  */

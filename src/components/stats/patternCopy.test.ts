@@ -118,12 +118,12 @@ describe('furthestOffLine with the badge it sits beside', () => {
   it('says the gap is already in the score, which still clears the tier', () => {
     expect(furthestOffLine(miss)).toBe('Furthest off: Health. You said about 88%, and 15 of 22 happened.');
     expect(furthestOffDetail(miss, { level: 'forecaster', score: 80, giveOrTake: 6 })).toBe(
-      'About 70% would have matched. That gap is already in its score, 80, which still clears Forecaster\'s 70 at its low end.',
+      'About 70% would have matched. That gap is already in its score, 80, which still clears Silver\'s 70 at its low end.',
     );
   });
-  it('says why it is only Tracker', () => {
+  it('says why it has only the Bronze badge', () => {
     expect(furthestOffDetail(miss, { level: 'tracker', score: 64, giveOrTake: 6 })).toMatch(
-      / Its score, 64, give or take 6, isn't above 70 at its low end yet, so it's Tracker, which counts answers only\.$/,
+      / Its score, 64, give or take 6, isn't above 70 at its low end yet, so it has the Bronze badge, which counts answers only\.$/,
     );
     expect(furthestOffDetail(miss, { level: 'tracker', score: 64, giveOrTake: 0 })).toMatch(
       / Its score, 64, isn't above 70/,

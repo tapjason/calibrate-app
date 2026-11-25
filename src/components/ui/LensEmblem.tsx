@@ -1,8 +1,10 @@
 import { View } from 'react-native';
 import Svg, { Defs, G, Line, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import { colors, type Palette } from '@/constants/theme';
+import { colors, paletteFor, type Palette } from '@/constants/theme';
 import type { BadgeLevel } from '@/types';
+
+import { useAppearance } from './useAppearance';
 
 interface LensEmblemProps {
   tier: BadgeLevel;
@@ -24,7 +26,8 @@ interface LensEmblemProps {
   /**
    * Fixed colours for an exported image (roadmap D7). The app's own colours
    * follow the phone's appearance; a share card passes `palettes.light` so
-   * its PNG looks the same from a phone in dark mode.
+   * its PNG looks the same from a phone in dark mode. Platinum's ink chip
+   * passes the other appearance's (`paletteOnInk`, D80), so the face shows.
    */
   palette?: Palette;
   testID?: string;
@@ -41,7 +44,9 @@ interface TierLook {
 
 // DESIGN_SYSTEM §7.4. Tier is carried by fill + ring count + the written
 // label beside the emblem — never by colour alone. Graphite, ink and gold, so
-// no tier collides with the over/under/calibrated hues.
+// no tier collides with the over/under/calibrated hues. Since D80 the tiers
+// are medals (Bronze, Silver, Gold, Platinum, by the ids tracker to oracle):
+// gold edges Gold and Platinum, and Platinum alone fills with it.
 function looksFor(colors: Palette): Record<BadgeLevel, TierLook> {
   return {
     guesser: {
@@ -70,7 +75,7 @@ function looksFor(colors: Palette): Record<BadgeLevel, TierLook> {
     },
     sharp: {
       fill: colors.emblemDeep,
-      outline: colors.emblemDeep,
+      outline: colors.medalGold,
       diagonal: colors.emblemMark,
       rings: 3,
       bezel: true,
@@ -78,7 +83,7 @@ function looksFor(colors: Palette): Record<BadgeLevel, TierLook> {
     },
     oracle: {
       fill: 'gradient',
-      outline: colors.oracleGold,
+      outline: colors.medalGold,
       diagonal: colors.emblemMark,
       rings: 4,
       bezel: true,
@@ -107,8 +112,13 @@ export function LensEmblem({
   palette,
   testID = `lens-${tier}`,
 }: LensEmblemProps) {
+  const appearance = useAppearance();
   const tones = palette ?? colors;
   const look = (palette ? looksFor(palette) : APP_LOOKS)[tier];
+  // Platinum's gradient stops as plain hex: react-native-svg drops a stop it
+  // can't read as a number, and a dynamic token isn't one, so in the app the
+  // face drew empty on iOS and web (found 2026-11-25, D80).
+  const stops = palette ?? paletteFor(appearance);
   const blueprint = progress !== undefined;
   // Scales with size but stays a hairline-to-medium line even at 120 pt.
   const stroke = Math.min(3, Math.max(1.5, size / 20));
@@ -123,13 +133,13 @@ export function LensEmblem({
   const ink = inkColor ?? look.outline;
   const gradientId = `lens-gradient-${size}`;
 
-  // Concentric rings inside the face: 1 for Tracker up to 4 for Oracle.
+  // Concentric rings inside the face: 1 for Bronze up to 4 for Platinum.
   const rings = Array.from({ length: blueprint ? 0 : look.rings }, (_, i) => {
     const gap = size * 0.07 * (i + 1);
     return { x: o + gap, s: side - 2 * gap, rr: Math.max(0, r - gap) };
   });
 
-  // Bezel: short ticks centred on each edge (Sharp, Oracle).
+  // Bezel: short ticks centred on each edge, in gold (Gold, Platinum).
   const tick = size * 0.1;
   const mid = size / 2;
   const bezel =
@@ -160,9 +170,9 @@ export function LensEmblem({
         {look.fill === 'gradient' && !blueprint && (
           <Defs>
             <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={tones.emblemDeep} />
-              <Stop offset="0.55" stopColor={tones.emblemDeep} />
-              <Stop offset="1" stopColor={tones.oracleGold} />
+              <Stop offset="0" stopColor={stops.emblemDeep} />
+              <Stop offset="0.55" stopColor={stops.emblemDeep} />
+              <Stop offset="1" stopColor={stops.medalGold} />
             </LinearGradient>
           </Defs>
         )}
@@ -201,7 +211,7 @@ export function LensEmblem({
             y1={y1}
             x2={x2}
             y2={y2}
-            stroke={tier === 'oracle' ? tones.oracleGold : tones.emblemMark}
+            stroke={tones.medalGold}
             strokeWidth={stroke}
             strokeLinecap="round"
           />

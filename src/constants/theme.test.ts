@@ -112,12 +112,12 @@ describe('type', () => {
 });
 
 // Roadmap D33: the brand has no hue. Nothing outside the calibration and
-// caution roles, the destructive red and Oracle's gold may carry colour, so a
+// caution roles, the destructive red and the medals' gold may carry colour, so a
 // hue can only ever mean over, under or on the line.
 describe('ink chrome', () => {
   const HUED: (keyof Palette)[] = [
     'overMark', 'overText', 'underMark', 'underText', 'calibratedMark', 'calibratedText',
-    'cautionText', 'cautionBackground', 'destructive', 'oracleGold',
+    'cautionText', 'cautionBackground', 'destructive', 'medalGold',
   ];
   // One exception that means nothing about the record (step 192): the four
   // colours of Google's "G" on "Continue with Google", a third-party

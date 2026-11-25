@@ -66,10 +66,19 @@ the Expo slug `calibrate` (the EAS project is linked to it), and the repo name
 
 > Know when to trust your gut
 
+**The owner's chosen line for 1.1.0** (D80, 2026-11-25: "I also like the changed slogan"):
+**"Learn when to trust your gut"** (28 of 30), for the subtitle and to lead the promotional
+text. It is the share cards' hook in the app since D80. *For the owner to paste in App Store
+Connect at the 1.1.0 submission;* the line above is the record's until then.
+
 **Promotional text** [170] (editable any time without review)
 
 > Log a prediction, say how sure you are, and find out if you were right to be.
 > Sharp in health, shaky with money? Your calibration score shows you where.
+
+*Needs the owner's word at 1.1.0:* the second line plays on the old tier name, and the app
+no longer says "sharp" (D80). His slogan above can take its place ("Learn when to trust your
+gut, category by category." is one way).
 
 **Keywords** [100 bytes, comma-separated, no spaces, no words already in the name]
 
@@ -145,10 +154,10 @@ leaves that judgement to the developer), so getting it right first time matters.
 > either-or questions, the same for everyone that day, each with how sure you
 > are. Practice stays apart from your real score.
 >
-> **SHARP IN HEALTH, TRACKER IN MONEY**
+> **GOLD IN HEALTH, BRONZE IN MONEY**
 > Calibration isn't one number. Fairly Sure scores you separately for work,
 > health, finance, social life, personal goals and any category you add, and
-> each earns a badge from Tracker to Oracle. Badges need a real track record, so
+> each earns a badge from Bronze to Platinum. Badges need a real track record, so
 > a lucky run is unlikely to earn one.
 >
 > **HONEST BY DESIGN**
@@ -320,14 +329,15 @@ Today "Know when to trust your gut"; curve "See exactly where you’re overconfi
 Log "Say how sure you are. Find out later." (due "In a week", so the title's Friday and the
 date agree); badges "Badges need a real track record" (the gate's audits failed "Badges you
 can’t luck into": luck can still clear a bar about 1 time in 10); share
-card "Sharp in health. Tracker in finance."; year "Your year in predictions". They are
+card "Gold in health. Bronze in finance." (captured before D80 as "Sharp in health.
+Tracker in finance.": the share card needs a new capture for 1.1.0); year "Your year in predictions". They are
 web renders: no SF Symbols or glass. The table and "How" below are the earlier plan.
 
 The order matters. Most people see only the first three.
 
 | # | Screen | Caption (short, large type) |
 |---|---|---|
-| 1 | **Identity card** (Share → Card) | **Sharp in health. Tracker in money.** |
+| 1 | **Identity card** (Share → Card) | **Gold in health. Bronze in money.** |
 | 2 | **Calibration curve** (Insights, a post-threshold user, points off the diagonal) | **See exactly where you're overconfident** |
 | 3 | **Warm-up result** (counts, chart and the answers) | **Your first result in 60 seconds** |
 | 4 | **Log screen** with the confidence slider mid-range | **Say how sure you are. Find out later.** |
@@ -370,8 +380,8 @@ is installed but unused until release prep. Planned uses:
 - Framed screenshot compositions: a device frame, a crop and a caption set
   around a real capture of each screen in the table above.
 - A landing-page hero and feature cards, e.g. the calibration curve drawing
-  itself, or a badge going from Tracker to Sharp.
-- Launch and social visuals for the "Sharp in health · Tracker in money" idea.
+  itself, or a badge going from Bronze to Gold.
+- Launch and social visuals for the "Gold in health · Bronze in money" idea.
 
 Limits:
 

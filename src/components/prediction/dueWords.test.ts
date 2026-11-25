@@ -1,3 +1,5 @@
+import { __setPhoneClockForTests } from '@/constants/locale';
+
 import { dueWords, loggedAgainLine, savedLine, logAgainWords } from './dueWords';
 
 // Roadmap D55: Save names the date. In the owner's words since 2026-11-24:
@@ -72,7 +74,10 @@ describe('loggedAgainLine', () => {
     expect(loggedAgainLine(noon(2026, 10, 12), now)).toBe('Logged again, due in 3 days.');
     expect(loggedAgainLine(noon(2026, 10, 9), now)).toBe('Logged again, ready to answer.');
     expect(loggedAgainLine(noon(2026, 10, 7), now)).toBe('Logged again, ready to answer.');
-    expect(dueWords(noon(2026, 10, 9), now).text).toBe('today');
+    // An open one due today says until when (D80).
+    __setPhoneClockForTests(true);
+    expect(dueWords(noon(2026, 10, 9), now).spoken).toBe('today by 11:59 PM');
+    __setPhoneClockForTests(undefined);
   });
 });
 

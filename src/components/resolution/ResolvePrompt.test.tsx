@@ -1385,7 +1385,7 @@ describe('ResolvePrompt — a badge taken back', () => {
 
   it('words the drop by the bar its low end fell under', () => {
     expect(tierDropLine(drop)).toBe(
-      "Back to Tracker in health: after this answer its score's low end is no longer above Forecaster's 70. A badge follows the record both ways.",
+      "Back to Bronze in health: after this answer its score's low end is no longer above Silver's 70. A badge follows the record both ways.",
     );
   });
 
@@ -1415,7 +1415,7 @@ describe('ResolvePrompt — a badge taken back', () => {
       // A moment after the answer, once the focus has moved.
       await waitFor(() =>
         expect(announce).toHaveBeenCalledWith(
-          expect.stringMatching(/^Recorded: it (happened|didn’t happen)\. Back to Tracker in health: /),
+          expect.stringMatching(/^Recorded: it (happened|didn’t happen)\. Back to Bronze in health: /),
         ),
       );
       announce.mockRestore();
@@ -1571,7 +1571,7 @@ describe('ResolvePrompt — the read after a saved answer fails', () => {
 
     expect(await screen.findByTestId('resolve-recorded')).toBeTruthy();
     expect(screen.queryByText(/New badge/)).toBeNull();
-    expect(screen.queryByText(/Forecaster/)).toBeNull();
+    expect(screen.queryByText(/Silver/)).toBeNull();
     expect(screen.queryByText(/A full week/)).toBeNull();
     expect(useStatsStore.getState().milestone).toBeNull();
     expect(usePredictionStore.getState().streakCheckpoint).toBeNull();

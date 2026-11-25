@@ -18,7 +18,8 @@ Status: filled in 2026-11-08
   database file (`calibrate.db`) and older docs still say Calibrate; that is expected (§8).
 - **Pitch:** log a prediction, say how sure you are, and find out whether you were right to be.
   Most people are systematically over- or underconfident in specific areas of life; the app shows
-  where. Framed as identity ("Sharp in health, Tracker in money"), never as statistics.
+  where. Framed as identity ("Gold in health, Bronze in money"; the badges are medals since D80,
+  each saying how far you can trust your gut in that category), never as statistics.
 - **Platform: iOS, iPhone only.** `ios.supportsTablet: false`; no Android build is planned (the
   owner has no Android device; `app.json` keeps an adaptive icon only because Expo expects one).
   The web build exists for automated screenshots and playtests, never as a product (§9).
@@ -52,6 +53,7 @@ Status: filled in 2026-11-08
   the owner kept it to Today, 2026-11-25; History's empty state and "Log it again" open it too): title,
   confidence (starts empty, D13), category (starts empty, D29), due date (starts on Tomorrow, D55).
   Save waits for a title, a number and a category, and names the date ("Save, due in 3 days", D55, D78).
+  An open prediction due today reads "due today by 11:59 PM" ("by 23:59" on a 24-hour phone, D80).
   Target: under 15 seconds.
 - **Resolve:** on the due day the 19:00 reminder (or the person's time, D38) says only "Your
   prediction from Nov 6 · You said 70%", never the words, and has no Happened / Didn't (both
@@ -179,7 +181,7 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
 | Id | Rule | Source |
 | --- | --- | --- |
 | R1 | Buckets `[0,20) [20,40) [40,60) [60,80) [80,100]`, lower bound inclusive, top closed; count-weighted mean absolute error; clamped to 0–100. The worked examples are required fixtures. | `CLAUDE.md` Calibration Engine |
-| R2 | Never a number built on noise: below `MIN_N_OVERALL` (20) no headline rating, below `MIN_N_CATEGORY` (20, D46, step 157) no category score; progress toward the gate instead. No badge above Tracker while provisional. | Minimum-N gating |
+| R2 | Never a number built on noise: below `MIN_N_OVERALL` (20) no headline rating, below `MIN_N_CATEGORY` (20, D46, step 157) no category score; progress toward the gate instead. No badge above Bronze (`tracker`) while provisional. | Minimum-N gating |
 | R3 | A tier is earned at its low end (score minus its give-or-take clears the bar) and with its resolution minimum (20 / 50 / 100). Today and the share card name only tiers past the count gate (D27). | Badge Levels, D35 |
 | R4 | One lean rule everywhere: over or under only outside the central 80% of luck (`chanceRange`, `LEAN_MASS`) and by at least 5 points; no lean word or mark for a range under 10 (`MIN_N_BAND`, D58). The chart's grey bars show that 80%. | D35, D58 |
 | R5 | Same-day answers aren't scored (`isSameDayAnswer`, `scoredFrom`), both days read in the UTC offset stored when the prediction was logged or reworded, never in the zone of the answer (`isOnMadeDay`; with no stored offset, the phone's zone); the earliest picked due date is the next day. | D41, D69 (f) |
@@ -236,7 +238,7 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   migration that moves the data first.
 - **Ids that saved data references, never changed:** the database file `calibrate.db`, the
   built-in category ids (`work`, `health`, `finance`, `social`, `personal`) and the `c-` prefix of
-  added ones, badge ids (`guesser` … `oracle`; "Getting started" is only the label), card theme
+  added ones, badge ids (`guesser` … `oracle`; "Getting started", "Bronze", "Silver", "Gold" and "Platinum" are only the labels, D80), card theme
   ids, settings keys (a removed setting's key is left unread, never reused: `hideTitles`,
   `reminderWords`, `practiceReminder`, 2026-11-25), the notification identifiers and category
   (the Happened / Didn't actions, kept registered for reminders an older build delivered),

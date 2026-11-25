@@ -50,6 +50,16 @@ export const BADGE_LADDER: readonly BadgeLevel[] = [
   'oracle',
 ];
 
+/**
+ * Where badges are introduced (D80, the owner, 2026-11-25: the tier names
+ * were confusing at first): the top of Insights' badge section and the
+ * opening of How scoring works → Badges. "Badges go Bronze, Silver, Gold,
+ * Platinum. Each one says how far you can trust your gut in that category."
+ */
+export const BADGES_INTRO = `Badges go ${BADGE_LADDER.slice(1)
+  .map((b) => BADGE_META[b].label)
+  .join(', ')}. Each one says how far you can trust your gut in that category.`;
+
 /** The five badges with what each takes, as the badge legend shows them. */
 export function badgeRows(): { badge: BadgeLevel; label: string; criteria: string }[] {
   return BADGE_LADDER.map((badge) => ({
@@ -99,7 +109,8 @@ export function scoringSections(): ScoringSection[] {
     {
       title: 'Badges',
       paragraphs: [
-        'Each category earns its own badge, so you can be Sharp in one and just getting started in another. A badge needs both the score and the count: a high score on three lucky calls earns nothing. Above Tracker, the score has to clear the bar at its low end, which is the score minus its give-or-take: a score of 89, give or take 10, is 79 at its low end. That makes it hard for luck alone to carry a category over a line. A badge follows the record both ways: if the low end falls back under a bar, or the count under a minimum, the badge goes back to the highest one it still clears.',
+        BADGES_INTRO,
+        `Each category earns its own badge, so you can be ${BADGE_META.sharp.label} in one and just getting started in another. A badge needs both the score and the count: a high score on three lucky calls earns nothing. Above ${BADGE_META.tracker.label}, the score has to clear the bar at its low end, which is the score minus its give-or-take: a score of 89, give or take 10, is 79 at its low end. That makes it hard for luck alone to carry a category over a line. A badge follows the record both ways: if the low end falls back under a bar, or the count under a minimum, the badge goes back to the highest one it still clears.`,
       ],
     },
     {

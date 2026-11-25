@@ -78,7 +78,7 @@ describe('MilestoneCard — tier-up (DESIGN_SYSTEM §6.1 tierUp)', () => {
   it('says it all in words for screen readers', () => {
     render(<MilestoneCard milestone={TIER_UP} />);
     expect(screen.getByTestId('milestone-tier_up').props.accessibilityLabel).toMatch(
-      /^New badge: Forecaster in health\./,
+      /^New badge: Silver in health\./,
     );
   });
 
@@ -120,7 +120,7 @@ describe('milestoneCopy (step 179)', () => {
       rating: 86,
       badge: { category: 'health', badge: 'forecaster' },
     });
-    expect(unlocked.body).toMatch(/New badge, too: Forecaster in health\. Badges follow/);
+    expect(unlocked.body).toMatch(/New badge, too: Silver in health\. Badges follow/);
     expect(milestoneCopy({ kind: 'rating_unlocked', rating: 86 }).body).not.toMatch(/New badge/);
     render(<MilestoneCard milestone={TIER_UP} />);
     expect(screen.getByTestId('milestone-tier_up').props.accessibilityLabel).toMatch(

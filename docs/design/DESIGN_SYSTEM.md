@@ -57,7 +57,7 @@ by design. A few font sizes are still raw numbers rather than `type.*` (the tab 
    theirs: never a meaning).
 6. **Ink is chrome, colour is data.** Actions and selection are ink (`action`); the
    chart and every other hue mean over, under or on the line. Nothing else on screen
-   carries a hue except the destructive red, the caution amber, Oracle's gold and
+   carries a hue except the destructive red, the caution amber, the medals' gold (Gold and Platinum, D80) and
    Google's own mark on its sign-in button (§2.4)
    (D33; `theme.test.ts` holds the rest near-neutral).
 7. **Text contrast ≥ 4.5:1**, UI/graphic contrast ≥ 3:1, no text under 11 pt, tap
@@ -76,7 +76,7 @@ by design. A few font sizes are still raw numbers rather than `type.*` (the tab 
 
 | Principle | What it means on screen | Reference |
 |---|---|---|
-| **Identity leads, the number is the receipt** | "Sharp in health" first, left-aligned and large; the rating under it on its gauge; the curve is the proof (§7.1, D33). | 16Personalities, Spotify Wrapped 2025 "Clubs" |
+| **Identity leads, the number is the receipt** | "Gold in health" first, left-aligned and large; the rating under it on its gauge; the curve is the proof (§7.1, D33). | 16Personalities, Spotify Wrapped 2025 "Clubs" |
 | **Ink chrome, colour only for meaning** | Actions and selection in ink; colour only where it means over, under or on the line, so every hue on screen is information (D33). | Co–Star, Wrapped 2025 "selective pops of colour", HIG Color |
 | **Honest about uncertainty** | Calibrating states, labelled regions, ranges shown as soft bands, n shown on every dot. Showing ranges barely costs trust (van der Bles 2020). | WHOOP "calibrating", Oura baseline |
 | **Reward honesty, not correctness** | Neutral outcome styling; no confidence is ever rewarded for being a particular number (the integrity bonus went, D23). | Product principle (`CLAUDE.md`) |
@@ -132,8 +132,8 @@ coverage range) or on the
 checkpoint tint takes `textTertiary` for its edge (`onSunken` on `Button` and
 `MomentChips`; steps 193 and 195).
 
-The Lens emblem has its own three (§7.4): `emblemMid` `#5B5F69` (Forecaster),
-`emblemDeep` `#15171B` (Sharp, and where Oracle's gradient starts) and `emblemMark`
+The Lens emblem has its own three (§7.4): `emblemMid` `#5B5F69` (Silver),
+`emblemDeep` `#15171B` (Gold, and where Platinum's gradient starts) and `emblemMark`
 `#FFFFFF` (the diagonal and bezel on a filled face); in dark `#9EA2AB`, `#F2F3F5` and
 `#15171B`.
 
@@ -147,7 +147,7 @@ Cool = underconfident, warm = overconfident, green = on the line.
 | `under` ("runs cool") | `#0084C7` (4.10) | `#006C9E` (5.77) | `#005A85` / `#E6F4FB` (6.68) | `#5CB4EC` (7.90); mark `#2D96D8` |
 | `calibrated` ("on the line") | `#009E73` (3.42) | `#00785A` (5.48) | `#00664C` / `#E3F6EF` (6.22) | `#3CC79A` (8.44); mark `#14A87B` |
 | too few (a range under 10, D58) | `textSecondary` (chart dot); the card theme's `muted` (strip dot) | no lean word | | `muted` |
-| `oracleGold` (emblem hairline only) | `#B7791F` (graphic) | chip `#7A4F0E` / `#FDF6E7` (6.61) | | `#E8B64C` |
+| `medalGold` (Gold's and Platinum's hairline and bezel, Platinum's gradient; `oracleGold` until D80) | `#B7791F` (graphic) | Gold's chip `#6B4510` / `#F7ECD3` (7.20) | | `#E8B64C`; dark chip `#E8B64C` / `#2A1E08` (8.72) |
 
 Lean colours are drawn on `canvas` and `surface` only. In light a mark is never set on
 `surfaceSunken` or `selectedFill` (`calibrated` measures 2.86:1 and 2.71:1 there), nor
@@ -395,8 +395,8 @@ The four tabs are *Today*, *Insights*, *History* and *You*, and Log is a sheet (
 
 - **Identity on Today** (roadmap step 28; D33 put it first): the share card's
   headline leads the hero, left-aligned, from the same helper: the best category's
-  30pt emblem and "Sharp in health" in `title1` (tracking −0.4), the contrast
-  ("Tracker in finance") in `callout` beneath, indented to start under the words. Hidden while every
+  30pt emblem and "Gold in health" in `title1` (tracking −0.4), the contrast
+  ("Bronze in finance") in `callout` beneath, indented to start under the words. Hidden while every
   category is at Getting started. **D27 (2026-10-10):** only categories past the count gate
   (20 resolved) are named, so the contrast is never "Guesser in …", which means
   "fewer than 20 here" and read as a verdict. Tapping the line opens How scoring works
@@ -632,20 +632,29 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
 | Tier | Emblem | Fill | Rings | Accent |
 |---|---|---|---|---|
 | Getting started (`guesser`) | dashed outline, dotted diagonal | none | 0 | `controlBorder` |
-| Tracker | solid outline, solid diagonal | `surfaceSunken` | 1 | `textSecondary` |
-| Forecaster | filled | `emblemMid` (graphite) | 2 | `emblemMark` diagonal |
-| Sharp | filled, deep | `emblemDeep` (ink) | 3 + bezel ticks | `emblemMark` diagonal |
-| Oracle | gradient `emblemDeep`→`oracleGold` | — | 4 + bezel | `oracleGold` hairline |
+| Bronze (`tracker`) | solid outline, solid diagonal | `surfaceSunken` | 1 | `textSecondary` |
+| Silver (`forecaster`) | filled | `emblemMid` (graphite) | 2 | `emblemMark` diagonal |
+| Gold (`sharp`) | filled, deep | `emblemDeep` (ink) | 3 + bezel ticks in gold | `medalGold` hairline, `emblemMark` diagonal |
+| Platinum (`oracle`) | gradient `emblemDeep`→`medalGold` | — | 4 + bezel in gold | `medalGold` hairline |
+
+**Medals** (D80, the owner, 2026-11-25): the tiers read Bronze, Silver, Gold, Platinum
+(Tracker, Forecaster, Sharp, Oracle until then; the ids stay). One line introduces them,
+small and plain, under Insights' "Category badges" header and opening How scoring works
+→ Badges: "Badges go Bronze, Silver, Gold, Platinum. Each one says how far you can trust
+your gut in that category." No bronze or brown tint: a medal's name is in its label and
+its rings, never in a hue that means a lean. Platinum's gradient stops are plain hex
+(`paletteFor`): react-native-svg drops a stop it can't read as a number, and with the
+dynamic tokens the face drew empty in the app.
 
 - The category SF Symbol sits small in a corner; the label is always written
-  ("Sharp · Health").
+  ("Gold · Health").
 - **Provisional / not yet earned:** blueprint rendering (outline, 40% opacity) with a
   progress arc; the hint beside it says what's left. Implemented as `LensEmblem`'s `progress` prop: the
   outline goes dashed and faint, and a solid stroke traces it as far as the user has
   come (`src/components/ui/LensEmblem.tsx`).
 - The progress hint names every requirement still unmet: "3 more scored answers to
-  reach Tracker", "Score above 70 at its low end to reach Forecaster", or both, "20 more
-  scored answers and a score above 85 at its low end to reach Sharp" (roadmap step 47).
+  reach Bronze", "Score above 70 at its low end to reach Silver", or both, "20 more
+  scored answers and a score above 85 at its low end to reach Gold" (roadmap step 47).
   Naming only the count promised a badge that
   resolving alone couldn't earn. Only the threshold is printed, never a provisional
   score.
@@ -656,32 +665,37 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   the category is past `MIN_N_CATEGORY` (20 resolved since D46, `score_is_provisional` false),
   its score in the row's meta line ("Score 84, give or take 5, from 52 scored" since
   D35, step 140), rounded, in `textSecondary` (never a display size; the overall
-  rating is the one hero). A tier above Tracker needs the score minus its
+  rating is the one hero). A tier above Bronze needs the score minus its
   give-or-take over the bar; when only that is short, the hint says "Score above 85
-  at its low end to reach Sharp".
+  at its low end to reach Gold".
   Before that, the count to go and its plain counts (D53). A returning tester couldn't answer "how am I
   doing in money" with a number.
 - **The first tier is "Getting started"** (D36, step 141; the id stays `guesser`):
   "Guesser" stung after one prediction. Its tagline says what it is: "Fewer than 20
   resolved here" (it read "Just getting started", which a five-month user took as a
   judgement). The upper tiers' taglines say "at its low end" since D35. Until any
-  category has a badge, a line under Category badges says "A category earns its first
-  badge, Tracker, at 20 answered there."
+  category has a badge, a line under Category badges says "Each category earns its first
+  badge at 20 scored answers." (D76).
 - Insights lists the badge rows in the app's one category order (`CATEGORIES` in
   `src/types`: work, health, finance, social, personal), as Log's chips and History's
   filters do (roadmap step 73), so the rows keep their places.
 - Why not one hue per tier (16Personalities-style)? Five extra hues would collide with
   the over/under/calibrated semantics. Graphite, ink and gold give each tier a distinct
   look without that cost (D33). The badge chips beside the
-  emblem follow the same ladder (`BADGE_CHIP_COLORS`): each tier a step darker grey, up
-  to Sharp's mid grey, and Oracle gold. Sharp's chip stops short of ink because it
-  holds the emblem, whose Sharp face is ink: on an ink chip the face vanished.
+  emblem (`BADGE_CHIP_COLORS`, D80): Getting started, Bronze and Silver a grey ladder,
+  each a step darker (5.34, 6.69 and 10.8:1 in light; 5.85, 7.61 and 9.42:1 in dark);
+  Gold the gold chip (7.20 / 8.72:1); Platinum the strongest, `action`'s ink: white on
+  `#15171B` in light (17.9:1), `#15171B` on `#F2F3F5` in dark (16.2:1). The emblem's
+  ink face would vanish on that chip, so there it is drawn in the other appearance's tones
+  (`paletteOnInk`, `CHIP_EMBLEM_INVERTED`): a light face with a gold corner on the ink
+  chip, an ink face on the light one. `badges.test.ts` holds every pair to 4.5:1 and
+  each Gold and Platinum face to 3:1 on its own chip.
 
 ### 7.5 Share cards
 
-- **Hierarchy (at 1080 px wide):** identity line 88–96 px Bold ("Sharp in
+- **Hierarchy (at 1080 px wide):** identity line 88–96 px Bold ("Gold in
   health"; every category at the top tier, two short names at most, else "and N
-  more", D54) → contrast line 56 px ("Tracker in money") → one receipt
+  more", D54) → contrast line 56 px ("Bronze in money") → one receipt
   36–40 px in natural frequencies ("Right 84% of the time I said 80%") → a mini visual
   with no axes (5-bucket strip between "0%" and "100%", each range marked by shape as
   well as colour: a ring on the line, ▲ came true more often than said, ▼ less, a dash
@@ -690,8 +704,8 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   ▲ too cautious · ▼ too sure · • under 10 answers · – none"; the strip waits until some range has 10, as
   it waits for the rating; D47, step 158; VoiceOver hears it inside the
   card's one label, with no lean word for a range under 10), legible at thumbnail size → footer: the
-  app's name over the hook, phrased as a question, "Fairly Sure" / "What are you sharp
-  at?", **≥ 32 px at ≥ 4.5:1** (15 and 14 pt on the 360 pt canvas, 45 and 42 px
+  app's name over the hook, "Fairly Sure" / "Learn when to trust your gut" (the owner's
+  line since D80; "What are you sharp at?" until then; the Wrapped card's too), **≥ 32 px at ≥ 4.5:1** (15 and 14 pt on the 360 pt canvas, 45 and 42 px
   exported); `cardThemes.test.ts` holds every theme's text, the hook included, to 4.5:1.
 - **On the Share sheet** (step 112): the preview, then **Share my card** and
   **Share as text** straight under it, then Shape, On the card and the themes.
@@ -707,7 +721,7 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   (Wordle-style, spoiler-free, never includes prediction titles):
   ```
   My calibration · Fairly Sure
-  Sharp in health · Tracker in money
+  Gold in health · Bronze in money
   ⬜🟩🟩🟧🟧 score 81, give or take 3
   Low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under 10 answers
   https://apps.apple.com/app/apple-store/id6831917395
@@ -720,8 +734,8 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   (2026-11-23, in builds after 1.0.0). An image share can't carry a link (the share sheet gets a bare PNG), so the
   name in the card's footer is its only way back to the store.
 - **Which categories it names** (D27, 2026-10-10): the identity and contrast lines
-  name only categories past the count gate (20 scored, Tracker or above). Best
-  first, every one at that tier ("Forecaster in health and money", D54); the
+  name only categories past the count gate (20 scored, Bronze or above). Best
+  first, every one at that tier ("Silver in health and money", D54); the
   contrast is the weakest of those, shown only when its tier differs. With none
   past the gate yet, the identity line reads "Calibrating" over the dashed Getting started
   lens and the subline counts what's left ("12 more scored answers until my
@@ -1022,7 +1036,9 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   further either way the short date with its weekday in brackets, in the phone's own
   day-and-month order: "Nov 21 (Friday)", "21 Nov (Friday)", with the year only when it
   isn't this one ("Jan 5, 2027 (Tuesday)"). A row reads "due in 3 days" or "answered
-  yesterday"; VoiceOver hears the same words. It replaced "Fri 3 Oct", the weekday names
+  yesterday"; VoiceOver hears the same words. An open prediction due today reads "due
+  today by 11:59 PM" (`dueDay`, D80; the phone's clock, "by 23:59"), "by" and the time held
+  together so a narrow line breaks after "today"; not an answered one or Save. It replaced "Fri 3 Oct", the weekday names
   on Save and the comma'd dates. Notifications, share cards, the CSV, Can't tell's last
   day and the dates that aren't due dates (when it was logged, when it was answered on its
   details) keep their own forms.
@@ -1188,7 +1204,7 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
 - Loading copy says what's happening ("Reading your 5 categories…"), not "Loading".
 - Each card has dismiss (×). Add 👍/👎 only once there's an analytics event to receive
   it; feedback is always voluntary, with no follow-up prompt.
-- No celebration motion, no `oracleGold`; calibration hues only for the direction the
+- No celebration motion, no `medalGold`; calibration hues only for the direction the
   card describes.
 - **No support surface** (D73, the owner, 2026-11-20): the card that replaced Coach when
   words in a prediction or note matched a distress list, its helpline lines and its way
@@ -1205,7 +1221,7 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
   rewards safe calls. Outcome first, since "about 4. 6 happened" read
   as 4.6. The yearly card uses the same line; (2) one factual receipt in natural frequencies: "You said 90%
   three times. All three happened."; (3) progress: the unlock ring or the next badge
-  ("Tracker in health: 3 to go"); (4) the verdict only when the window earns it.
+  ("To reach Bronze or higher in health: 3 more scored answers"); (4) the verdict only when the window earns it.
   Never a card whose main message is "not enough data". From a two-day streak, the
   card carries "15-day streak" under the counts in its accent (roadmap step 63). An empty week with open
   predictions due within it leads with "2 on the way" and says the recap fills in as

@@ -1806,3 +1806,32 @@ Needs a new build; check on the iPhone after updating from an older build.
 - [ ] **Trivia, by that name:** Today's row reads "While you wait: today's trivia"; the sheet, its results, its closing line ("Trivia is just for fun. It doesn't touch your rating, badges or streak.") and You say Trivia, never Practice.
 - [ ] **Share:** no "Got a friend's card?" on either card.
 - [ ] **The "+":** only on Today's title bar; Insights and History have none, and Log still opens from Today.
+
+
+## Medals and 11:59 (D80, 2026-11-25, `builder/badges`)
+
+JS only; needs a new TestFlight build. Light and dark for each. The `demo` data has Gold in
+health, Silver in work and Bronze in finance; Platinum needs the dev celebrations screen
+(`/dev/celebrations`, "Tier-up: Gold → Platinum") or a record of 100+.
+
+- [ ] **Chips and emblems:** Insights → Category badges. The line under the header reads
+      "Badges go Bronze, Silver, Gold, Platinum. Each one says how far you can trust your gut
+      in that category." Getting started, Bronze and Silver chips are greys, each a step
+      darker; Gold is the gold chip with a gold edge and bezel on its emblem; no chip is
+      brown, orange, blue or green. In light and dark, each label reads clearly on its chip.
+- [ ] **Platinum:** on the tier-up card (64 pt) and, if a record has it, the Insights chip:
+      the emblem shows a face (ink to gold, four rings, gold bezel), not just an outline. On
+      the Platinum chip (black in light, near-white in dark) the emblem's face shows
+      clearly, never vanishing into the chip.
+- [ ] **Identity line:** Today reads "Gold in health" with "Bronze in finance" beneath (demo
+      data); tapping it opens How scoring works at Badges, whose first line is the one above.
+- [ ] **Share card:** the identity card says "Gold in health · Bronze in finance" in the
+      image and in Share as text; the footer under "Fairly Sure" reads "Learn when to trust
+      your gut", on one line, on every theme. The weekly and yearly recaps' footers read the
+      same. The word "sharp" appears nowhere.
+- [ ] **Due today:** an open prediction due today reads "due today by 11:59 PM" on its card
+      (Today and History) and "Due today by 11:59 PM, with a reminder at 7:00 PM" on its
+      details; with 24-Hour Time on (Settings → General → Date & Time), "by 23:59". On a
+      375-pt phone the card's line fits beside the category or moves under it whole, and
+      never splits "11:59 PM". VoiceOver says "due today by 11:59 PM". An answered one
+      still reads "answered today", and one due yesterday "due yesterday".

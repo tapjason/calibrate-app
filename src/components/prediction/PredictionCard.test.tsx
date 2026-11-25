@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react-native';
 
 import { relativeDay } from '@/components/ui/dates';
+import { __setPhoneClockForTests } from '@/constants/locale';
 import { useCategoryStore } from '@/store/categoryStore';
 import type { Prediction } from '@/types';
 
@@ -54,8 +55,14 @@ describe('PredictionCard', () => {
   // dates further out \u2026 Due Nov 21 (Friday)."
   describe('dates in words', () => {
     // Tuesday 24 November 2026, 10 AM.
-    beforeEach(() => jest.useFakeTimers({ now: new Date(2026, 10, 24, 10) }));
-    afterEach(() => jest.useRealTimers());
+    beforeEach(() => {
+      jest.useFakeTimers({ now: new Date(2026, 10, 24, 10) });
+      __setPhoneClockForTests(true);
+    });
+    afterEach(() => {
+      jest.useRealTimers();
+      __setPhoneClockForTests(undefined);
+    });
     const open = (due: Date) => ({
       ...prediction,
       status: 'pending' as const,
@@ -65,7 +72,8 @@ describe('PredictionCard', () => {
 
     it("names an open one's due day from today", () => {
       const { rerender } = render(<PredictionCard prediction={open(new Date(2026, 10, 24, 12))} />);
-      expect(screen.getByText('due today')).toBeTruthy();
+      // Until when, on the day itself (D80).
+      expect(screen.getByText('due today by\u00A011:59\u00A0PM')).toBeTruthy();
       rerender(<PredictionCard prediction={open(new Date(2026, 10, 25, 12))} />);
       expect(screen.getByText('due tomorrow')).toBeTruthy();
       rerender(<PredictionCard prediction={open(new Date(2026, 10, 27, 12))} />);
@@ -74,6 +82,33 @@ describe('PredictionCard', () => {
       expect(screen.getByText('due Dec\u00A04 (Friday)')).toBeTruthy();
       rerender(<PredictionCard prediction={open(new Date(2026, 10, 22, 12))} />);
       expect(screen.getByText('due 2\u00A0days\u00A0ago')).toBeTruthy();
+    });
+
+    // Roadmap D80 (the owner, 2026-11-25): the due day runs until 11:59 PM,
+    // and the card says so, on the phone's own clock and aloud.
+    it('says until when an open one is due today, on a 12- or 24-hour clock', () => {
+      const { rerender } = render(
+        <PredictionCard prediction={open(new Date(2026, 10, 24, 12))} onPress={jest.fn()} />,
+      );
+      expect(screen.getByRole('button').props.accessibilityLabel).toMatch(/, due today by 11:59 PM\. /);
+      __setPhoneClockForTests(false);
+      rerender(<PredictionCard prediction={{ ...open(new Date(2026, 10, 24, 12)), id: 'p2' }} onPress={jest.fn()} />);
+      expect(screen.getByText('due today by\u00A023:59')).toBeTruthy();
+      expect(screen.getByRole('button').props.accessibilityLabel).toMatch(/, due today by 23:59\. /);
+    });
+
+    it('says only "answered today" for one answered today, with no time', () => {
+      render(
+        <PredictionCard
+          prediction={{
+            ...prediction,
+            due_date: new Date(2026, 10, 24, 12).toISOString(),
+            resolved_at: new Date(2026, 10, 24, 9).toISOString(),
+          }}
+        />,
+      );
+      expect(screen.getByText('answered today')).toBeTruthy();
+      expect(screen.queryByText(/11:59/)).toBeNull();
     });
 
     it("names an answered one's day the same way, and says it the same way", () => {

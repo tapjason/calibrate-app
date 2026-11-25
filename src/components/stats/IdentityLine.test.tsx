@@ -30,16 +30,16 @@ describe('homeIdentity (roadmap step 28)', () => {
   it('leads with the best category and keeps the weakest as the contrast', () => {
     expect(
       homeIdentity(USER, [cat('finance', 'tracker', 24, 62), cat('health', 'sharp', 60, 96)]),
-    ).toEqual({ identity: 'Sharp in health', contrast: 'Tracker in finance', badge: 'sharp' });
+    ).toEqual({ identity: 'Gold in health', contrast: 'Bronze in finance', badge: 'sharp' });
     // Roadmap D27: a Guesser (fewer than 20 answered) is never the contrast.
     expect(
       homeIdentity(USER, [cat('finance', 'guesser', 17, 62), cat('health', 'sharp', 60, 96)]),
-    ).toEqual({ identity: 'Sharp in health', contrast: null, badge: 'sharp' });
+    ).toEqual({ identity: 'Gold in health', contrast: null, badge: 'sharp' });
   });
 
   it('has no contrast with a single category', () => {
     expect(homeIdentity(USER, [cat('work', 'tracker', 22, 60)])).toEqual({
-      identity: 'Tracker in work',
+      identity: 'Bronze in work',
       contrast: null,
       badge: 'tracker',
     });
@@ -56,7 +56,7 @@ describe('IdentityLine', () => {
   // something else re-rendered Today.
   it('follows a rename', () => {
     render(<IdentityLine userStat={USER} categoryStats={[cat('health', 'sharp', 60, 96)]} onPress={jest.fn()} />);
-    expect(screen.getByText('Sharp in health')).toBeTruthy();
+    expect(screen.getByText('Gold in health')).toBeTruthy();
     act(() => {
       useCategoryStore.setState({
         defs: [
@@ -72,7 +72,7 @@ describe('IdentityLine', () => {
         ],
       });
     });
-    expect(screen.getByText('Sharp in Running')).toBeTruthy();
+    expect(screen.getByText('Gold in Running')).toBeTruthy();
     act(() => useCategoryStore.setState({ defs: [] }));
   });
 
@@ -86,7 +86,7 @@ describe('IdentityLine', () => {
       />,
     );
     const line = screen.getByTestId('home-identity');
-    expect(line.props.accessibilityLabel).toBe('Sharp in health. Tracker in finance.');
+    expect(line.props.accessibilityLabel).toBe('Gold in health. Bronze in finance.');
     expect(line.props.accessibilityHint).toBe('Explains the badges');
     fireEvent.press(line);
     expect(onPress).toHaveBeenCalledTimes(1);

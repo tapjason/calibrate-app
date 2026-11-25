@@ -299,12 +299,13 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
         >
           {APP_NAME}
         </Text>
-        {/* The growth hook, as a question: never the faintest line on the card. */}
+        {/* The growth hook: never the faintest line on the card. A question,
+            "What are you sharp at?", until D80 (the owner's line since). */}
         <Text
           maxFontSizeMultiplier={CARD_MAX_SCALE}
           style={[styles.footerHook, { color: theme.accent }]}
         >
-          What are you sharp at?
+          Learn when to trust your gut
         </Text>
       </View>
     </View>
