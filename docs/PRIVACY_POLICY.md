@@ -13,7 +13,7 @@ What each claim rests on, and what would change the text next: PRIVACY_POLICY.no
 
 # Fairly Sure Privacy Policy
 
-**Effective:** November 25, 2026 · **Contact:** tapjason-dev@gmail.com
+**Effective:** November 26, 2026 · **Contact:** tapjason-dev@gmail.com
 
 Fairly Sure ("the app") is made by Jason Zou. This policy says what
 the app collects, why, who else handles it, and how to delete it. It's written

@@ -38,6 +38,9 @@ exit 0: 254 suites, 5,548 tests. Nothing on a device.
   At the largest accessibility text size, Today's header clips and "Calibrating" / "New prediction" break
   mid-word: older than 1.1.1, for 1.2.0. Not reachable on a fresh release build: badges above Getting
   started, "due today by 11:59 PM", reminders. **His:** delete simulator session 01a215c6 on expo.dev.
+- **1.1.1 (18) in App Review (the owner, 2026-11-26)** with the group, both subscriptions and Lifetime.
+  `master` pushed the same day (the privacy policy effective November 26, published by Pages);
+  `submitted-1.1.1` moved to 589a4c1, build 18's commit, and pushed.
 - **Production build 1.1.1 (18)** (`aa172e2a`, from 589a4c1 on `master`: build 17 plus Lifetime as the
   non-consumable `calibrate_plus_lifetime_once`; the owner ran the command, 2026-11-26):
   https://expo.dev/accounts/tapjason/projects/calibrate/builds/aa172e2a-b95e-48a8-b362-98865ad7e8ff
