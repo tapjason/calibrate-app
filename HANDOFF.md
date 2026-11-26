@@ -44,7 +44,7 @@ exit 0: 254 suites, 5,548 tests. Nothing on a device.
   The owner submitted 1.1.1 with build 17 for review the same day, with the group, both subscriptions and
   Lifetime; build 17 doesn't list the new Lifetime id. **His:** `eas submit` build 18; while "Waiting for
   Review", Remove from Review, select build 18, resubmit; redeploy `revenuecat-webhook`
-  (`--no-verify-jwt --yes`); RevenueCat's current offering's Lifetime package must hold
+  (done by him 2026-11-26, version 16; a request without its secret gets 401); RevenueCat's current offering's Lifetime package must hold
   `calibrate_plus_lifetime_once`; push `master` (the policy's date set to the push day first); then tag
   `submitted-1.1.1` on 589a4c1 instead of 1f917c0 if build 18 is the one reviewed.
 - **1.1.1 status (the owner, 2026-11-26):** build 17 submitted to TestFlight by him; the paywall now shows
