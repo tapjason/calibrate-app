@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { StrictMode } from 'react';
 import { AccessibilityInfo, AppState, Platform, ScrollView } from 'react-native';
 
@@ -253,6 +253,11 @@ describe('PredictionDetails (roadmap D25)', () => {
     fireEvent(screen.getByTestId('details-due-block'), 'layout', layout);
     expect(dateReveal.onParentLayout).toHaveBeenCalled();
     expect(dateReveal.onTargetLayout).toHaveBeenCalled();
+    // The target is the date through Save changes (simulator 2026-11-25), so
+    // revealing it brings Save changes into view.
+    const block = screen.getByTestId('details-due-block');
+    expect(within(block).getByTestId('details-save')).toBeTruthy();
+    expect(within(block).getByTestId('due-pick')).toBeTruthy();
     fireEvent.press(screen.getByTestId('due-pick'));
     expect(screen.getByTestId('due-picker')).toBeTruthy();
     expect(dateReveal.reveal).toHaveBeenCalledTimes(1);

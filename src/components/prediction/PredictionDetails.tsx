@@ -514,8 +514,11 @@ export function PredictionDetails({
           </Text>
         )}
         <Text style={[styles.label, styles.spaced]}>Due date</Text>
-        {/* Brought into view once the calendar is laid out, as on Log. */}
-        <View onLayout={dateReveal?.onTargetLayout} testID="details-due-block">
+        {/* The date and everything under it, to Save changes: the calendar
+            opening brings the whole block into view, so Save isn't left just
+            below the edge (iOS simulator 2026-11-25). A short screen shows
+            the block from its top. */}
+        <View style={styles.dueGroup} onLayout={dateReveal?.onTargetLayout} testID="details-due-block">
           <DueDateChips
             presets={presets}
             value={savedDue}
@@ -525,28 +528,28 @@ export function PredictionDetails({
             earliest={earliestDueForEdit(prediction, dueTitle)}
             onPickerReveal={dateReveal?.reveal}
           />
-        </View>
-        {lateMove && (
-          <Text style={styles.note} testID="details-late-move" accessibilityLiveRegion="polite">
-            {daysLeft >= 1 ? 'It’s due tomorrow' : daysLeft === 0 ? 'It’s due today' : 'It’s past its due day'},
-            so moving it later is counted on Insights: the outcome may already be known. It
-            doesn’t change your score.
-          </Text>
-        )}
-        {error && <Text style={styles.error}>{error}</Text>}
-        {needs && (
-          <Text style={styles.needs} testID="details-needs">
-            {needs}
-          </Text>
-        )}
-        <View style={styles.actions}>
-          <Button
-            label={busy ? 'Saving…' : 'Save changes'}
-            onPress={() => void saveEdit()}
-            disabled={!canSave}
-            testID="details-save"
-          />
-          <TextButton label="Cancel" onPress={() => setMode('view')} testID="details-cancel-edit" />
+          {lateMove && (
+            <Text style={styles.note} testID="details-late-move" accessibilityLiveRegion="polite">
+              {daysLeft >= 1 ? 'It’s due tomorrow' : daysLeft === 0 ? 'It’s due today' : 'It’s past its due day'},
+              so moving it later is counted on Insights: the outcome may already be known. It
+              doesn’t change your score.
+            </Text>
+          )}
+          {error && <Text style={styles.error}>{error}</Text>}
+          {needs && (
+            <Text style={styles.needs} testID="details-needs">
+              {needs}
+            </Text>
+          )}
+          <View style={styles.actions}>
+            <Button
+              label={busy ? 'Saving…' : 'Save changes'}
+              onPress={() => void saveEdit()}
+              disabled={!canSave}
+              testID="details-save"
+            />
+            <TextButton label="Cancel" onPress={() => setMode('view')} testID="details-cancel-edit" />
+          </View>
         </View>
       </View>
     );
@@ -634,6 +637,7 @@ const styles = StyleSheet.create({
   note: { ...type.footnote, color: colors.textSecondary, marginBottom: space.sm },
   label: { ...type.footnote, fontWeight: '500', color: colors.textSecondary, marginTop: space.md },
   spaced: { marginTop: space.lg },
+  dueGroup: { gap: space.sm },
   // space.sm between Edit and Answer it now, and Save changes and Cancel: at
   // xs they were about 4 px apart (blind playtest 2026-11-12, finding 10).
   actions: { gap: space.sm, marginTop: space.xl },

@@ -31,6 +31,13 @@ exit 0: 254 suites, 5,548 tests. Nothing on a device.
   load."), his yes: Opus at xhigh; the version sweep: Sonnet. Not on a device: HUMAN_VERIFICATION "Paywall
   Try again (1.1.1, build 17)". His answers on the UI list are recorded in OWNER_UI_NOTES (one Share button;
   usage stats under Advanced; the Insights reorder in 1.3.0; a web mock before 1.2.0).
+- **Simulator pass on 1.1.1** (preview build 58b2af8e from cac4c21, session 01a215c6, 12 min, stopped; shots in
+  `.tooling/sim/2026-11-25-1.1.1/`): Log's calendar, the emoji, due words, removals, medal copy, the paywall
+  (no key: no Try again) and dark pass. Edit's calendar left "Save changes" below the edge: fixed after the
+  run (the reveal now spans the date block through Save and Cancel; Sonnet), not yet seen on a simulator.
+  At the largest accessibility text size, Today's header clips and "Calibrating" / "New prediction" break
+  mid-word: older than 1.1.1, for 1.2.0. Not reachable on a fresh release build: badges above Getting
+  started, "due today by 11:59 PM", reminders. **His:** delete simulator session 01a215c6 on expo.dev.
 - **The owner's full UI list** (2026-11-25), each note with its status and the release it goes in:
   `docs/design/OWNER_UI_NOTES_2026-11.md`. The You page redesign for 1.2.0: `docs/design/YOU_REDESIGN.md`.
 - **"WhatsApp-like categories" answered (2026-11-25):** all settings (notifications, privacy, Coach and the

@@ -1789,6 +1789,8 @@ counts to these. Guests' rows are counts, not people: a reinstall counts twice.
       size of the built-in symbols, not touching the label.
 - [ ] **Pick a date opens the calendar:** one tap on "Pick a date" (Log, and Edit on an open
       prediction) shows the full month calendar in the form, scrolled into view with its arrows.
+      In Edit, "Save changes" is in view too, with the calendar open, without another scroll
+      (simulator 2026-11-25).
       Light and dark: the selected day uses the ink accent and reads clearly. On the narrowest
       phone the calendar doesn't run off the screen. A vertical drag starting on the calendar
       still scrolls the form.
