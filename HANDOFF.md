@@ -13,8 +13,9 @@ category." — **a change to his approved line, awaiting his OK**); the Coach dr
 "golden", "top tier", "medal" and "badge"; the privacy policy (effective November 25, 2026, older-builds
 sentence in §5), the listing (trivia, What's New draft, review notes 3,972 characters) and docs. `check.sh`
 exit 0: 254 suites, 5,548 tests. Nothing on a device.
-- **His, next:** redeploy `coach` from this commit (`npx supabase functions deploy coach --yes`; v18 is from
-  1d8cde0 and lacks the round-3 words); OK the Bronze explainer line; confirm the 1.1.0 (17) build command;
+- **Coach redeployed by the owner, 2026-11-25:** version 19, from 6d9f3b3 (the round-3 medal words); 401
+  without a token.
+- **His, next:** OK the Bronze explainer line; confirm the 1.1.0 (17) build command;
   phone checks (HUMAN_VERIFICATION: Phase 1 fixes, Removals (D79), Medals and 11:59 (D80)); a signed-out
   paywall must show plans on TestFlight.
 - **Pushing `master` publishes the privacy policy and support pages** (GitHub Pages serves `docs/`); the
