@@ -74,7 +74,7 @@ export const WarmupCard = forwardRef<View, WarmupCardProps>(function WarmupCard(
           maxFontSizeMultiplier={CARD_MAX_SCALE}
           style={[styles.footerHook, { color: theme.accent }]}
         >
-          How well do you know what you know?
+          Learn when to trust your gut
         </Text>
       </View>
     </View>

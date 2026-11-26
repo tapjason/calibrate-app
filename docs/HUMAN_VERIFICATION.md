@@ -1834,6 +1834,7 @@ health, Silver in work and Bronze in finance; Platinum needs the dev celebration
       image and in Share as text; the footer under "Fairly Sure" reads "Learn when to trust
       your gut", on one line, on every theme. The weekly and yearly recaps' footers read the
       same. The word "sharp" appears nowhere.
+- [ ] **Warm-up card:** the Warm-up card's footer reads "Learn when to trust your gut".
 - [ ] **Due today:** an open prediction due today reads "due today by 11:59 PM" on its card
       (Today and History) and "Due today by 11:59 PM, with a reminder at 7:00 PM" on its
       details; with 24-Hour Time on (Settings → General → Date & Time), "by 23:59". On a

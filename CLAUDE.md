@@ -672,7 +672,7 @@ See the authoritative section above.
 ### 6. Share & Wrapped Module (free — this is the growth engine)
 - **Category identity card** — "Gold in health · Bronze in money," screenshot-native,
   one-tap share, with a subtle "get your own" hook: "Learn when to trust your gut" (D80;
-  "What are you sharp at?" until then), on the Wrapped card too. Its lines follow D27 (above): only
+  "What are you sharp at?" until then), on the Wrapped and Warm-up cards too. Its lines follow D27 (above): only
   categories past the count gate are named, every one at the top tier ("Silver in
   health and money", D54); with none yet, it reads "Calibrating" and the count to go,
   or, once the rating is unlocked, leads with it ("Calibration 89/100").

@@ -15,7 +15,7 @@ sentence in §5), the listing (trivia, What's New draft, review notes 3,972 char
 exit 0: 254 suites, 5,548 tests. Nothing on a device.
 - **Coach redeployed by the owner, 2026-11-25:** version 19, from 6d9f3b3 (the round-3 medal words); 401
   without a token.
-- **His, next:** OK the Bronze explainer line; confirm the 1.1.0 (17) build command;
+- **His, next:** confirm the 1.1.0 (17) build command;
   phone checks (HUMAN_VERIFICATION: Phase 1 fixes, Removals (D79), Medals and 11:59 (D80)); a signed-out
   paywall must show plans on TestFlight.
 - **Pushing `master` publishes the privacy policy and support pages** (GitHub Pages serves `docs/`); the
@@ -38,6 +38,18 @@ exit 0: 254 suites, 5,548 tests. Nothing on a device.
   At the largest accessibility text size, Today's header clips and "Calibrating" / "New prediction" break
   mid-word: older than 1.1.1, for 1.2.0. Not reachable on a fresh release build: badges above Getting
   started, "due today by 11:59 PM", reminders. **His:** delete simulator session 01a215c6 on expo.dev.
+- **Release audit for 1.1.1 (17), `release-auditor` (Opus): GO** on 314bd81. `check.sh --release` exit 0
+  (5,562 tests; doctor 20/20; no drift; bundle 7.22 MB, export 7.63 MB); JS only since build 16 except the
+  version; `eas whoami` tapjason; three production env names. The owner OK'd the Bronze explainer line and
+  the build command, and chose the slogan for the Warm-up card too (2026-11-25: "more relaxed and more
+  empathetic"), added after the audit (one line in WarmupCard.tsx).
+  **His, before Add for Review:** build 17's signed-out paywall shows three plans with prices (the 2.1(b) risk;
+  the screenshot doubles as the products' review shot); `git push origin master` and check /privacy/ reads
+  "Effective: November 25, 2026"; retake all six screenshots; in App Store Connect: version 1.1.1 with build 17,
+  the three products finished and attached (Annual's free month), What's New, subtitle, promotional text (not
+  "Sharp in health"), review notes; re-seed the demo account, Lifetime, one Coach request; then
+  `git tag submitted-1.1.1 <build commit>`. Phone: HUMAN_VERIFICATION D79 over build 16, D80, D78, "Paywall
+  Try again", a sandbox purchase, Coach, a cold-start baseline.
 - **Simulator pass 2 on 1.1.1** (preview 7e403185 from 3360ffd, session 01a215ec, 11 min, stopped; shots in
   `.tooling/sim/2026-11-25-1.1.1-run2/`): WORKS. Edit's "Save changes" fully on screen right after "Pick a
   date" in all four cases (light, dark, custom and Tomorrow); every reachable 1.1.1 note in OWNER_UI_NOTES
