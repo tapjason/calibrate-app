@@ -41,6 +41,7 @@ Status: **Built** = in 1.1.1 (build 17; the owner, 2026-11-25: "Build 17 should 
 | 31 | "Lock with Face ID" into a Privacy section | 1.2.0 | Privacy: Face ID, Lock after |
 | 32 | Categorise settings like WhatsApp (visuals, privacy, account) | 1.2.0 | The whole redesign |
 | 33 | Default to 11:59 PM | Built | D80: "due today by 11:59 PM"; the reminder stays 7 PM (his OK) |
+| 35 | Annual's free month isn't clear on the paywall (2026-11-26) | Open, later | The trial line shows only when the store reports the customer eligible; check that first on a fresh sandbox account |
 | 34 | Time-based things (digest, reminder) into Notifications | 1.2.0 | The Notifications page |
 
 ## Order

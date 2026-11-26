@@ -38,6 +38,13 @@ exit 0: 254 suites, 5,548 tests. Nothing on a device.
   At the largest accessibility text size, Today's header clips and "Calibrating" / "New prediction" break
   mid-word: older than 1.1.1, for 1.2.0. Not reachable on a fresh release build: badges above Getting
   started, "due today by 11:59 PM", reminders. **His:** delete simulator session 01a215c6 on expo.dev.
+- **1.1.1 status (the owner, 2026-11-26):** build 17 submitted to TestFlight by him; the paywall now shows
+  prices (the products are attached), but Annual's free month isn't clear on it (later; the trial line shows
+  only when `checkTrialOrIntroductoryPriceEligibility` says ELIGIBLE, src/billing/revenuecat.ts:459, so a
+  sandbox account that already took the offer, or an unknown status, shows no trial). The App Store version
+  is set to 1.1.1. **Paused by him:** the six screenshots, `git push origin master` and Add for Review,
+  until the immediate wording fixes and first bugs are in. The privacy policy's effective date (November
+  25) is set to the push day when he pushes. He is re-seeding the demo account.
 - **Production build 1.1.1 (17)** (`457a48a7`, from 1f917c0, the owner confirmed the command 2026-11-25),
   finished on EAS: https://expo.dev/accounts/tapjason/projects/calibrate/builds/457a48a7-1c74-424b-b9c3-9c0e388b02fc
   *His:* `npx eas submit --profile production --platform ios`, choosing build 17; tag `submitted-1.1.1` on 1f917c0.
