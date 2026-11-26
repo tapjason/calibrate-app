@@ -25,6 +25,8 @@ exit 0: 254 suites, 5,548 tests. Nothing on a device.
   your gut", promo line 2 (suggested "Gold in health, Bronze with money?"); merge his four What's New lines
   into the draft (and consider D77/D78 in the review notes' New line); re-seed the demo account with Lifetime.
   His untracked `store-listing-paste-1.1.0.txt` no longer matches the listing.
+- **The owner's full UI list** (2026-11-25), each note with its status and the release it goes in:
+  `docs/design/OWNER_UI_NOTES_2026-11.md`. The You page redesign for 1.2.0: `docs/design/YOU_REDESIGN.md`.
 - **"WhatsApp-like categories" answered (2026-11-25):** all settings (notifications, privacy, Coach and the
   rest) contained in grouped categories on You, which the approved You page redesign does; it stays 1.2.0,
   reviewed by him before any of it is committed. Still open: what "due date centralized" means.
