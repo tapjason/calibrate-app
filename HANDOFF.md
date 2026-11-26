@@ -38,6 +38,9 @@ exit 0: 254 suites, 5,548 tests. Nothing on a device.
   At the largest accessibility text size, Today's header clips and "Calibrating" / "New prediction" break
   mid-word: older than 1.1.1, for 1.2.0. Not reachable on a fresh release build: badges above Getting
   started, "due today by 11:59 PM", reminders. **His:** delete simulator session 01a215c6 on expo.dev.
+- **Production build 1.1.1 (17)** (`457a48a7`, from 1f917c0, the owner confirmed the command 2026-11-25),
+  finished on EAS: https://expo.dev/accounts/tapjason/projects/calibrate/builds/457a48a7-1c74-424b-b9c3-9c0e388b02fc
+  *His:* `npx eas submit --profile production --platform ios`, choosing build 17; tag `submitted-1.1.1` on 1f917c0.
 - **Release audit for 1.1.1 (17), `release-auditor` (Opus): GO** on 314bd81. `check.sh --release` exit 0
   (5,562 tests; doctor 20/20; no drift; bundle 7.22 MB, export 7.63 MB); JS only since build 16 except the
   version; `eas whoami` tapjason; three production env names. The owner OK'd the Bronze explainer line and
