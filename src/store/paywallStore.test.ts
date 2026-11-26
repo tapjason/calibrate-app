@@ -5,6 +5,7 @@ import {
   type RcCustomerInfo,
   type RcOfferings,
 } from '@/billing/revenuecat';
+import * as revenuecat from '@/billing/revenuecat';
 import { setDbForTests } from '@/db/client';
 import { getEntitlement } from '@/db/entitlements';
 import { createTestDb } from '@/db/testing';
@@ -121,6 +122,60 @@ describe('loadPlans', () => {
     delete process.env[KEY_VAR];
     await usePaywallStore.getState().loadPlans();
     expect(usePaywallStore.getState().notice).toBeNull();
+  });
+
+  // The paywall's Try again (1.1.1) is this action again: a first ask that
+  // fails ends with no plans and billing still there to ask, and the next
+  // ask that works brings the plans.
+  it('ends a failed load with no plans and billing still on, and the next try brings them', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const getOfferings = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue(OFFERINGS);
+    __setBillingDepsForTests(fakeDeps({ getOfferings }));
+
+    await usePaywallStore.getState().loadPlans();
+    let s = usePaywallStore.getState();
+    expect(s.plans).toEqual([]);
+    expect(s.loadingPlans).toBe(false);
+    expect(s.available).toBe(true);
+    expect(s.notice).toBeNull();
+
+    await usePaywallStore.getState().loadPlans();
+    s = usePaywallStore.getState();
+    expect(getOfferings).toHaveBeenCalledTimes(2);
+    expect(s.plans.map((p) => p.plan)).toEqual(['annual', 'monthly']);
+    expect(s.loadingPlans).toBe(false);
+  });
+
+  it('never reads a failed load as Plus, in the store or the mirror', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    __setBillingDepsForTests(
+      fakeDeps({
+        getOfferings: jest.fn(async () => {
+          throw new Error('offline');
+        }),
+      }),
+    );
+    await usePaywallStore.getState().loadPlans();
+    expect(useEntitlementStore.getState().isPlus).toBe(false);
+    expect(useEntitlementStore.getState().entitlement).toEqual(FREE_ENTITLEMENT);
+    const mirror = await getEntitlement();
+    expect(mirror?.is_plus ?? false).toBe(false);
+  });
+
+  // fetchPlans never throws by contract. Were it to, the load must still
+  // end: a load left running keeps the spinner up and Try again away.
+  it('ends the load with no plans if fetching them throws', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(revenuecat, 'fetchPlans').mockRejectedValueOnce(new Error('boom'));
+    await expect(usePaywallStore.getState().loadPlans()).resolves.toBeUndefined();
+    const s = usePaywallStore.getState();
+    expect(s.plans).toEqual([]);
+    expect(s.loadingPlans).toBe(false);
+    expect(s.available).toBe(true);
+    expect(useEntitlementStore.getState().isPlus).toBe(false);
   });
 });
 

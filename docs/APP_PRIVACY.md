@@ -250,9 +250,9 @@ answer (no stored band, a stored under-13 band, or one that can't be read), it i
 configured only once that ask has finished and the rule doesn't apply (a band of 13 or
 over; or, with no stored band, a decline or an error), and never before, with no time
 limit (`startBilling`, `src/billing/init.ts`). The
-paywall waits at most 5 s (`ensureBillingStarted`) and then shows "Plus plans couldn't
-load. Check your connection, then open this again."; opening it again once the answer is
-in loads them. With a stored band of 13 or over it is configured at launch as before,
+paywall waits at most 5 s (`ensureBillingStarted`) and then shows "Plans didn't load."
+with a Try again button (1.1.1; "Plus plans couldn't load. Check your connection, then open
+this again." before it); Try again, or opening it again, once the answer is in loads them. With a stored band of 13 or over it is configured at launch as before,
 while Apple is asked in the background; if that answer is under 13, the app asks
 RevenueCat for nothing more, but the SDK stays configured for that run (a residual, the
 short version) and is never configured from the next launch; meanwhile the SDK keeps

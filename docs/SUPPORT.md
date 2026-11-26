@@ -89,7 +89,7 @@ try again, then email us. If you never signed in, don't delete the app: your
 predictions are only on this phone.
 
 **What the lock doesn't cover.** Reminders, which sit on the lock screen. While the
-lock is on they can't record an answer, and from version 1.1.0 they never show your prediction's words.
+lock is on they can't record an answer, and from version 1.1.1 they never show your prediction's words.
 
 **Delete my data.** Signed in: You → Delete account removes it from our servers
 and your phone (our hosting provider's short-lived logs and backups expire on

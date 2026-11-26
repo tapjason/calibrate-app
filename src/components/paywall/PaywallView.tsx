@@ -16,6 +16,7 @@ import { CLOSE_BUTTON_SIZE, CloseButton } from '@/components/ui/CloseButton';
 import { Icon } from '@/components/ui/Icon';
 import { PLUS_NAME, PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
+import { useAgeStore } from '@/store/ageStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePaywallStore } from '@/store/paywallStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -24,6 +25,8 @@ import {
   FREE_FOREVER_NOTE,
   PLAN_LABELS,
   PLUS_FEATURES,
+  RETRYING_PLANS_LABEL,
+  RETRY_PLANS_LABEL,
   ctaLabel,
   defaultPlan,
   noPlansText,
@@ -59,6 +62,11 @@ const BENEFIT_ICONS = [
  * D70): the plans aren't asked for yet, the screen shows its loading state,
  * and nothing that reaches the store (a plan, the purchase, Restore) can be
  * pressed. True by default.
+ *
+ * Plans that didn't load on a build with billing (offline, a slow network, a
+ * store hiccup): "Plans didn't load." over a Try again button that asks the
+ * store again in place (1.1.1, the owner, 2026-11-25). Not where a retry can't
+ * help: a build with no billing key, the under-13 rule, or Plus.
  */
 export function PaywallView({
   onClose,
@@ -79,8 +87,25 @@ export function PaywallView({
   const purchase = usePaywallStore((s) => s.purchase);
   const restore = usePaywallStore((s) => s.restore);
   const clearNotice = usePaywallStore((s) => s.clearNotice);
-  // Waiting for RevenueCat to start reads as loading the plans.
-  const loading = loadingPlans || !billingReady;
+  // The route never draws this under the under-13 rule (D70); read here too,
+  // so nothing on this screen asks the store again if the rule comes on.
+  const localOnly = useAgeStore((s) => s.localOnly);
+  // Try again (1.1.1): a store that can be asked again. Plus never gets here.
+  const canRetry = billingAvailable && !localOnly;
+  // A retry in flight. The ref turns away a second tap before the screen has
+  // drawn the button disabled; the state draws it.
+  const [retrying, setRetrying] = useState(false);
+  const retryInFlight = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  // Waiting for RevenueCat to start reads as loading the plans. A retry
+  // shows on its button instead, so the line and the button stay put.
+  const loading = (loadingPlans || !billingReady) && !retrying;
 
   // A notice is the outcome of something done on this visit. One still in the
   // store when the paywall opens is from an earlier visit ("Your purchase
@@ -128,6 +153,28 @@ export function PaywallView({
 
   const busy = purchasing !== null || restoring || !billingReady;
   const message = noticeText(notice);
+
+  const retry = async () => {
+    if (retryInFlight.current) return;
+    retryInFlight.current = true;
+    setRetrying(true);
+    try {
+      await loadPlans();
+    } catch {
+      // loadPlans never rejects; the store ends its own load either way.
+    } finally {
+      retryInFlight.current = false;
+      if (mounted.current) setRetrying(false);
+    }
+    // Said aloud again when the retry brings nothing, the same words: the
+    // line on screen didn't change, so VoiceOver would hear nothing.
+    const after = usePaywallStore.getState();
+    if (mounted.current && after.plans.length === 0) {
+      AccessibilityInfo.announceForAccessibility(
+        noPlansText(after.available && !useAgeStore.getState().localOnly),
+      );
+    }
+  };
   // The fine print for the plan chosen, not every plan on offer: Lifetime
   // read "Your free trial turns into a paid subscription" (blind playtest
   // 2026-11-04, second round, run 4).
@@ -180,9 +227,21 @@ export function PaywallView({
       {loading && <ActivityIndicator testID="paywall-loading" />}
 
       {!loading && plans.length === 0 && (
-        <Text style={styles.muted} testID="paywall-unavailable">
-          {noPlansText(billingAvailable)}
-        </Text>
+        <View style={styles.noPlans}>
+          <Text style={styles.muted} testID="paywall-unavailable">
+            {noPlansText(canRetry)}
+          </Text>
+          {/* Restore purchases below stays pressable while this runs. */}
+          {canRetry && (
+            <Button
+              label={retrying ? RETRYING_PLANS_LABEL : RETRY_PLANS_LABEL}
+              variant="secondary"
+              disabled={retrying || busy}
+              onPress={() => void retry()}
+              testID="paywall-retry"
+            />
+          )}
+        </View>
       )}
 
       {ordered.length > 0 && (
@@ -395,6 +454,7 @@ const styles = StyleSheet.create({
   features: { gap: space.md },
   featureRow: { alignItems: 'flex-start', flexDirection: 'row', gap: space.md },
   feature: { ...type.subhead, color: colors.textPrimary, flex: 1 },
+  noPlans: { gap: space.md },
   plans: { gap: space.sm },
   plan: {
     alignItems: 'center',

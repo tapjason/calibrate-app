@@ -7,6 +7,8 @@ import {
   monthlyEquivalentSpoken,
   noPlansText,
   noTrialLine,
+  RETRYING_PLANS_LABEL,
+  RETRY_PLANS_LABEL,
   noticeText,
   planAccessibilityLabel,
   planBadge,
@@ -225,10 +227,15 @@ describe('noPlansText', () => {
     expect(noPlansText(false)).toBe("Plus isn't available on this build yet.");
   });
 
-  it('points at the connection when billing exists but the plans did not load', () => {
-    expect(noPlansText(true)).toBe(
-      "Plus plans couldn't load. Check your connection, then open this again.",
-    );
+  // 1.1.1: the line sits over a Try again button, so it no longer says to
+  // open the paywall again.
+  it('says the plans did not load when billing exists', () => {
+    expect(noPlansText(true)).toBe("Plans didn't load.");
+  });
+
+  it('labels the button plainly, the same after every try', () => {
+    expect(RETRY_PLANS_LABEL).toBe('Try again');
+    expect(RETRYING_PLANS_LABEL).toBe('Trying again…');
   });
 });
 

@@ -818,6 +818,14 @@ third row) → **honest timeline** → **one** CTA.
 - Keep: "Restore purchases" as a text button (built as step 78; it was an outlined
   capsule that read as a second CTA), the "stay free forever" reassurance,
   trial-terms line, Terms/Privacy links.
+- **Plans that didn't load** (1.1.1, the owner, 2026-11-25): on a build with billing,
+  "Plans didn't load." (`subhead` `textSecondary`) over a secondary "Try again" button
+  (the 44pt capsule: ink label, `controlBorder` outline) that asks the store again in place. While it asks, the button reads
+  "Trying again…" and takes no taps, and the line stays; the plans show if they come. A
+  try that fails again keeps the same line and button, said again to VoiceOver. Not on a
+  build with no billing key ("Plus isn't available on this build yet."), under the
+  under-13 rule (the local-only page) or on Plus. Restore purchases stays pressable
+  throughout, and no failure ever reads as Plus.
 - **Close** (roadmap step 30): a 44pt "×" on `surfaceSunken` at the top right,
   labelled "Close", as well as "Not now" at the bottom, which is below the fold on a
   phone. The screen insets its own top edge (a full-screen modal has no header).

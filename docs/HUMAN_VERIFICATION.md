@@ -177,7 +177,8 @@ file in this repo or a terminal an agent reads.
 
 The billing code fails safe. A build with no RevenueCat key (or a `test_` key in a release
 build) says "Plus isn't available on this build yet."; a build whose offering comes back
-empty says "Plus plans couldn't load. Check your connection, then open this again." During
+empty says "Plans didn't load." over a Try again button (1.1.1; "Plus plans couldn't load.
+Check your connection, then open this again." before it). During
 setup that second line usually means the dashboards, not the network. A reviewer who sees it
 online rejects the build under 2.1(b), so see the plans load in sandbox before submitting.
 
@@ -1243,8 +1244,8 @@ Added 2026-11-10 (steps 167–168; web-verified at 320 and 375, a reload is enou
       never inside the date, and the footer doesn't push the fields off screen.
       VoiceOver reads "Save prediction, due Tuesday, November 17".
 - [ ] **Plus with no connection (step 167):** airplane mode, cold start, open Plus:
-      the spinner, then "Plus plans couldn't load. Check your connection, then open
-      this again." with no flash of it first; online, the sandbox plans load.
+      the spinner, then "Plans didn't load." with Try again (1.1.1; the older line
+      before it) with no flash of it first; online, the sandbox plans load.
 - [ ] **Insights' chart to VoiceOver (step 167):** each range ends with where its dot
       sits ("75% is below that range.").
 - [ ] **Plain counts (D57, step 170):** at AX5, Insights' two-sided subtitle ("…; about
@@ -1432,10 +1433,10 @@ section have no reported result.
       after Erase), force-quit, then open the app by typing
       `fairlysure://paywall` into Safari's address bar, so the paywall opens
       while Apple's sheet is still unanswered. Leave the sheet up for more than
-      5 seconds, then look behind it or answer it: the paywall shows "Plus
-      plans couldn't load. Check your connection, then open this again." and no
-      plan to buy. Share a range of 13 or over, close the paywall and open it
-      again: the plans load. (If the deep link doesn't beat the sheet, open You
+      5 seconds, then look behind it or answer it: the paywall shows "Plans
+      didn't load." with Try again (1.1.1; the older line before it) and no
+      plan to buy. Share a range of 13 or over, then tap Try again (or close the
+      paywall and open it again): the plans load. (If the deep link doesn't beat the sheet, open You
       → Fairly Sure Plus as soon as the sheet is answered instead and report
       what showed.)
 - [ ] **A request that doesn't resolve (review; report only):** if Apple's
@@ -1859,3 +1860,24 @@ health, Silver in work and Bronze in finance; Platinum needs the dev celebration
       numbers match what happens."; a new Silver still ends "…not how often you're right."
       When the score unlocks on the same answer as a new Bronze, its card ends at "New badge,
       too: Bronze in health." with nothing after it.
+
+
+## Paywall Try again (1.1.1, build 17; the owner, 2026-11-25)
+
+JS only; on the TestFlight build of 1.1.1 (build 17), the first that carries the three Plus
+subscriptions. Not on Plus (a Plus account sees "You're on Plus" and no plans). RevenueCat
+can serve plans it already has from an earlier open, so start from a fresh install (delete
+the app, install build 17 from TestFlight) and don't open Plus before airplane mode.
+
+- [ ] **Paywall Try again (1.1.1):** airplane mode on, open the app, You → Fairly Sure Plus:
+      after the spinner, "Plans didn't load." with a "Try again" button under it (an outlined
+      capsule, full width), and "Restore purchases" still there below. Tap Try again, still in
+      airplane mode: it reads "Trying again…" for a moment, a second quick tap does nothing,
+      then the same line and button come back (no new words). Turn airplane mode off, wait
+      for the signal, tap Try again: the three plans load with the App Store's prices,
+      Annual chosen, without closing the paywall, and the purchase button reads "Start 1
+      month free, then $34.99 a year" (or the price without the trial on an account that
+      used it). Light and dark: the line and the button read clearly. With VoiceOver on:
+      the button says "Try again, button", and a try that fails again says "Plans didn't
+      load." If the plans show in airplane mode anyway, RevenueCat served them from its
+      cache: report that, and the check passes on the second half.

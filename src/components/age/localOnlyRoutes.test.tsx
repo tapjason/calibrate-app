@@ -113,6 +113,8 @@ describe('the paywall route', () => {
       expect(screen.queryByTestId('paywall-view')).toBeNull();
       expect(screen.queryByTestId('purchase-button')).toBeNull();
       expect(screen.queryByText(/restore/i)).toBeNull();
+      // Nor the paywall's Try again (1.1.1): there is no store to ask.
+      expect(screen.queryByText(/try again/i)).toBeNull();
     });
 
     it('closes from Close and from the ×, back where it came from', () => {

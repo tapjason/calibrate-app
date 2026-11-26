@@ -1,13 +1,13 @@
 # Fairly Sure — App Store Listing
 
 **As of:** 2026-11-25 · The source for the App Store Connect record's fields, drafted from
-`CLAUDE.md` and the code, and read against `master` for 1.1.0 (the review of 2026-11-25,
+`CLAUDE.md` and the code, and read against `master` for 1.1.1 (the review of 2026-11-25,
 after D79 and D80), not against build 7. Before that, the release gate of 2026-11-20 read it
 against production build 1.0.0 (7) (commit `590ab75`): its policy audit rewrote the review
 notes' opening (§4) and its release audit counted every field. Earlier revisions: the
 age-rating answers and review notes from the policy audits of 2026-11-14 and 2026-11-15, the
 security and policy review of 2026-11-18, and the under-13 rule (D70) and its review on
-2026-11-19. Every feature claimed below is in `master` for 1.1.0, the under-13 rule
+2026-11-19. Every feature claimed below is in `master` for 1.1.1, the under-13 rule
 included; ✨ Refine is cut and appears nowhere.
 The limits in brackets are Apple's, and every field was counted against them.
 
@@ -67,17 +67,17 @@ the Expo slug `calibrate` (the EAS project is linked to it), and the repo name
 
 > Know when to trust your gut
 
-**The owner's chosen line for 1.1.0** (D80, 2026-11-25: "I also like the changed slogan"):
+**The owner's chosen line for 1.1.1** (D80, 2026-11-25: "I also like the changed slogan"):
 **"Learn when to trust your gut"** (28 of 30), for the subtitle and to lead the promotional
 text. It is the share cards' hook in the app since D80. *For the owner to paste in App Store
-Connect at the 1.1.0 submission;* the line above is the record's until then.
+Connect at the 1.1.1 submission;* the line above is the record's until then.
 
 **Promotional text** [170] (editable any time without review)
 
 > Log a prediction, say how sure you are, and find out if you were right to be.
 > Sharp in health, shaky with money? Your calibration score shows you where.
 
-*Needs the owner's word at 1.1.0:* the second line plays on the old tier name, and the app
+*Needs the owner's word at 1.1.1:* the second line plays on the old tier name, and the app
 no longer says "sharp" (D80). **The main session's suggestion, for the owner to confirm**
 (2026-11-25), the medals in the same shape:
 
@@ -86,7 +86,7 @@ no longer says "sharp" (D80). **The main session's suggestion, for the owner to 
 (152 of 170 with the first line.) His slogan above can take its place instead ("Learn
 when to trust your gut, category by category." is one way).
 
-**What's New in 1.1.0** [4000] (a draft for the owner, 2026-11-25; not entered anywhere)
+**What's New in 1.1.1** [4000] (a draft for the owner, 2026-11-25; not entered anywhere)
 
 > • Badges are medals now: Bronze, Silver, Gold and Platinum.
 > • Due dates are in plain words, like "due in 3 days". One due today reads "due today by
@@ -100,7 +100,7 @@ when to trust your gut, category by category." is one way).
 > • Fairly Sure Plus is here: Coach, Trends and extra card themes.
 
 His draft of 2026-11-23 (`docs/design/research/store-listing-draft-1.0.1.md`) has four more
-lines that also ship in 1.1.0: the shorter wording, the fine print one tap away, the warm-up
+lines that also ship in 1.1.1: the shorter wording, the fine print one tap away, the warm-up
 and trivia sliders at 0 to 100%, and "Lock after". Merge them in when he picks the final text.
 
 **Keywords** [100 bytes, comma-separated, no spaces, no words already in the name]
@@ -245,10 +245,10 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 
 ## 4. App Review notes
 
-Paste-ready for 1.1.0 (3,972 of Apple's 4,000 characters; 3,998 bytes as UTF-8, also under 4,000;
+Paste-ready for 1.1.1 (3,972 of Apple's 4,000 characters; 3,998 bytes as UTF-8, also under 4,000;
 counted by script 2026-11-25, the block between the fences, line breaks included). Since build
-7's notes: + is on Today only, a "New in 1.1.0" line (Guideline 2.3.1(a)) that also names
-what 1.1.0 removes ("Hide the words", the practice reminder, "Got a friend's card?"; the
+7's notes: + is on Today only, a "New in 1.1.1" line (Guideline 2.3.1(a)) that also names
+what 1.1.1 removes ("Hide the words", the practice reminder, "Got a friend's card?"; the
 review of 2026-11-25, round 3), the "Lock after" clause, and shorter Coach, usage-count and
 age lines to make room. The opening was rewritten by
 the release gate's policy audit (2026-11-20, Guideline 2.1): the purchase flow is shown
@@ -261,7 +261,7 @@ required"), never in these notes and never in the repo.
 ```text
 Fairly Sure works fully without an account. To try the core loop on a fresh install: log a prediction with + on Today, then tap it and choose Answer it now. A new prediction is due tomorrow at the earliest, and an answer given the day it was logged is kept but not scored, by design. The demo account shows a scored record.
 
-New in 1.1.0: badges read Bronze to Platinum; reminders show only the date and confidence, no words or answer buttons; practice is now Trivia, with no reminder; "Hide the words" and "Got a friend's card?" are gone; "Lock after" (below); first Plus subscriptions.
+New in 1.1.1: badges read Bronze to Platinum; reminders show only the date and confidence, no words or answer buttons; practice is now Trivia, with no reminder; "Hide the words" and "Got a friend's card?" are gone; "Lock after" (below); first Plus subscriptions.
 
 Fairly Sure Plus: before signing in, open You → Fairly Sure Plus and buy any plan with your sandbox account (Annual offers new subscribers a free month; Restore purchases is on the same screen). The demo account already has Plus, so while signed in to it that screen says "You're on Fairly Sure Plus" instead of the plans.
 
@@ -296,8 +296,8 @@ shared, is iOS's decision, so say "asks", not "shows". The under-13 lines hold o
 build that carries D70 and the D70/D71 review's fixes (2026-11-19) and quote
 `LOCAL_ONLY_GUEST_ROW` ("Kept on this phone", `src/components/age/localOnlyCopy.ts`),
 `AGE_PENDING_SIGN_IN` (`src/supabase/auth.ts`) and the paywall's no-plans line
-(`noPlansText`, `src/components/paywall/paywallCopy.ts`: "Plus plans couldn't load. Check
-your connection, then open this again."). The wait matters to a reviewer: on a fresh
+(`noPlansText`, `src/components/paywall/paywallCopy.ts`: "Plans didn't load.", over a Try
+again button since 1.1.1). The wait matters to a reviewer: on a fresh
 install a sign-in tapped while Apple's sheet is still unanswered is refused for the
 moment, and works once the sheet is answered or declined. If a request to Apple can stay
 unresolved on a review device, sign-in and the plans stay unavailable for that run
@@ -360,10 +360,10 @@ Log "Say how sure you are. Find out later." (due "In a week", so the title's Fri
 date agree); badges "Badges need a real track record" (the gate's audits failed "Badges you
 can’t luck into": luck can still clear a bar about 1 time in 10); share
 card "Gold in health. Bronze in finance." (captured before D80 as "Sharp in health.
-Tracker in finance.": the share card needs a new capture for 1.1.0); year "Your year in predictions". They are
+Tracker in finance.": the share card needs a new capture for 1.1.1); year "Your year in predictions". They are
 web renders: no SF Symbols or glass. The table and "How" below are the earlier plan.
 
-**For 1.1.0, all six need a retake** (the `final-1206/` images, read
+**For 1.1.1, all six need a retake** (the `final-1206/` images, read
 2026-11-25): `01-today` has the old tier names ("Sharp in health", "Tracker in finance"),
 the "Today's practice" row and the old date words ("due Wed, Nov 18"); `03-log` the old
 date words ("Due Friday, Nov 27", "Save, due Fri, Nov 27"); `04-badges` the old tier names

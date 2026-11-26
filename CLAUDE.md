@@ -871,7 +871,10 @@ GROWTH §0 and §7.
 Rule: the paywall never touches the core loop or anything shareable. On a phone the
 under-13 rule applies to (D70), Plus isn't offered at all; the page that says so adds
 where an existing subscription is managed ("…in the Settings app: tap your name, then
-Subscriptions.", D72 (c)).
+Subscriptions.", D72 (c)). When the plans don't load on a build with billing, the paywall
+says "Plans didn't load." over a "Try again" button that asks the store again in place
+(1.1.1, the owner, 2026-11-25), never on a build with no key, under the under-13 rule or
+on Plus, and a failure never reads as Plus.
 
 ---
 

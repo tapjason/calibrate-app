@@ -25,6 +25,12 @@ exit 0: 254 suites, 5,548 tests. Nothing on a device.
   your gut", promo line 2 (suggested "Gold in health, Bronze with money?"); merge his four What's New lines
   into the draft (and consider D77/D78 in the review notes' New line); re-seed the demo account with Lifetime.
   His untracked `store-listing-paste-1.1.0.txt` no longer matches the listing.
+- **Now: `builder/1.1.1` (2026-11-25), for build 17.** The owner: "Build 17 should only be 1.1.1 right now".
+  `app.json` 1.1.1; the listing, privacy policy and support page say 1.1.1 (build 16 was 1.1.0, TestFlight
+  only, with the older behaviour). The paywall's "Try again" when the plans don't load ("Plans didn't
+  load."), his yes: Opus at xhigh; the version sweep: Sonnet. Not on a device: HUMAN_VERIFICATION "Paywall
+  Try again (1.1.1, build 17)". His answers on the UI list are recorded in OWNER_UI_NOTES (one Share button;
+  usage stats under Advanced; the Insights reorder in 1.3.0; a web mock before 1.2.0).
 - **The owner's full UI list** (2026-11-25), each note with its status and the release it goes in:
   `docs/design/OWNER_UI_NOTES_2026-11.md`. The You page redesign for 1.2.0: `docs/design/YOU_REDESIGN.md`.
 - **"WhatsApp-like categories" answered (2026-11-25):** all settings (notifications, privacy, Coach and the

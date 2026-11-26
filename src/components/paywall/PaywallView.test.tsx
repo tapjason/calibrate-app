@@ -3,13 +3,14 @@ import { AccessibilityInfo, StyleSheet } from 'react-native';
 
 import type { PlusPlan } from '@/billing/revenuecat';
 import { PRIVACY_POLICY_URL } from '@/constants/app';
+import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePaywallStore } from '@/store/paywallStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { FREE_ENTITLEMENT } from '@/types';
 
 import { PaywallView } from './PaywallView';
-import { noticeText } from './paywallCopy';
+import { RETRYING_PLANS_LABEL, RETRY_PLANS_LABEL, noticeText } from './paywallCopy';
 
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(async () => ({ type: 'opened' })),
@@ -336,13 +337,11 @@ describe('PaywallView', () => {
   });
 
   // Blind playtest 2026-11-10, run 4: with billing but no connection, the
-  // screen said the build had no Plus.
-  it('says the plans need a connection when billing exists but they did not load', () => {
+  // screen said the build had no Plus. Since 1.1.1 the line sits over Try again.
+  it('says the plans did not load when billing exists but none came back', () => {
     seed({ plans: [] });
     render(<PaywallView />);
-    expect(screen.getByTestId('paywall-unavailable')).toHaveTextContent(
-      "Plus plans couldn't load. Check your connection, then open this again.",
-    );
+    expect(screen.getByTestId('paywall-unavailable')).toHaveTextContent("Plans didn't load.");
   });
 
   it('keeps "this build" for a build with no billing', () => {
@@ -597,5 +596,178 @@ describe('PaywallView — a notice belongs to the visit it came on', () => {
 
     render(<PaywallView />);
     expect(screen.queryByTestId('paywall-notice')).toBeNull();
+  });
+});
+
+// 1.1.1 (the owner, 2026-11-25: "Yes please"): on build 16 a new user's
+// paywall showed no prices, and the only way to ask again was to close it and
+// open it again. A reviewer on a slow network sees the same screen.
+describe('PaywallView — Try again when the plans did not load', () => {
+  /** A loadPlans the test settles by hand, set after the mount's own call. */
+  function deferredLoads(loadPlans: jest.Mock) {
+    const releases: (() => void)[] = [];
+    loadPlans.mockClear();
+    loadPlans.mockImplementation(
+      () => new Promise<void>((resolve) => releases.push(resolve)),
+    );
+    return releases;
+  }
+
+  afterEach(() => act(() => __resetAgeStoreForTests()));
+
+  it('shows the line and a Try again button, with Restore purchases still there', async () => {
+    const { loadPlans } = seed({ plans: [] });
+    render(<PaywallView />);
+    await waitFor(() => expect(loadPlans).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByTestId('paywall-unavailable')).toHaveTextContent("Plans didn't load.");
+    const button = screen.getByTestId('paywall-retry');
+    expect(button).toHaveTextContent(RETRY_PLANS_LABEL);
+    expect(button.props.accessibilityRole).toBe('button');
+    expect(button.props.accessibilityState.disabled).toBe(false);
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+    // The secondary capsule (outlined, ink label), not the one tinted primary.
+    expect(StyleSheet.flatten(button.props.style).borderWidth).toBe(1);
+    // 44pt target.
+    expect(StyleSheet.flatten(button.props.style).minHeight).toBeGreaterThanOrEqual(44);
+    expect(screen.getByTestId('paywall-restore').props.accessibilityState.disabled).toBe(false);
+  });
+
+  it('asks the store once for a double tap, and takes no taps while it asks', async () => {
+    const { loadPlans, restore } = seed({ plans: [] });
+    render(<PaywallView />);
+    await waitFor(() => expect(loadPlans).toHaveBeenCalledTimes(1));
+    const releases = deferredLoads(loadPlans);
+
+    fireEvent.press(screen.getByTestId('paywall-retry'));
+    fireEvent.press(screen.getByTestId('paywall-retry'));
+    expect(loadPlans).toHaveBeenCalledTimes(1);
+
+    // The loading state, on the button, with the line still there.
+    const button = screen.getByTestId('paywall-retry');
+    expect(button).toHaveTextContent(RETRYING_PLANS_LABEL);
+    expect(button.props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByTestId('paywall-unavailable')).toHaveTextContent("Plans didn't load.");
+    fireEvent.press(button);
+    expect(loadPlans).toHaveBeenCalledTimes(1);
+
+    // Restore purchases is still there to press while it runs.
+    fireEvent.press(screen.getByTestId('paywall-restore'));
+    expect(restore).toHaveBeenCalledTimes(1);
+
+    await act(async () => releases[0]?.());
+    expect(screen.getByTestId('paywall-retry')).toHaveTextContent(RETRY_PLANS_LABEL);
+  });
+
+  it('shows the plans when a retry brings them', async () => {
+    const { loadPlans } = seed({ plans: [] });
+    render(<PaywallView />);
+    await waitFor(() => expect(loadPlans).toHaveBeenCalledTimes(1));
+    loadPlans.mockImplementation(async () => {
+      usePaywallStore.setState({ plans: PLANS, loadingPlans: false });
+    });
+
+    fireEvent.press(screen.getByTestId('paywall-retry'));
+    await waitFor(() => expect(screen.getByTestId('plan-annual')).toBeTruthy());
+
+    expect(loadPlans).toHaveBeenCalledTimes(2);
+    expect(screen.queryByTestId('paywall-retry')).toBeNull();
+    expect(screen.queryByTestId('paywall-unavailable')).toBeNull();
+    expect(screen.getByTestId('paywall-cta')).toBeTruthy();
+    // Annual preselected, as on any open.
+    expect(screen.getByTestId('plan-annual').props.accessibilityState.selected).toBe(true);
+  });
+
+  it('keeps the same line and button after a retry that fails again, and says the line again', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    announce.mockClear();
+    const { loadPlans } = seed({ plans: [] });
+    render(<PaywallView />);
+    await waitFor(() => expect(loadPlans).toHaveBeenCalledTimes(1));
+    loadPlans.mockImplementation(async () => {
+      usePaywallStore.setState({ plans: [], loadingPlans: false });
+    });
+
+    for (const tries of [2, 3]) {
+      fireEvent.press(screen.getByTestId('paywall-retry'));
+      await waitFor(() => expect(loadPlans).toHaveBeenCalledTimes(tries));
+      await waitFor(() =>
+        expect(screen.getByTestId('paywall-retry')).toHaveTextContent(RETRY_PLANS_LABEL),
+      );
+      expect(screen.getByTestId('paywall-unavailable')).toHaveTextContent("Plans didn't load.");
+      expect(screen.getByTestId('paywall-retry').props.accessibilityState.disabled).toBe(false);
+    }
+    expect(announce.mock.calls).toEqual([["Plans didn't load."], ["Plans didn't load."]]);
+    // Nothing reads as Plus.
+    expect(useEntitlementStore.getState().isPlus).toBe(false);
+    expect(screen.getByTestId('paywall')).toBeTruthy();
+    announce.mockRestore();
+  });
+
+  it('shows no spinner in place of the line while a retry runs', async () => {
+    const { loadPlans } = seed({ plans: [] });
+    render(<PaywallView />);
+    await waitFor(() => expect(loadPlans).toHaveBeenCalledTimes(1));
+    const releases = deferredLoads(loadPlans);
+
+    fireEvent.press(screen.getByTestId('paywall-retry'));
+    // The real store marks the plans as loading while it asks.
+    act(() => usePaywallStore.setState({ loadingPlans: true }));
+    expect(screen.queryByTestId('paywall-loading')).toBeNull();
+    expect(screen.getByTestId('paywall-retry')).toHaveTextContent(RETRYING_PLANS_LABEL);
+
+    act(() => usePaywallStore.setState({ loadingPlans: false }));
+    await act(async () => releases[0]?.());
+  });
+
+  it('is not there on a build with no billing key', () => {
+    seed({ plans: [] });
+    usePaywallStore.setState({ available: false });
+    render(<PaywallView />);
+    expect(screen.getByTestId('paywall-unavailable')).toHaveTextContent(
+      "Plus isn't available on this build yet.",
+    );
+    expect(screen.queryByTestId('paywall-retry')).toBeNull();
+    expect(screen.queryByText(RETRY_PLANS_LABEL)).toBeNull();
+  });
+
+  // The route draws the local-only page instead (localOnlyRoutes.test.tsx);
+  // this is the view's own guard.
+  it('is not there under the under-13 rule', () => {
+    seed({ plans: [] });
+    act(() => useAgeStore.setState({ localOnly: true }));
+    render(<PaywallView />);
+    expect(screen.queryByTestId('paywall-retry')).toBeNull();
+    expect(screen.queryByText(RETRY_PLANS_LABEL)).toBeNull();
+  });
+
+  it('is not there for someone already on Plus', () => {
+    seed({ isPlus: true, plans: [] });
+    render(<PaywallView />);
+    expect(screen.getByTestId('paywall-active')).toBeTruthy();
+    expect(screen.queryByTestId('paywall-retry')).toBeNull();
+  });
+
+  it('is not there while the plans load or billing starts', async () => {
+    seed({ plans: [], loadingPlans: true });
+    const { rerender } = render(<PaywallView />);
+    expect(screen.getByTestId('paywall-loading')).toBeTruthy();
+    expect(screen.queryByTestId('paywall-retry')).toBeNull();
+
+    act(() => usePaywallStore.setState({ loadingPlans: false }));
+    rerender(<PaywallView billingReady={false} />);
+    await act(async () => {});
+    expect(screen.getByTestId('paywall-loading')).toBeTruthy();
+    expect(screen.queryByTestId('paywall-retry')).toBeNull();
+  });
+
+  it('is not pressable while a restore runs', () => {
+    const { loadPlans } = seed({ plans: [] });
+    usePaywallStore.setState({ restoring: true });
+    render(<PaywallView />);
+    loadPlans.mockClear();
+    expect(screen.getByTestId('paywall-retry').props.accessibilityState.disabled).toBe(true);
+    fireEvent.press(screen.getByTestId('paywall-retry'));
+    expect(loadPlans).not.toHaveBeenCalled();
   });
 });

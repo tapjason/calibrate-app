@@ -57,6 +57,10 @@ interface PaywallState {
   /** False when the build has no billing SDK or no API key configured. */
   available: boolean;
 
+  /**
+   * Ask the store for the plans. On opening the paywall, and again from its
+   * Try again button (1.1.1). Never rejects; never touches the entitlement.
+   */
   loadPlans: () => Promise<void>;
   /** Buy a plan. Returns true when the user is Plus afterwards. */
   purchase: (packageId: string) => Promise<boolean>;
@@ -93,7 +97,15 @@ export const usePaywallStore = create<PaywallState>((set) => ({
       set({ ...INITIAL, available: false });
       return;
     }
-    const plans = await fetchPlans(); // never throws; [] on any failure
+    let plans: PlusPlan[] = [];
+    try {
+      plans = await fetchPlans(); // never throws; [] on any failure
+    } catch (e) {
+      // Belt and braces: were it to throw, the load would never end, and the
+      // paywall would spin on with no Try again (1.1.1). Nothing reads as Plus.
+      // eslint-disable-next-line no-console
+      console.warn('[paywall] plans failed:', e);
+    }
     // No notice on an empty offering. `notice` reports the outcome of
     // something the user *did*; the screen renders its own unavailable line
     // from an empty plan list, and setting both stacked the same sentence

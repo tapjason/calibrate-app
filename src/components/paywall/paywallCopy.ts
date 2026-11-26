@@ -271,13 +271,21 @@ export function noticeText(notice: PaywallNotice): string | null {
  * build with no billing at all (web, Expo Go, no API key); a build that has
  * billing but couldn't load the store's plans is almost always offline, and
  * "Plus isn't available on this build yet" read as Plus not existing to a
- * tester with no signal (blind playtest 2026-11-10, run 4).
+ * tester with no signal (blind playtest 2026-11-10, run 4). With billing, the
+ * line sits over a Try again button (1.1.1, the owner, 2026-11-25), so it no
+ * longer asks for the paywall to be opened again.
  */
 export function noPlansText(billingAvailable: boolean): string {
-  return billingAvailable
-    ? "Plus plans couldn't load. Check your connection, then open this again."
-    : noticeText('unavailable') ?? '';
+  return billingAvailable ? "Plans didn't load." : noticeText('unavailable') ?? '';
 }
+
+/**
+ * The button under "Plans didn't load." (1.1.1): it asks the store for the
+ * plans again. The same words after every failed try, never escalating.
+ */
+export const RETRY_PLANS_LABEL = 'Try again';
+/** The same button while the store is being asked. */
+export const RETRYING_PLANS_LABEL = 'Trying again…';
 
 /** Annual first — it carries the anchor and the trial (GROWTH §4). */
 const PLAN_ORDER: Record<PlanId, number> = { annual: 0, monthly: 1, lifetime: 2 };
