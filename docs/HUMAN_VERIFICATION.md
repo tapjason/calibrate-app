@@ -207,10 +207,14 @@ Information, which gives faster renewal and cancel events.
 |---|---|---|
 | `calibrate_plus_monthly` | auto-renewing, 1 month | $4.99 |
 | `calibrate_plus_annual` | auto-renewing, 1 year, one free month first | $34.99 |
-| `calibrate_plus_lifetime` | non-consumable | $79.99 |
+| `calibrate_plus_lifetime_once` | non-consumable | $79.99 |
 
 The ids are hardcoded too (`PRODUCT_IDS`): a mismatch drops the plan from the paywall
-silently. The trial is read from the store, not set in RevenueCat.
+silently. The trial is read from the store, not set in RevenueCat. Lifetime was first
+created as `calibrate_plus_lifetime`, a non-renewing subscription by mistake; Apple can't
+change a type or reuse an id, so the owner created the non-consumable
+`calibrate_plus_lifetime_once` (2026-11-26, on `plus` in RevenueCat). The app reads the
+old id as lifetime for sandbox purchases only (`PRODUCT_ALIASES`).
 
 ### B2. App Store Connect
 

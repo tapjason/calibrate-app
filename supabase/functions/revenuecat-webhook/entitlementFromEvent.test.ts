@@ -64,6 +64,7 @@ describe('granting', () => {
     }
     expect(PRODUCT_ALIASES.annual).toContain('calibrate_plus_annual_2999');
     expect(PRODUCT_ALIASES.monthly).toContain('calibrate_plus_monthly_notrial');
+    expect(PRODUCT_ALIASES.lifetime).toContain('calibrate_plus_lifetime');
   });
 
   it('records a trial as source=trial', () => {
@@ -79,6 +80,57 @@ describe('granting', () => {
         event({
           type: 'NON_RENEWING_PURCHASE',
           product_id: PRODUCT_IDS.lifetime,
+          expiration_at_ms: null,
+        }),
+        NOW,
+      ),
+    ).toMatchObject({ action: 'write', isPlus: true, source: 'lifetime', expiresAt: null });
+  });
+
+  // The lifetime product's id changed (2026-11-26): `calibrate_plus_lifetime`
+  // was created as a non-renewing subscription by mistake, and the
+  // non-consumable that replaced it is `calibrate_plus_lifetime_once`. A
+  // non-consumable arrives as NON_RENEWING_PURCHASE with no expiry. The ids are
+  // written out, so a wrong one in PRODUCT_IDS fails here.
+  it('grants the non-consumable lifetime for ever', () => {
+    expect(
+      decideFromEvent(
+        event({
+          type: 'NON_RENEWING_PURCHASE',
+          product_id: 'calibrate_plus_lifetime_once',
+          expiration_at_ms: null,
+        }),
+        NOW,
+      ),
+    ).toMatchObject({
+      action: 'write',
+      userId: USER,
+      isPlus: true,
+      source: 'lifetime',
+      expiresAt: null,
+    });
+  });
+
+  it('grants the non-consumable lifetime from its product when the event names no entitlement', () => {
+    expect(
+      decideFromEvent(
+        event({
+          type: 'NON_RENEWING_PURCHASE',
+          product_id: 'calibrate_plus_lifetime_once',
+          expiration_at_ms: null,
+          entitlement_ids: undefined,
+        }),
+        NOW,
+      ),
+    ).toMatchObject({ action: 'write', isPlus: true, source: 'lifetime', expiresAt: null });
+  });
+
+  it('still reads the first lifetime id (sandbox purchases only) as lifetime', () => {
+    expect(
+      decideFromEvent(
+        event({
+          type: 'NON_RENEWING_PURCHASE',
+          product_id: 'calibrate_plus_lifetime',
           expiration_at_ms: null,
         }),
         NOW,

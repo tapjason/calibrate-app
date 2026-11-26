@@ -64,26 +64,35 @@ export const PLUS_ENTITLEMENT_ID = 'plus';
 
 /**
  * Store product identifiers, mirrored in App Store Connect (L7). This map is
- * how a purchased product becomes an `EntitlementSource`.
+ * how a purchased product becomes an `EntitlementSource`, and a package whose
+ * product isn't here (or in PRODUCT_ALIASES) never reaches the paywall.
+ *
+ * Lifetime is `calibrate_plus_lifetime_once`, a non-consumable (2026-11-26):
+ * `calibrate_plus_lifetime` was created in App Store Connect as a
+ * non-renewing subscription by mistake, and Apple can neither change a
+ * product's type nor reuse its id.
  */
 export const PRODUCT_IDS = {
   monthly: 'calibrate_plus_monthly',
   annual: 'calibrate_plus_annual',
-  lifetime: 'calibrate_plus_lifetime',
+  lifetime: 'calibrate_plus_lifetime_once',
 } as const;
 
 export type PlanId = keyof typeof PRODUCT_IDS;
 
 /**
- * Other product ids that sell the same plan. A store product's price and
- * trial can't always be edited in place, so a corrected one gets a new id:
+ * Other product ids that sell the same plan. A store product's price, trial
+ * or type can't always be edited in place, so a corrected one gets a new id:
  * the RevenueCat Test Store's annual at $29.99 and monthly without a trial
- * (2026-11-03). Mirrored in the webhook's entitlementFromEvent.ts.
+ * (2026-11-03), and the first lifetime id, the non-renewing subscription
+ * created by mistake (2026-11-26). That one was only ever bought in the
+ * sandbox; it stays here so a test purchase of it still reads as lifetime.
+ * Mirrored in the webhook's entitlementFromEvent.ts.
  */
 export const PRODUCT_ALIASES: Readonly<Record<PlanId, readonly string[]>> = {
   monthly: ['calibrate_plus_monthly_notrial'],
   annual: ['calibrate_plus_annual_2999'],
-  lifetime: [],
+  lifetime: ['calibrate_plus_lifetime'],
 };
 
 /** Which plan a store product sells, or null for one we don't know. */

@@ -12,8 +12,9 @@
 //
 //   - Grants (INITIAL_PURCHASE, RENEWAL, …): the expiry decides. A grant whose
 //     expiry has passed writes free. A grant with NO expiry is believed only
-//     from NON_RENEWING_PURCHASE (the lifetime product); on any other type a
-//     missing expiry can't be told from a malformed event, so it is looked up.
+//     from NON_RENEWING_PURCHASE (the lifetime product, a non-consumable: every
+//     purchase that doesn't auto-renew arrives as that type); on any other type
+//     a missing expiry can't be told from a malformed event, so it is looked up.
 //   - EXPIRATION revokes: access is gone now.
 //   - CANCELLATION, REFUND_REVERSED, TEMPORARY_ENTITLEMENT_GRANT and
 //     PURCHASE_REDEEMED are looked up: the function asks RevenueCat what the
@@ -48,18 +49,26 @@ export type { EntitlementSource };
 /** The lookup key. Defined in ../_shared/revenuecatLookup.ts; re-exported here. */
 export { PLUS_ENTITLEMENT_ID };
 
-/** Mirrors PRODUCT_IDS in src/billing/revenuecat.ts. Keep in lockstep. */
+/**
+ * Mirrors PRODUCT_IDS in src/billing/revenuecat.ts. Keep in lockstep (a test
+ * there compares the two). Lifetime is the non-consumable
+ * `calibrate_plus_lifetime_once` (2026-11-26).
+ */
 export const PRODUCT_IDS = {
   monthly: 'calibrate_plus_monthly',
   annual: 'calibrate_plus_annual',
-  lifetime: 'calibrate_plus_lifetime',
+  lifetime: 'calibrate_plus_lifetime_once',
 } as const;
 
-/** Mirrors PRODUCT_ALIASES in src/billing/revenuecat.ts. Keep in lockstep. */
+/**
+ * Mirrors PRODUCT_ALIASES in src/billing/revenuecat.ts. Keep in lockstep.
+ * `calibrate_plus_lifetime` is the first lifetime id, a non-renewing
+ * subscription created by mistake and bought only in the sandbox.
+ */
 export const PRODUCT_ALIASES: Readonly<Record<keyof typeof PRODUCT_IDS, readonly string[]>> = {
   monthly: ['calibrate_plus_monthly_notrial'],
   annual: ['calibrate_plus_annual_2999'],
-  lifetime: [],
+  lifetime: ['calibrate_plus_lifetime'],
 };
 
 /** The subset of a RevenueCat v1 webhook event this function reads. */

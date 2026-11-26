@@ -1,6 +1,10 @@
 import { FREE_ENTITLEMENT } from '@/types';
 
 import {
+  PRODUCT_ALIASES as WEBHOOK_PRODUCT_ALIASES,
+  PRODUCT_IDS as WEBHOOK_PRODUCT_IDS,
+} from '../../supabase/functions/revenuecat-webhook/entitlementFromEvent';
+import {
   PRODUCT_ALIASES,
   PRODUCT_IDS,
   __setBillingDepsForTests,
@@ -12,6 +16,7 @@ import {
   isBillingAvailable,
   isStaleEntitlement,
   logOutBilling,
+  planForProduct,
   plansFromOfferings,
   purchasePlan,
   restorePurchases,
@@ -111,6 +116,40 @@ afterEach(() => {
 
 // ---------------------------------------------------------------------------
 
+// The lifetime product's id changed (2026-11-26): `calibrate_plus_lifetime`
+// was created in App Store Connect as a non-renewing subscription by mistake,
+// and the non-consumable that replaced it is `calibrate_plus_lifetime_once`.
+// Written out here rather than read from PRODUCT_IDS, so a wrong id fails.
+describe('planForProduct', () => {
+  it('reads the non-consumable lifetime id as lifetime', () => {
+    expect(planForProduct('calibrate_plus_lifetime_once')).toBe('lifetime');
+  });
+
+  it('still reads the first lifetime id (sandbox purchases only) as lifetime', () => {
+    expect(planForProduct('calibrate_plus_lifetime')).toBe('lifetime');
+  });
+
+  it('reads the subscriptions and their aliases', () => {
+    expect(planForProduct('calibrate_plus_monthly')).toBe('monthly');
+    expect(planForProduct('calibrate_plus_annual')).toBe('annual');
+    expect(planForProduct('calibrate_plus_monthly_notrial')).toBe('monthly');
+    expect(planForProduct('calibrate_plus_annual_2999')).toBe('annual');
+  });
+
+  it('knows nothing else', () => {
+    expect(planForProduct('calibrate_plus_lifetime_twice')).toBeNull();
+    expect(planForProduct('')).toBeNull();
+    expect(planForProduct(null)).toBeNull();
+    expect(planForProduct(undefined)).toBeNull();
+  });
+
+  // The webhook decides the server's Plus from its own copy of these lists.
+  it("matches the webhook's lists exactly", () => {
+    expect(WEBHOOK_PRODUCT_IDS).toEqual(PRODUCT_IDS);
+    expect(WEBHOOK_PRODUCT_ALIASES).toEqual(PRODUCT_ALIASES);
+  });
+});
+
 // Roadmap D16: what the reminder before a trial renews reads.
 describe('trialStatusFromCustomerInfo', () => {
   it('reads a running trial, its end and the plan it turns into', () => {
@@ -184,6 +223,14 @@ describe('entitlementFromCustomerInfo', () => {
     expect(e).toMatchObject({ is_plus: true, source: 'trial' });
   });
 
+  it('maps the non-consumable lifetime purchase to a lifetime that never expires', () => {
+    expect(
+      entitlementFromCustomerInfo(
+        customerInfo({ productIdentifier: 'calibrate_plus_lifetime_once', expirationDate: null }),
+      ),
+    ).toEqual({ is_plus: true, source: 'lifetime', expires_at: null });
+  });
+
   it('honors an unknown product but infers the source conservatively', () => {
     const expiring = entitlementFromCustomerInfo(
       customerInfo({ productIdentifier: 'some_future_sku' }),
@@ -211,6 +258,27 @@ describe('entitlementFromCustomerInfo', () => {
 });
 
 describe('plansFromOfferings', () => {
+  // Before 2026-11-26 the app knew only `calibrate_plus_lifetime`, so the
+  // offering's non-consumable package was dropped and Lifetime never showed.
+  it('lists Lifetime from a package carrying the non-consumable id', () => {
+    const plans = plansFromOfferings({
+      current: {
+        availablePackages: [
+          pkg('calibrate_plus_annual', '$34.99'),
+          pkg('calibrate_plus_monthly', '$4.99'),
+          pkg('calibrate_plus_lifetime_once', '$79.99'),
+        ],
+      },
+    });
+    expect(plans.map((p) => p.plan)).toEqual(['annual', 'monthly', 'lifetime']);
+    expect(plans[2]).toMatchObject({
+      packageId: 'pkg_calibrate_plus_lifetime_once',
+      plan: 'lifetime',
+      priceString: '$79.99',
+      trialPeriod: null,
+    });
+  });
+
   it('returns plans in display order, annual first', () => {
     expect(plansFromOfferings(OFFERINGS).map((p) => p.plan)).toEqual([
       'annual',

@@ -236,7 +236,14 @@ to both. That privacy URL is `docs/PRIVACY_POLICY.md` on GitHub Pages
 |---|---|---|
 | `calibrate_plus_monthly` | Fairly Sure Plus Monthly | Coach, trends and card themes |
 | `calibrate_plus_annual` | Fairly Sure Plus Annual | Coach, trends and card themes |
-| `calibrate_plus_lifetime` | Fairly Sure Plus Lifetime | Every Plus feature, one payment, forever |
+| `calibrate_plus_lifetime_once` | Fairly Sure Plus Lifetime | Every Plus feature, one payment, forever |
+
+Lifetime is a **Non-Consumable**, outside the subscription group. Its id is
+`calibrate_plus_lifetime_once` because `calibrate_plus_lifetime` was created as a
+Non-Renewing Subscription by mistake, and Apple can neither change a product's type nor
+reuse an id; the owner created the non-consumable on 2026-11-26 and attached it to `plus`
+in RevenueCat. The old id is never submitted. The app and the webhook still read a sandbox
+purchase of it as lifetime (`PRODUCT_ALIASES`).
 
 Subscription group name: **Fairly Sure Plus**. Put annual at level 1 and monthly
 at level 2 (same features, so this only orders upgrades and downgrades).
