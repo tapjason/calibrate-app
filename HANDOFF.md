@@ -38,6 +38,15 @@ exit 0: 254 suites, 5,548 tests. Nothing on a device.
   At the largest accessibility text size, Today's header clips and "Calibrating" / "New prediction" break
   mid-word: older than 1.1.1, for 1.2.0. Not reachable on a fresh release build: badges above Getting
   started, "due today by 11:59 PM", reminders. **His:** delete simulator session 01a215c6 on expo.dev.
+- **Production build 1.1.1 (18)** (`aa172e2a`, from 589a4c1 on `master`: build 17 plus Lifetime as the
+  non-consumable `calibrate_plus_lifetime_once`; the owner ran the command, 2026-11-26):
+  https://expo.dev/accounts/tapjason/projects/calibrate/builds/aa172e2a-b95e-48a8-b362-98865ad7e8ff
+  The owner submitted 1.1.1 with build 17 for review the same day, with the group, both subscriptions and
+  Lifetime; build 17 doesn't list the new Lifetime id. **His:** `eas submit` build 18; while "Waiting for
+  Review", Remove from Review, select build 18, resubmit; redeploy `revenuecat-webhook`
+  (`--no-verify-jwt --yes`); RevenueCat's current offering's Lifetime package must hold
+  `calibrate_plus_lifetime_once`; push `master` (the policy's date set to the push day first); then tag
+  `submitted-1.1.1` on 589a4c1 instead of 1f917c0 if build 18 is the one reviewed.
 - **1.1.1 status (the owner, 2026-11-26):** build 17 submitted to TestFlight by him; the paywall now shows
   prices (the products are attached), but Annual's free month isn't clear on it (later; the trial line shows
   only when `checkTrialOrIntroductoryPriceEligibility` says ELIGIBLE, src/billing/revenuecat.ts:459, so a
