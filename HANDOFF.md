@@ -38,6 +38,11 @@ exit 0: 254 suites, 5,548 tests. Nothing on a device.
   At the largest accessibility text size, Today's header clips and "Calibrating" / "New prediction" break
   mid-word: older than 1.1.1, for 1.2.0. Not reachable on a fresh release build: badges above Getting
   started, "due today by 11:59 PM", reminders. **His:** delete simulator session 01a215c6 on expo.dev.
+- **Simulator pass 2 on 1.1.1** (preview 7e403185 from 3360ffd, session 01a215ec, 11 min, stopped; shots in
+  `.tooling/sim/2026-11-25-1.1.1-run2/`): WORKS. Edit's "Save changes" fully on screen right after "Pick a
+  date" in all four cases (light, dark, custom and Tomorrow); every reachable 1.1.1 note in OWNER_UI_NOTES
+  passes, judged by his words. Open for him: whether the Warm-up card's tagline ("How well do you know what
+  you know?") also becomes "Learn when to trust your gut". **His:** delete sessions 01a215c6 and 01a215ec.
 - **The owner's full UI list** (2026-11-25), each note with its status and the release it goes in:
   `docs/design/OWNER_UI_NOTES_2026-11.md`. The You page redesign for 1.2.0: `docs/design/YOU_REDESIGN.md`.
 - **"WhatsApp-like categories" answered (2026-11-25):** all settings (notifications, privacy, Coach and the
